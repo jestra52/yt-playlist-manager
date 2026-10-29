@@ -59,13 +59,16 @@ jobs:
         with:
           dotnet-version: 10.0.x
       - name: Restore
-        run: ../.github/scripts/run-annotated.sh "dotnet restore" "error|warning NU" dotnet restore YtPlaylist.slnx
+        run: |
+          ../.github/scripts/run-annotated.sh "dotnet restore" "error|warning NU" dotnet restore YtPlaylist.slnx
       - name: Build
-        run: ../.github/scripts/run-annotated.sh "dotnet build" ": error " dotnet build YtPlaylist.slnx --no-restore -c Release
+        run: |
+          ../.github/scripts/run-annotated.sh "dotnet build" ": error " dotnet build YtPlaylist.slnx --no-restore -c Release
       - name: Test
         run: >-
           ../.github/scripts/run-annotated.sh "dotnet test"
           "Failed |Error Message|Assert|Expected|Actual|Exception|   at YtPlaylist"
           dotnet test YtPlaylist.slnx --no-build -c Release --logger "console;verbosity=normal"
       - name: Build the Docker image
-        run: ../.github/scripts/run-annotated.sh "docker build" "error|ERROR" docker build -t yt-playlist-manager-api .
+        run: |
+          ../.github/scripts/run-annotated.sh "docker build" "error|ERROR" docker build -t yt-playlist-manager-api .
