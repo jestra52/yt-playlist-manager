@@ -65,6 +65,8 @@ jobs:
         run: |
           ../.github/scripts/run-annotated.sh "dotnet build" ": error " dotnet build YtPlaylist.slnx --no-restore -c Release
       - name: Test
+        env:
+          SUMMARY_PATTERN: "Passed!|Failed!|Total tests"
         run: >-
           ../.github/scripts/run-annotated.sh "dotnet test"
           "Failed |Error Message|Assert|Expected|Actual|Exception|   at YtPlaylist"

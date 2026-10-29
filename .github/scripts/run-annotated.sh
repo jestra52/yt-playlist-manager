@@ -12,6 +12,13 @@ log=$(mktemp)
 "$@" 2>&1 | tee "$log"
 status=${PIPESTATUS[0]}
 
+# On success, SUMMARY_PATTERN lines (e.g. test totals) become a notice annotation.
+if [ "$status" -eq 0 ] && [ -n "${SUMMARY_PATTERN:-}" ]; then
+    summary=$(grep -E "$SUMMARY_PATTERN" "$log" | sed 's/\r$//' | head -20)
+    summary=${summary//$'\n'/'%0A'}
+    [ -n "$summary" ] && echo "::notice title=${title}::${summary}"
+fi
+
 if [ "$status" -ne 0 ]; then
     message=$(grep -E "$pattern" "$log" | sed 's/\r$//' | awk '!seen[$0]++' | head -80)
     if [ -z "$message" ]; then
