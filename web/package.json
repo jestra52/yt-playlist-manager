@@ -32,5 +32,8 @@
   },
   "dependencies": {
     "sql.js": "^1.15.2"
+  },
+  "allowScripts": {
+    "@parcel/watcher@2.6.0": true
   }
 }
