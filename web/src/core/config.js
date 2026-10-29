@@ -5,9 +5,9 @@
 let apiBase = '/api';
 
 export function getApiBase() {
-  return apiBase;
+    return apiBase;
 }
 
 export function setApiBase(value) {
-  apiBase = (value || '/api').replace(/\/+$/, '');
+    apiBase = (value || '/api').replace(/\/+$/, '');
 }

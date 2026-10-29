@@ -4,12 +4,12 @@
 // App-wide pieces daisyUI doesn't provide. Kept in the `components` layer so
 // a Tailwind utility on the same element can still override them.
 @layer components {
-  // Big heading set in the display face (playlist titles, empty states).
-  .display-title {
-    @include display(2.25rem);
+    // Big heading set in the display face (playlist titles, empty states).
+    .display-title {
+        @include display(2.25rem);
 
-    @include until(md) {
-      font-size: 1.5rem;
+        @include until(md) {
+            font-size: 1.5rem;
+        }
     }
-  }
 }

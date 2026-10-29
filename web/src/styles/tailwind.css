@@ -9,82 +9,82 @@
 @import 'tailwindcss';
 
 @plugin 'daisyui' {
-  themes: false;
+    themes: false;
 }
 
 /* Light theme: cool paper, navy ink, a red "tally light" for actions. */
 @plugin 'daisyui/theme' {
-  name: 'queue';
-  default: true;
-  prefersdark: false;
-  color-scheme: light;
-  --color-base-100: #f7f9fb;
-  --color-base-200: #e9edf2;
-  --color-base-300: #cdd5e0;
-  --color-base-content: #16213a;
-  --color-primary: #e5322d;
-  --color-primary-content: #ffffff;
-  --color-secondary: #3d6fd6;
-  --color-secondary-content: #ffffff;
-  --color-accent: #2f7d6d;
-  --color-accent-content: #ffffff;
-  --color-neutral: #16213a;
-  --color-neutral-content: #e7ecf5;
-  --color-info: #3d6fd6;
-  --color-info-content: #ffffff;
-  --color-success: #2f7d6d;
-  --color-success-content: #ffffff;
-  --color-warning: #d9982c;
-  --color-warning-content: #1f1300;
-  --color-error: #d0312c;
-  --color-error-content: #ffffff;
-  --radius-selector: 0.375rem;
-  --radius-field: 0.375rem;
-  --radius-box: 0.625rem;
-  --size-selector: 0.25rem;
-  --size-field: 0.25rem;
-  --border: 1px;
-  --depth: 0;
-  --noise: 0;
+    name: 'queue';
+    default: true;
+    prefersdark: false;
+    color-scheme: light;
+    --color-base-100: #f7f9fb;
+    --color-base-200: #e9edf2;
+    --color-base-300: #cdd5e0;
+    --color-base-content: #16213a;
+    --color-primary: #e5322d;
+    --color-primary-content: #ffffff;
+    --color-secondary: #3d6fd6;
+    --color-secondary-content: #ffffff;
+    --color-accent: #2f7d6d;
+    --color-accent-content: #ffffff;
+    --color-neutral: #16213a;
+    --color-neutral-content: #e7ecf5;
+    --color-info: #3d6fd6;
+    --color-info-content: #ffffff;
+    --color-success: #2f7d6d;
+    --color-success-content: #ffffff;
+    --color-warning: #d9982c;
+    --color-warning-content: #1f1300;
+    --color-error: #d0312c;
+    --color-error-content: #ffffff;
+    --radius-selector: 0.375rem;
+    --radius-field: 0.375rem;
+    --radius-box: 0.625rem;
+    --size-selector: 0.25rem;
+    --size-field: 0.25rem;
+    --border: 1px;
+    --depth: 0;
+    --noise: 0;
 }
 
 /* Dark theme, used automatically when the system prefers dark. */
 @plugin 'daisyui/theme' {
-  name: 'queue-night';
-  default: false;
-  prefersdark: true;
-  color-scheme: dark;
-  --color-base-100: #172036;
-  --color-base-200: #0f1626;
-  --color-base-300: #2a3654;
-  --color-base-content: #e7ecf5;
-  --color-primary: #ff5a4f;
-  --color-primary-content: #1a0503;
-  --color-secondary: #7aa2ff;
-  --color-secondary-content: #0a1330;
-  --color-accent: #4fb59d;
-  --color-accent-content: #06201a;
-  --color-neutral: #0a101c;
-  --color-neutral-content: #e7ecf5;
-  --color-info: #7aa2ff;
-  --color-info-content: #0a1330;
-  --color-success: #4fb59d;
-  --color-success-content: #06201a;
-  --color-warning: #e8b04e;
-  --color-warning-content: #1f1300;
-  --color-error: #ff6b61;
-  --color-error-content: #1a0503;
-  --radius-selector: 0.375rem;
-  --radius-field: 0.375rem;
-  --radius-box: 0.625rem;
-  --size-selector: 0.25rem;
-  --size-field: 0.25rem;
-  --border: 1px;
-  --depth: 0;
-  --noise: 0;
+    name: 'queue-night';
+    default: false;
+    prefersdark: true;
+    color-scheme: dark;
+    --color-base-100: #172036;
+    --color-base-200: #0f1626;
+    --color-base-300: #2a3654;
+    --color-base-content: #e7ecf5;
+    --color-primary: #ff5a4f;
+    --color-primary-content: #1a0503;
+    --color-secondary: #7aa2ff;
+    --color-secondary-content: #0a1330;
+    --color-accent: #4fb59d;
+    --color-accent-content: #06201a;
+    --color-neutral: #0a101c;
+    --color-neutral-content: #e7ecf5;
+    --color-info: #7aa2ff;
+    --color-info-content: #0a1330;
+    --color-success: #4fb59d;
+    --color-success-content: #06201a;
+    --color-warning: #e8b04e;
+    --color-warning-content: #1f1300;
+    --color-error: #ff6b61;
+    --color-error-content: #1a0503;
+    --radius-selector: 0.375rem;
+    --radius-field: 0.375rem;
+    --radius-box: 0.625rem;
+    --size-selector: 0.25rem;
+    --size-field: 0.25rem;
+    --border: 1px;
+    --depth: 0;
+    --noise: 0;
 }
 
 @theme {
-  --font-sans: 'Figtree', 'Segoe UI', system-ui, sans-serif;
-  --font-display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+    --font-sans: 'Figtree', 'Segoe UI', system-ui, sans-serif;
+    --font-display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
 }

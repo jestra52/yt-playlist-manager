@@ -1,0 +1,13 @@
+{
+  // ESLint lives in web/: underline errors (red) and warnings (yellow) in JS and Svelte files.
+  "eslint.workingDirectories": ["web"],
+  "eslint.validate": ["javascript", "svelte"],
+  "eslint.run": "onType",
+
+  // Format with Prettier, which follows .editorconfig and web/.prettierrc.json.
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "prettier.prettierPath": "web/node_modules/prettier",
+  "[svelte]": { "editor.defaultFormatter": "svelte.svelte-vscode" },
+  "[go]": { "editor.defaultFormatter": "golang.go" },
+  "editor.codeActionsOnSave": { "source.fixAll.eslint": "explicit" }
+}

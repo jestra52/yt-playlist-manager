@@ -6,10 +6,10 @@
 const listeners = new Set();
 
 export function onDataChanged(listener) {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
+    listeners.add(listener);
+    return () => listeners.delete(listener);
 }
 
 export function dataChanged() {
-  for (const listener of listeners) listener();
+    for (const listener of listeners) listener();
 }

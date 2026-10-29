@@ -5,12 +5,12 @@
 let current = null;
 
 export function setDatabase(db) {
-  current = db;
+    current = db;
 }
 
 export function getDatabase() {
-  if (!current) throw new Error('Database is not open yet');
-  return current;
+    if (!current) throw new Error('Database is not open yet');
+    return current;
 }
 
 export { Database, now, newId } from './database.js';

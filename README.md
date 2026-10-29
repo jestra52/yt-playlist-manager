@@ -109,6 +109,17 @@ LIBSQL_TEST_URL=http://127.0.0.1:8080 go test ./api/storage/   # against `turso 
 cd web && npm test                                    # services, URL parsing, SQLite repositories, sync rules
 ```
 
+Linting and formatting (in `web/`):
+
+```bash
+npm run lint          # ESLint: errors for likely bugs, warnings for clean-up
+npm run lint:fix      # fix what ESLint can fix automatically
+npm run format        # Prettier, using .editorconfig (4-space indent, 120 columns, single quotes)
+npm run format:check
+```
+
+Rules live in `web/eslint.config.js`. In VS Code (or VSCodium), install the recommended extensions from `.vscode/extensions.json` to see ESLint errors and warnings underlined as you type.
+
 ## Deploy to Netlify
 
 ### 1. Create the cloud database

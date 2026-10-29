@@ -6,10 +6,10 @@
 
 // Same breakpoints as Tailwind's defaults, so `md:` classes and `@include from(md)` agree.
 $breakpoints: (
-  sm: 40rem,
-  md: 48rem,
-  lg: 64rem,
-  xl: 80rem,
+    sm: 40rem,
+    md: 48rem,
+    lg: 64rem,
+    xl: 80rem,
 );
 
 // Theme colors, as Sass names for the daisyUI variables.
@@ -40,10 +40,10 @@ $thumb-width: 10rem;
 $thumb-width-compact: 7.5rem;
 
 @function breakpoint($name) {
-  @return map.get($breakpoints, $name);
+    @return map.get($breakpoints, $name);
 }
 
 // Mixes a theme color with transparency, e.g. tint($primary, 10%).
 @function tint($color, $amount) {
-  @return color-mix(in oklab, #{$color} #{$amount}, transparent);
+    @return color-mix(in oklab, #{$color} #{$amount}, transparent);
 }

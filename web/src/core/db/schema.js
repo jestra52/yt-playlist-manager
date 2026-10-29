@@ -8,7 +8,7 @@
  *   dirty       1 while the row has local changes not yet pushed
  */
 export const migrations = [
-  `
+    `
   CREATE TABLE meta (
     key   TEXT PRIMARY KEY,
     value TEXT
