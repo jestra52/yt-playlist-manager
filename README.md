@@ -13,6 +13,8 @@ Save YouTube videos into your own playlists, put them in order, mark what you've
 └─────────────────────────────────┘
 ```
 
+Components and deployment diagrams: [docs/architecture.md](docs/architecture.md).
+
 ## Project layout
 
 ```
