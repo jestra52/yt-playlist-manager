@@ -22,4 +22,13 @@
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      EF Core's SQLite provider bundles SQLite 3.49 (SQLitePCLRaw.lib.e_sqlite3 2.1.11), flagged
+      by CVE-2025-6965. Only these tests use it, on an in-memory database with their own data;
+      the deployed API uses PostgreSQL. Remove this once EF Core ships a newer SQLite bundle.
+    -->
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-2m69-gcr7-jv3q" />
+  </ItemGroup>
 </Project>
