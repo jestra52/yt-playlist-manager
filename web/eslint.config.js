@@ -80,7 +80,7 @@ export default [
 
     // Config files and tests run in Node.
     {
-        files: ['*.config.js', '**/*.test.js'],
+        files: ['*.config.js', '**/*.test.js', 'scripts/**/*.mjs'],
         languageOptions: {
             globals: { ...globals.node },
         },

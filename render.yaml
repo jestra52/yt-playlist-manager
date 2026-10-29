@@ -1,0 +1,25 @@
+# Render Blueprint: the .NET sync API as a Docker web service.
+# In Render: New → Blueprint → pick this repository. Fill in the values marked
+# `sync: false` when Render asks for them.
+services:
+  - type: web
+    name: yt-playlist-manager-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./api/Dockerfile
+    dockerContext: ./api
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      # Neon connection string, e.g. postgresql://user:password@host/neondb?sslmode=require
+      - key: DATABASE_URL
+        sync: false
+      # Shared secret the web app sends to /api/sync; Render generates a random one.
+      - key: SYNC_TOKEN
+        generateValue: true
+      # Optional: YouTube Data API key, to import whole playlists.
+      - key: YOUTUBE_API_KEY
+        sync: false
+      # Optional: the Netlify site URL, to limit cross-origin calls (the site normally proxies /api).
+      - key: ALLOWED_ORIGIN
+        sync: false

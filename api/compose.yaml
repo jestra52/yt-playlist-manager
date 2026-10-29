@@ -1,0 +1,16 @@
+# Local PostgreSQL for development: `docker compose up -d` in api/.
+# Matches DATABASE_URL in src/YtPlaylist.Api/Properties/launchSettings.json.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ytplaylist
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

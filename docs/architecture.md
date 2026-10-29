@@ -58,7 +58,7 @@ flowchart TB
         db --> storage
     end
 
-    api["Go API<br/>/api/sync · /api/oembed · /api/playlist"]
+    api[".NET API<br/>/api/sync · /api/oembed · /api/playlist"]
 
     pSvc -- "imports videos" --> vSvc
     pRepo & vRepo & sRepo --> db
@@ -69,36 +69,71 @@ flowchart TB
 
 `App.svelte` lays out the shell (playlist drawer and main column) and renders the domain components. Services also call `ui.notify()` to show messages, and `sync.service` reloads the playlists and videos services after pulling changes; those links are left out of the diagram to keep it readable.
 
-### Go API
+### .NET API
+
+One project per layer. Calls go from the API project inwards; Infrastructure implements the interfaces (ports) that Application defines, so the use cases don't depend on EF Core or HTTP.
 
 ```mermaid
 flowchart LR
-    lambda["netlify/functions/api<br/>Lambda entry point"] --> adapter["lambdaadapter<br/>Lambda event ⇄ net/http"]
-    server["api/cmd/server<br/>local dev server"] --> wiring
-    lambda --> wiring["app<br/>config from env vars"]
-    adapter --> router
-    wiring --> router["httpapi<br/>routes · auth · CORS"]
+    subgraph apiProject["YtPlaylist.Api (ASP.NET Core)"]
+        direction TB
+        program["Program.cs<br/>DI · CORS · migrations on start"]
+        syncEp["SyncEndpoints<br/>POST /api/sync · bearer token"]
+        ytEp["YouTubeEndpoints<br/>GET /api/oembed · /api/playlist"]
+        healthEp["HealthEndpoints<br/>GET /api/health"]
+    end
 
-    router -- "/sync" --> storage["storage<br/>SyncRepo · Hrana client"]
-    router -- "/oembed · /playlist" --> youtube["youtube<br/>OEmbed · PlaylistFetcher"]
-    router --> domain["domain<br/>models · validation"]
-    storage --> domain
+    subgraph application["YtPlaylist.Application"]
+        direction TB
+        syncSvc["SyncService<br/>validate · apply · pull"]
+        validator["ChangeSetValidator"]
+        ports["Ports<br/>ISyncStore · IVideoMetadataSource<br/>IYouTubePlaylistSource"]
+    end
 
-    storage --> turso[("Turso<br/>libSQL")]
-    youtube --> yt["YouTube<br/>oEmbed · Data API v3 · feed"]
+    subgraph domain["YtPlaylist.Domain"]
+        direction TB
+        entities["Playlist · Video · SyncCounter"]
+        rules["YouTubeIds · SyncLimits"]
+    end
+
+    subgraph infrastructure["YtPlaylist.Infrastructure"]
+        direction TB
+        store["EfSyncStore"]
+        dbContext["AppDbContext<br/>configurations · migrations"]
+        clients["OEmbedClient<br/>YouTubePlaylistClient"]
+        store --> dbContext
+    end
+
+    syncEp --> syncSvc
+    syncSvc --> validator & ports
+    ytEp --> ports
+    healthEp --> syncSvc
+    store -. "implements" .-> ports
+    clients -.-> ports
+    validator --> rules
+    dbContext --> entities
+
+    subgraph external["External services"]
+        direction TB
+        postgres[("PostgreSQL<br/>Neon")]
+        yt["YouTube<br/>oEmbed · Data API v3 · feed"]
+    end
+
+    dbContext -- "EF Core + Npgsql" --> postgres
+    clients --> yt
 ```
 
 | Layer | Where | Responsibility |
 | --- | --- | --- |
 | Presentation | `web/src/domains/*/components`, `web/src/shared/components` | Svelte views styled with daisyUI; read service state, call service methods |
 | Application | `web/src/domains/*/*.service.svelte.js` | Reactive state (`$state`, `$derived`) and use cases such as `videos.addFromText` or `sync.syncNow` |
-| Data access | `*.repository.js`, `*.client.js` | SQL against the local database; HTTP calls to the Go API |
+| Data access | `*.repository.js`, `*.client.js` | SQL against the local database; HTTP calls to the API |
 | Core | `web/src/core` | SQLite wrapper and persistence, the data-changed signal, the API address |
-| Go API | `api/*`, `netlify/functions/api` | Routes and auth, the Turso sync store, YouTube lookups, the shared data model |
+| API | `api/src/YtPlaylist.*` | Endpoints and auth (Api), use cases and ports (Application), entities and rules (Domain), EF Core and YouTube clients (Infrastructure) |
 
 ## Deployment
 
-One Netlify site serves the static web app and runs the Go API as a function. Data lives in two places: each browser's local SQLite database, and the Turso database that keeps devices in sync.
+Netlify serves the static web app and forwards `/api` to the .NET API, which runs as a Docker container on Render. Data lives in two places: each browser's local SQLite database, and the PostgreSQL database on Neon that keeps devices in sync.
 
 ```mermaid
 flowchart LR
@@ -113,43 +148,45 @@ flowchart LR
     subgraph netlify["Netlify"]
         direction TB
         cdn["CDN<br/>web/dist + _headers (CSP)"]
-        redirect{{"/api/* rewrite"}}
-        fn["Function: api<br/>Go on AWS Lambda"]
-        env[/"Env vars<br/>TURSO_DATABASE_URL<br/>TURSO_AUTH_TOKEN<br/>SYNC_TOKEN<br/>YOUTUBE_API_KEY (optional)"/]
-        redirect --> fn
-        env -.- fn
+        redirect{{"/api/* proxy<br/>(from API_ORIGIN)"}}
     end
 
-    subgraph cloud["Data and YouTube"]
+    subgraph render["Render"]
+        container["Docker container: ASP.NET Core API<br/>env: DATABASE_URL · SYNC_TOKEN<br/>YOUTUBE_API_KEY · ALLOWED_ORIGIN"]
+    end
+
+    subgraph neon["Neon"]
+        postgres[("PostgreSQL<br/>playlists · videos<br/>sync_counter")]
+    end
+
+    subgraph youtube["YouTube"]
         direction TB
-        tursoDb[("Turso<br/>libSQL database")]
-        dataApi["YouTube Data API v3"]
-        ytPublic["youtube.com<br/>oEmbed · playlist feed"]
+        dataApi["Data API v3<br/>(with API key)"]
+        ytPublic["oEmbed · playlist feed"]
+        media["Embedded player · thumbnails"]
     end
-
-    subgraph web["Loaded by the browser"]
-        direction TB
-        player["youtube-nocookie.com<br/>embedded player"]
-        thumbs["i.ytimg.com<br/>thumbnails"]
-        extra["noembed.com · Google Fonts"]
-    end
-
-    github[("GitHub repo")] -- "git push → build:<br/>npm ci · vite build · go build" --> netlify
 
     spa -- "page and assets" --> cdn
-    spa -- "/api/sync · /api/oembed<br/>/api/playlist" --> redirect
-    spa --> player & thumbs & extra
-    fn -- "HTTPS (Hrana)" --> tursoDb
-    fn -- "with API key" --> dataApi
-    fn -- "titles; playlists<br/>without a key" --> ytPublic
+    spa -- "/api/sync · /api/oembed · /api/playlist" --> redirect
+    redirect -- "HTTPS" --> container
+    container -- "EF Core (Npgsql), TLS" --> postgres
+    container --> dataApi & ytPublic
+    spa --> media
+
+    github[("GitHub repo")]
+    github -. "build: npm ci · vite build" .-> netlify
+    github -. "build: api/Dockerfile" .-> render
 ```
+
+Not shown: the browser also loads Google Fonts, and falls back to noembed.com for video titles when the API can't be reached.
 
 | Node | What runs there | Notes |
 | --- | --- | --- |
 | User device | The web app, SQLite (sql.js) and IndexedDB | Works offline; every browser keeps its own copy of the data |
 | Netlify CDN | `web/dist` with the headers from `web/public/_headers` | Content-Security-Policy limits connections to the app's own API and noembed.com |
-| Netlify Function | The Go API (`netlify/functions/api`) | Built from source on each deploy; configured by environment variables |
-| Turso | The shared libSQL database | Last-write-wins sync; each row has a `seq` the clients use as a cursor |
+| Netlify proxy | `/api/*` forwarded to the Render service | Written at build time from `API_ORIGIN`; requests time out after 26 seconds |
+| Render | The .NET API in a Docker container (`api/Dockerfile`, `render.yaml`) | Applies EF Core migrations on start; the free plan sleeps when idle |
+| Neon | The shared PostgreSQL database | Last-write-wins sync; each row has a `seq` the clients use as a cursor |
 | YouTube | oEmbed, Data API v3, playlist feed, thumbnails, embedded player | The Data API is only used when `YOUTUBE_API_KEY` is set |
 
-For local development the same pieces run on one machine: `npm run dev` (Vite, which proxies `/api`), `go run ./api/cmd/server` on port 8787, and `turso dev` as the database. See the README.
+For local development the same pieces run on one machine: `npm run dev` (Vite, which proxies `/api`), `dotnet run --project src/YtPlaylist.Api` on port 8787, and PostgreSQL from `docker compose up` in `api/`. See the README.
