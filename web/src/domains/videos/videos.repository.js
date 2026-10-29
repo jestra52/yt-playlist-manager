@@ -33,10 +33,12 @@ function nextPosition(db, playlistId) {
 }
 
 /**
- * Appends videos to a playlist, skipping IDs already in it.
+ * Appends videos to a playlist, skipping YouTube IDs already in it. Each entry
+ * is a YouTube ID or an object with `youtubeId` and optional `title`, `author`
+ * and `thumbnailUrl` (e.g. from a playlist import).
  * Returns { added, skipped } where skipped lists the duplicate YouTube IDs.
  */
-export function addVideos(db, playlistId, youtubeIds) {
+export function addVideos(db, playlistId, entries) {
     return db.transaction(() => {
         const existing = new Set(
             db
@@ -46,7 +48,13 @@ export function addVideos(db, playlistId, youtubeIds) {
         let position = nextPosition(db, playlistId);
         const added = [];
         const skipped = [];
-        for (const youtubeId of youtubeIds) {
+        for (const entry of entries) {
+            const {
+                youtubeId,
+                title = '',
+                author = '',
+                thumbnailUrl,
+            } = typeof entry === 'string' ? { youtubeId: entry } : entry;
             if (existing.has(youtubeId)) {
                 skipped.push(youtubeId);
                 continue;
@@ -55,9 +63,19 @@ export function addVideos(db, playlistId, youtubeIds) {
             const id = newId();
             db.run(
                 `INSERT INTO videos (id, playlist_id, youtube_id, title, author, thumbnail_url, notes, watched,
-                             position, created_at, updated_at, deleted, dirty)
-         VALUES (?, ?, ?, '', '', ?, '', 0, ?, ?, ?, 0, 1)`,
-                [id, playlistId, youtubeId, thumbnailFor(youtubeId), position++, t, t],
+                                     position, created_at, updated_at, deleted, dirty)
+                 VALUES (?, ?, ?, ?, ?, ?, '', 0, ?, ?, ?, 0, 1)`,
+                [
+                    id,
+                    playlistId,
+                    youtubeId,
+                    title.slice(0, 400),
+                    author.slice(0, 200),
+                    thumbnailUrl || thumbnailFor(youtubeId),
+                    position++,
+                    t,
+                    t,
+                ],
             );
             existing.add(youtubeId);
             added.push(getVideo(db, id));

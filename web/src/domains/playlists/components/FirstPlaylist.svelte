@@ -2,12 +2,15 @@
     import { playlists } from '../playlists.service.svelte.js';
     import { ui } from '../../ui/ui.service.svelte.js';
     import Icon from '../../../shared/components/Icon.svelte';
+    import { parsePlaylistId } from '../../videos/youtube.js';
 
     let name = $state('Watch later');
 
+    const isLink = $derived(Boolean(parsePlaylistId(name)));
+
     function submit(event) {
         event.preventDefault();
-        playlists.create(name);
+        playlists.createFromInput(name);
     }
 </script>
 
@@ -24,19 +27,32 @@
     <p class="text-base-content/65">
         Save YouTube videos to watch later, in the order you want, with notes. Everything stays in this browser.
     </p>
-    <form class="join mb-8 mt-6 w-full" onsubmit={submit}>
-        <label class="sr-only" for="first-name">Playlist name</label>
+    <form class="join mb-2 mt-6 w-full" onsubmit={submit}>
+        <label class="sr-only" for="first-name">Playlist name or YouTube playlist link</label>
         <input
             id="first-name"
             class="input input-lg join-item min-w-0 flex-1 text-base"
             bind:value={name}
-            maxlength="200"
+            maxlength="500"
             autocomplete="off"
+            spellcheck="false"
+            disabled={playlists.importing}
         />
-        <button class="btn btn-primary btn-lg join-item text-base" type="submit" disabled={!name.trim()}
-            >Create playlist</button
+        <button
+            class="btn btn-primary btn-lg join-item text-base"
+            type="submit"
+            disabled={!name.trim() || playlists.importing}
         >
+            {#if playlists.importing}
+                <span class="loading loading-spinner loading-sm"></span> Importing…
+            {:else}
+                {isLink ? 'Import playlist' : 'Create playlist'}
+            {/if}
+        </button>
     </form>
+    <p class="mb-8 text-sm text-base-content/65">
+        Type a name, or paste a link to a YouTube playlist to bring in its videos.
+    </p>
     <p class="text-sm text-base-content/65">
         Already using Queue on another device?
         <button class="link font-semibold text-base-content" type="button" onclick={() => ui.openSettings()}

@@ -18,6 +18,7 @@ type Env struct {
 	DatabaseToken string // TURSO_AUTH_TOKEN
 	SyncToken     string // SYNC_TOKEN: shared secret the web app sends as a bearer token
 	AllowedOrigin string // ALLOWED_ORIGIN: CORS origin, "*" by default
+	YouTubeAPIKey string // YOUTUBE_API_KEY: optional, lets playlist imports read whole playlists
 }
 
 // FromEnv reads the configuration.
@@ -27,6 +28,7 @@ func FromEnv() Env {
 		DatabaseToken: os.Getenv("TURSO_AUTH_TOKEN"),
 		SyncToken:     os.Getenv("SYNC_TOKEN"),
 		AllowedOrigin: os.Getenv("ALLOWED_ORIGIN"),
+		YouTubeAPIKey: os.Getenv("YOUTUBE_API_KEY"),
 	}
 }
 
@@ -38,6 +40,7 @@ func Handler(env Env, logger *log.Logger) http.Handler {
 	}
 	cfg := httpapi.Config{
 		Metadata:      youtube.NewOEmbed(),
+		Playlists:     youtube.NewPlaylistFetcher(env.YouTubeAPIKey),
 		SyncToken:     env.SyncToken,
 		AllowedOrigin: env.AllowedOrigin,
 		Logger:        logger,

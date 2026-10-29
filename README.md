@@ -154,6 +154,7 @@ openssl rand -hex 32
    | `TURSO_DATABASE_URL` | the `libsql://…` URL from step 1        |
    | `TURSO_AUTH_TOKEN`   | the token from step 1                   |
    | `SYNC_TOKEN`         | the token from step 2                   |
+   | `YOUTUBE_API_KEY`    | optional, see "Importing YouTube playlists" below |
 
 4. **Deploys → Trigger deploy**.
 
@@ -174,6 +175,20 @@ netlify deploy --build --prod
 Open the site, click the sync status at the bottom of the sidebar, keep the API address as `/api`, paste your `SYNC_TOKEN`, choose **Test connection**, then **Save and sync**. Do the same on every device.
 
 Check the API directly at `https://<your-site>.netlify.app/api/health`; it should answer `{"ok":true,"syncConfigured":true}`.
+
+## Importing YouTube playlists
+
+Paste a YouTube playlist link (`youtube.com/playlist?list=…`, or a watch link with `&list=…`):
+
+* in **New playlist** (or the first-run screen) to create a playlist with the same title and videos, or
+* in the **add videos** box to add the playlist's videos to the playlist you have open.
+
+The Go API reads the playlist (`GET /api/playlist?id=…`):
+
+* **With `YOUTUBE_API_KEY` set**, it uses the YouTube Data API and imports the whole playlist (up to 1,000 videos). Create a key in Google Cloud Console: enable **YouTube Data API v3**, then **Credentials → Create credentials → API key**. Each 50 videos costs 1 unit of the free 10,000-unit daily quota.
+* **Without a key**, it uses YouTube's public playlist feed, which only lists the latest 15 videos. The app says so when an import may be incomplete.
+
+Only public and unlisted playlists can be imported; private playlists, Watch Later and auto-generated mixes can't.
 
 ## Notes and limits
 

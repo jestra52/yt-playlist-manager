@@ -5,19 +5,22 @@
     import { playlists } from '../playlists.service.svelte.js';
     import { videos } from '../../videos/videos.service.svelte.js';
     import { ui } from '../../ui/ui.service.svelte.js';
+    import { parsePlaylistId } from '../../videos/youtube.js';
 
     let creating = $state(false);
     let name = $state('');
     let input = $state();
+
+    const isLink = $derived(Boolean(parsePlaylistId(name)));
 
     function startCreating() {
         creating = true;
         queueMicrotask(() => input?.focus());
     }
 
-    function submit(event) {
+    async function submit(event) {
         event.preventDefault();
-        if (playlists.create(name)) {
+        if (await playlists.createFromInput(name)) {
             ui.toggleSidebar(false);
             name = '';
             creating = false;
@@ -69,18 +72,31 @@
 
     {#if creating}
         <form class="join mt-2 w-full" onsubmit={submit}>
-            <label class="sr-only" for="new-playlist">Playlist name</label>
+            <label class="sr-only" for="new-playlist">Playlist name or YouTube playlist link</label>
             <input
                 id="new-playlist"
                 class="input input-sm join-item min-w-0 flex-1 text-base-content"
                 bind:this={input}
                 bind:value={name}
                 onkeydown={cancel}
-                maxlength="200"
-                placeholder="Playlist name"
+                maxlength="500"
+                placeholder="Name or YouTube playlist link"
                 autocomplete="off"
+                spellcheck="false"
+                disabled={playlists.importing}
             />
-            <button class="btn btn-primary btn-sm join-item" type="submit" disabled={!name.trim()}>Create</button>
+            <button
+                class="btn btn-primary btn-sm join-item"
+                type="submit"
+                disabled={!name.trim() || playlists.importing}
+            >
+                {#if playlists.importing}
+                    <span class="loading loading-spinner loading-xs"></span>
+                    <span class="sr-only">Importing</span>
+                {:else}
+                    {isLink ? 'Import' : 'Create'}
+                {/if}
+            </button>
         </form>
     {:else}
         <button type="button" class="new-btn btn btn-ghost btn-sm mt-2 justify-start" onclick={startCreating}>
