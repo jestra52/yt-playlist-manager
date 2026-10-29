@@ -1,7 +1,10 @@
 import { getDatabase } from '../../core/db/index.js';
 import { dataChanged } from '../../core/events.js';
 import { notify } from '../ui/ui.service.svelte.js';
-import { videos } from '../videos/videos.service.svelte.js';
+import { getApiBase } from '../../core/config.js';
+import { videos, PARTIAL_IMPORT_NOTE } from '../videos/videos.service.svelte.js';
+import { parsePlaylistId } from '../videos/youtube.js';
+import { fetchYouTubePlaylist } from '../videos/playlist.client.js';
 import * as repo from './playlists.repository.js';
 
 const LAST_SELECTED_KEY = 'ytpm:selectedPlaylist';
@@ -26,6 +29,7 @@ function recall() {
 class PlaylistsService {
     items = $state([]);
     selectedId = $state(null);
+    importing = $state(false);
 
     selected = $derived(this.items.find((p) => p.id === this.selectedId) ?? null);
 
@@ -50,6 +54,40 @@ class PlaylistsService {
         } catch (err) {
             notify(err.message, { tone: 'error' });
             return null;
+        }
+    }
+
+    /**
+     * Creates a playlist from what the person typed: a name, or a YouTube
+     * playlist link (then the playlist's title and videos are imported).
+     * Resolves to the new playlist, or null when nothing was created.
+     */
+    async createFromInput(input) {
+        const listId = parsePlaylistId(input);
+        return listId ? this.importFromYouTube(listId) : this.create(input);
+    }
+
+    /** Creates a playlist with the title and videos of a public YouTube playlist. */
+    async importFromYouTube(listId) {
+        this.importing = true;
+        try {
+            const source = await fetchYouTubePlaylist(listId, getApiBase());
+            const name = source.title?.trim() || 'YouTube playlist';
+            const description = source.author ? `Imported from YouTube (${source.author})` : 'Imported from YouTube';
+            const playlist = this.create(name, description);
+            if (!playlist) return null;
+            const { added } = videos.addEntries(playlist.id, source.videos);
+            const parts = [`Imported “${playlist.name}” with ${added.length} video${added.length === 1 ? '' : 's'}`];
+            if (source.skipped)
+                parts.push(`${source.skipped} private or deleted video${source.skipped === 1 ? '' : 's'} left out`);
+            if (source.partial) parts.push(PARTIAL_IMPORT_NOTE);
+            notify(parts.join('. '), { timeout: source.partial ? 8000 : 4000 });
+            return playlist;
+        } catch (err) {
+            notify(err.message, { tone: 'error', timeout: 6000 });
+            return null;
+        } finally {
+            this.importing = false;
         }
     }
 

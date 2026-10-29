@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseYouTubeId, extractYouTubeIds } from './youtube.js';
+import { parseYouTubeId, parsePlaylistId, extractYouTubeIds } from './youtube.js';
 
 describe('parseYouTubeId', () => {
     it.each([
@@ -33,11 +33,37 @@ describe('extractYouTubeIds', () => {
     it('handles many links, duplicates, junk and playlist links', () => {
         const text = `https://youtu.be/dQw4w9WgXcQ
       https://www.youtube.com/watch?v=9bZkp7q19f0, https://youtu.be/dQw4w9WgXcQ
-      not-a-link https://www.youtube.com/playlist?list=PLabc`;
+      not-a-link https://www.youtube.com/playlist?list=PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf
+      https://www.youtube.com/watch?v=kJQP7kiw5Fk&list=PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf`;
         expect(extractYouTubeIds(text)).toEqual({
-            ids: ['dQw4w9WgXcQ', '9bZkp7q19f0'],
+            ids: ['dQw4w9WgXcQ', '9bZkp7q19f0', 'kJQP7kiw5Fk'],
+            playlistIds: ['PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf'],
             invalid: ['not-a-link'],
-            playlistLinks: 1,
         });
+    });
+});
+
+describe('parsePlaylistId', () => {
+    const id = 'PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf';
+    it.each([
+        [`https://www.youtube.com/playlist?list=${id}`, id],
+        [`youtube.com/playlist?list=${id}&si=abc`, id],
+        [`https://m.youtube.com/playlist?list=${id}`, id],
+        [`https://music.youtube.com/playlist?list=${id}`, id],
+        [`https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=${id}&index=3`, id],
+        [`https://youtu.be/dQw4w9WgXcQ?list=${id}`, id],
+        [id, id],
+        ['OLAK5uy_kzRUdbcOQn6Hm0rzEaYtTCoZLmNOjgkYU', 'OLAK5uy_kzRUdbcOQn6Hm0rzEaYtTCoZLmNOjgkYU'],
+    ])('%s', (input, expected) => {
+        expect(parsePlaylistId(input)).toBe(expected);
+    });
+
+    it.each([
+        'Watch later',
+        'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        `https://evil.com/playlist?list=${id}`,
+        'PLshort',
+    ])('rejects %s', (input) => {
+        expect(parsePlaylistId(input)).toBeNull();
     });
 });

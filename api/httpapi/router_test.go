@@ -150,3 +150,39 @@ func TestCORSPreflight(t *testing.T) {
 		t.Fatalf("got %d %v", rec.Code, rec.Header())
 	}
 }
+
+type fakePlaylists struct{}
+
+func (fakePlaylists) FetchPlaylist(_ context.Context, id string) (youtube.Playlist, error) {
+	switch id {
+	case "PLprivateprivate":
+		return youtube.Playlist{}, youtube.ErrPlaylistNotFound
+	case "PLbrokenbroken":
+		return youtube.Playlist{}, errors.New("upstream down")
+	case "bad":
+		return youtube.Playlist{}, domain.ErrValidation
+	}
+	return youtube.Playlist{ID: id, Title: "Road trip", Videos: []youtube.Meta{{YouTubeID: "dQw4w9WgXcQ"}}, Source: "feed"}, nil
+}
+
+func TestPlaylistEndpoint(t *testing.T) {
+	h := New(Config{Playlists: fakePlaylists{}, Logger: log.New(io.Discard, "", 0)})
+	cases := map[string]int{
+		"/api/playlist?id=PLabcdefghijklmnop": http.StatusOK,
+		"/api/playlist?id=PLprivateprivate":   http.StatusNotFound,
+		"/api/playlist?id=PLbrokenbroken":     http.StatusBadGateway,
+		"/api/playlist?id=bad":                http.StatusBadRequest,
+	}
+	for path, want := range cases {
+		if rec := do(t, h, http.MethodGet, path, "", ""); rec.Code != want {
+			t.Errorf("%s: got %d, want %d (%s)", path, rec.Code, want, rec.Body)
+		}
+	}
+	rec := do(t, h, http.MethodGet, "/.netlify/functions/api/playlist?id=PLabcdefghijklmnop", "", "")
+	if !strings.Contains(rec.Body.String(), `"title":"Road trip"`) {
+		t.Fatalf("unexpected body %s", rec.Body)
+	}
+	if rec := do(t, New(Config{Logger: log.New(io.Discard, "", 0)}), http.MethodGet, "/api/playlist?id=x", "", ""); rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("disabled: got %d", rec.Code)
+	}
+}

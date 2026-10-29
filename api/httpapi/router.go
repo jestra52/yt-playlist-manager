@@ -27,10 +27,16 @@ type MetadataFetcher interface {
 	Fetch(ctx context.Context, id string) (youtube.Meta, error)
 }
 
+// PlaylistFetcher reads public YouTube playlists.
+type PlaylistFetcher interface {
+	FetchPlaylist(ctx context.Context, id string) (youtube.Playlist, error)
+}
+
 // Config wires the handler's dependencies.
 type Config struct {
 	Store         SyncStore       // nil disables /sync with a 503
 	Metadata      MetadataFetcher // nil disables /oembed with a 503
+	Playlists     PlaylistFetcher // nil disables /playlist with a 503
 	SyncToken     string          // required bearer token for /sync
 	AllowedOrigin string          // CORS origin; "*" when empty
 	Logger        *log.Logger
@@ -93,6 +99,8 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request) {
 		h.sync(w, r)
 	case "/oembed":
 		h.oembed(w, r)
+	case "/playlist":
+		h.playlist(w, r)
 	default:
 		writeError(w, http.StatusNotFound, "not found: "+path)
 	}
@@ -194,6 +202,33 @@ func (h *handler) oembed(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "public, max-age=86400")
 	writeJSON(w, http.StatusOK, meta)
+}
+
+func (h *handler) playlist(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "use GET")
+		return
+	}
+	if h.cfg.Playlists == nil {
+		writeError(w, http.StatusServiceUnavailable, "playlist import is disabled")
+		return
+	}
+	id := r.URL.Query().Get("id")
+	pl, err := h.cfg.Playlists.FetchPlaylist(r.Context(), id)
+	switch {
+	case errors.Is(err, domain.ErrValidation):
+		writeError(w, http.StatusBadRequest, "that isn't a valid YouTube playlist id")
+		return
+	case errors.Is(err, youtube.ErrPlaylistNotFound), errors.Is(err, youtube.ErrPlaylistUnsupported):
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	case err != nil:
+		h.cfg.Logger.Printf("playlist %s: %v", id, err)
+		writeError(w, http.StatusBadGateway, "could not read the playlist from YouTube")
+		return
+	}
+	w.Header().Set("Cache-Control", "public, max-age=600")
+	writeJSON(w, http.StatusOK, pl)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

@@ -4,10 +4,15 @@ import { dataChanged } from '../../core/events.js';
 import { notify } from '../ui/ui.service.svelte.js';
 import { extractYouTubeIds } from './youtube.js';
 import { fetchVideoMetadata } from './metadata.client.js';
+import { fetchYouTubePlaylist } from './playlist.client.js';
 import * as repo from './videos.repository.js';
 
 const byPosition = (a, b) => a.position - b.position;
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/** Shown when YouTube only returned part of a playlist (no API key on the server). */
+export const PARTIAL_IMPORT_NOTE =
+    'Only the latest videos could be read. Set YOUTUBE_API_KEY on the API to import whole playlists.';
 
 /**
  * Application layer for videos: holds the reactive list the components
@@ -19,6 +24,7 @@ class VideosService {
     filter = $state('all'); // 'all' | 'unwatched' | 'watched'
     query = $state('');
     playingId = $state(null);
+    importing = $state(false);
 
     /** { [playlistId]: { total, watched } } for the sidebar. */
     counts = $derived.by(() => {
@@ -62,39 +68,72 @@ class VideosService {
     }
 
     /**
-     * Adds every YouTube link found in `text`. Videos appear at once with a
-     * placeholder title; titles and channels fill in as they load.
-     * Returns true when at least one video was added.
+     * Adds every YouTube link found in `text`: video links add that video, and
+     * playlist links add all of the playlist's videos. Plain video links show up
+     * at once and get their titles as they load.
+     * Resolves to true when at least one video was added.
      */
-    addFromText(text, playlistId) {
+    async addFromText(text, playlistId) {
         if (!playlistId) {
             notify('Create a playlist first', { tone: 'error' });
             return false;
         }
-        const { ids, invalid, playlistLinks } = extractYouTubeIds(text);
-        if (!ids.length) {
-            notify(
-                playlistLinks
-                    ? 'Playlist links can’t be imported. Paste links to individual videos.'
-                    : 'That doesn’t look like a YouTube link',
-                { tone: 'error' },
-            );
+        const { ids, playlistIds, invalid } = extractYouTubeIds(text);
+        if (!ids.length && !playlistIds.length) {
+            notify('That doesn’t look like a YouTube link', { tone: 'error' });
             return false;
         }
-        const { added, skipped } = repo.addVideos(getDatabase(), playlistId, ids);
-        if (added.length) {
-            this.items = [...this.items, ...added];
-            dataChanged();
+
+        const entries = [...ids];
+        const failures = [];
+        let partial = false;
+        if (playlistIds.length) {
+            this.importing = true;
+            try {
+                for (const listId of playlistIds) {
+                    try {
+                        const playlist = await fetchYouTubePlaylist(listId, getApiBase());
+                        entries.push(...playlist.videos);
+                        partial ||= playlist.partial;
+                    } catch (err) {
+                        failures.push(err.message);
+                    }
+                }
+            } finally {
+                this.importing = false;
+            }
+        }
+        if (!entries.length) {
+            notify(failures[0] ?? 'That playlist has no videos to add', { tone: 'error' });
+            return false;
         }
 
+        const { added, skipped } = this.addEntries(playlistId, entries);
         const parts = [];
         if (added.length) parts.push(`Added ${plural(added.length, 'video')}`);
         if (skipped.length) parts.push(`${plural(skipped.length, 'video')} already in this playlist`);
         if (invalid.length) parts.push(`${plural(invalid.length, 'link')} skipped`);
-        notify(parts.join('. '), { tone: added.length ? 'info' : 'error' });
-
-        this.enrichMetadata(added);
+        if (failures.length) parts.push(failures[0]);
+        if (partial) parts.push(PARTIAL_IMPORT_NOTE);
+        notify(parts.join('. '), {
+            tone: added.length ? 'info' : 'error',
+            timeout: partial || failures.length ? 8000 : 4000,
+        });
         return added.length > 0;
+    }
+
+    /**
+     * Appends videos (YouTube IDs, or objects with youtubeId/title/author/thumbnailUrl)
+     * to a playlist and fetches titles for the ones that came without one.
+     */
+    addEntries(playlistId, entries) {
+        const result = repo.addVideos(getDatabase(), playlistId, entries);
+        if (result.added.length) {
+            this.items = [...this.items, ...result.added];
+            dataChanged();
+        }
+        this.enrichMetadata(result.added.filter((v) => !v.title));
+        return result;
     }
 
     /** Fetches titles for videos that don't have one yet, three at a time. */
