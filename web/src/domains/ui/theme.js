@@ -5,16 +5,16 @@
 export const THEMES = { light: 'queue', dark: 'queue-night' };
 const KEY = 'ytpm:theme';
 
-export function savedTheme() {
+export const savedTheme = () => {
     try {
         const value = localStorage.getItem(KEY);
         return value === 'light' || value === 'dark' ? value : 'system';
     } catch {
         return 'system';
     }
-}
+};
 
-export function applyTheme(theme) {
+export const applyTheme = (theme) => {
     const root = document.documentElement;
     if (theme === 'system') root.removeAttribute('data-theme');
     else root.setAttribute('data-theme', THEMES[theme]);
@@ -24,4 +24,4 @@ export function applyTheme(theme) {
     } catch {
         /* storage blocked: the choice lasts for this visit */
     }
-}
+};

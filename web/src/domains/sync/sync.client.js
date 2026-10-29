@@ -8,11 +8,11 @@ export class SyncError extends Error {
     }
 }
 
-function endpoint(apiUrl, path) {
+const endpoint = (apiUrl, path) => {
     return `${(apiUrl || '/api').replace(/\/+$/, '')}${path}`;
-}
+};
 
-async function request(url, init, timeoutMs = 20000) {
+const request = async (url, init, timeoutMs = 20000) => {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     let res;
@@ -39,17 +39,17 @@ async function request(url, init, timeoutMs = 20000) {
     }
     if (!body) throw new SyncError('The sync server sent an unexpected response', { status: res.status });
     return body;
-}
+};
 
 /** Pushes local changes and pulls server changes newer than `since`. */
-export function postSync({ apiUrl, token }, payload) {
+export const postSync = ({ apiUrl, token }, payload) => {
     return request(endpoint(apiUrl, '/sync'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
     });
-}
+};
 
-export function getHealth({ apiUrl }) {
+export const getHealth = ({ apiUrl }) => {
     return request(endpoint(apiUrl, '/health'), { method: 'GET' }, 8000);
-}
+};

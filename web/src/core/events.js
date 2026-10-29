@@ -5,11 +5,11 @@
  */
 const listeners = new Set();
 
-export function onDataChanged(listener) {
+export const onDataChanged = (listener) => {
     listeners.add(listener);
     return () => listeners.delete(listener);
-}
+};
 
-export function dataChanged() {
+export const dataChanged = () => {
     for (const listener of listeners) listener();
-}
+};

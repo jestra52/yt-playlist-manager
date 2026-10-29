@@ -6,16 +6,16 @@ const DB_NAME = 'yt-playlist-manager';
 const STORE = 'files';
 const KEY = 'main.sqlite';
 
-function openIdb() {
+const openIdb = () => {
     return new Promise((resolve, reject) => {
         const req = indexedDB.open(DB_NAME, 1);
         req.onupgradeneeded = () => req.result.createObjectStore(STORE);
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
     });
-}
+};
 
-function idbRequest(mode, fn) {
+const idbRequest = (mode, fn) => {
     return openIdb().then(
         (idb) =>
             new Promise((resolve, reject) => {
@@ -31,7 +31,7 @@ function idbRequest(mode, fn) {
                 };
             }),
     );
-}
+};
 
 /** Stores the SQLite file as a single blob in IndexedDB. */
 export const indexedDbPersistence = {
@@ -40,13 +40,13 @@ export const indexedDbPersistence = {
 };
 
 let sqlPromise;
-function loadSql() {
+const loadSql = () => {
     sqlPromise ??= initSqlJs({ locateFile: () => wasmUrl });
     return sqlPromise;
-}
+};
 
 /** Opens the app database, restoring the last saved copy from IndexedDB. */
-export async function openBrowserDatabase() {
+export const openBrowserDatabase = async () => {
     const SQL = await loadSql();
     const saved = await indexedDbPersistence.load();
     const sqlDb = saved ? new SQL.Database(new Uint8Array(saved)) : new SQL.Database();
@@ -66,4 +66,4 @@ export async function openBrowserDatabase() {
         if (bytes) db.replace(new SQL.Database(new Uint8Array(bytes)));
     };
     return db;
-}
+};

@@ -1,7 +1,7 @@
 import { now, newId } from '../../core/db/index.js';
 import { thumbnailFor } from './youtube.js';
 
-export function toVideo(row) {
+export const toVideo = (row) => {
     return {
         id: row.id,
         playlistId: row.playlist_id,
@@ -15,22 +15,22 @@ export function toVideo(row) {
         createdAt: row.created_at,
         updatedAt: row.updated_at,
     };
-}
+};
 
-export function listVideos(db) {
+export const listVideos = (db) => {
     return db.all('SELECT * FROM videos WHERE deleted = 0 ORDER BY playlist_id, position').map(toVideo);
-}
+};
 
-export function getVideo(db, id) {
+export const getVideo = (db, id) => {
     const row = db.get('SELECT * FROM videos WHERE id = ? AND deleted = 0', [id]);
     return row ? toVideo(row) : null;
-}
+};
 
-function nextPosition(db, playlistId) {
+const nextPosition = (db, playlistId) => {
     return db.get('SELECT COALESCE(MAX(position), 0) + 1 AS next FROM videos WHERE playlist_id = ? AND deleted = 0', [
         playlistId,
     ]).next;
-}
+};
 
 /**
  * Appends videos to a playlist, skipping YouTube IDs already in it. Each entry
@@ -38,7 +38,7 @@ function nextPosition(db, playlistId) {
  * and `thumbnailUrl` (e.g. from a playlist import).
  * Returns { added, skipped } where skipped lists the duplicate YouTube IDs.
  */
-export function addVideos(db, playlistId, entries) {
+export const addVideos = (db, playlistId, entries) => {
     return db.transaction(() => {
         const existing = new Set(
             db
@@ -82,7 +82,7 @@ export function addVideos(db, playlistId, entries) {
         }
         return { added, skipped };
     });
-}
+};
 
 const COLUMNS = {
     title: 'title',
@@ -95,7 +95,7 @@ const COLUMNS = {
 };
 
 /** Updates the given fields and marks the row for sync. */
-export function updateVideo(db, id, patch) {
+export const updateVideo = (db, id, patch) => {
     const sets = [];
     const params = [];
     for (const [key, column] of Object.entries(COLUMNS)) {
@@ -110,13 +110,13 @@ export function updateVideo(db, id, patch) {
         id,
     ]);
     return getVideo(db, id);
-}
+};
 
 /**
  * Moves a video to `toIndex` within its playlist by giving it a position
  * between its new neighbours, so only one row changes (and syncs).
  */
-export function reorderVideo(db, id, toIndex) {
+export const reorderVideo = (db, id, toIndex) => {
     const video = getVideo(db, id);
     if (!video) return null;
     const others = db
@@ -134,9 +134,9 @@ export function reorderVideo(db, id, toIndex) {
     else if (after === undefined) position = before + 1;
     else position = (before + after) / 2;
     return updateVideo(db, id, { position });
-}
+};
 
-export function moveVideoToPlaylist(db, id, playlistId) {
+export const moveVideoToPlaylist = (db, id, playlistId) => {
     const video = getVideo(db, id);
     if (!video || video.playlistId === playlistId) return { video, duplicate: false };
     const dup = db.get('SELECT 1 AS x FROM videos WHERE playlist_id = ? AND youtube_id = ? AND deleted = 0', [
@@ -145,13 +145,13 @@ export function moveVideoToPlaylist(db, id, playlistId) {
     ]);
     if (dup) return { video, duplicate: true };
     return { video: updateVideo(db, id, { playlistId, position: nextPosition(db, playlistId) }), duplicate: false };
-}
+};
 
-export function deleteVideo(db, id) {
+export const deleteVideo = (db, id) => {
     db.run('UPDATE videos SET deleted = 1, updated_at = ?, dirty = 1 WHERE id = ?', [now(), id]);
-}
+};
 
-export function restoreVideo(db, id) {
+export const restoreVideo = (db, id) => {
     db.run('UPDATE videos SET deleted = 0, updated_at = ?, dirty = 1 WHERE id = ?', [now(), id]);
     return getVideo(db, id);
-}
+};

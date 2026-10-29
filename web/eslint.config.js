@@ -44,6 +44,12 @@ export default [
             'svelte/require-each-key': 'error',
             'svelte/valid-compile': 'error',
 
+            // Functions are const arrow functions; class methods stay methods.
+            'func-style': ['error', 'expression'],
+            'prefer-arrow-callback': 'error',
+            // Arrow functions aren't hoisted, so catch calls that run before the definition.
+            'no-use-before-define': ['error', { functions: true, classes: true, variables: false }],
+
             // Warnings: clean-up worth doing
             'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' }],
             'no-console': ['warn', { allow: ['warn', 'error'] }],

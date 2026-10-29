@@ -11,26 +11,26 @@ const KEYS = {
     lastSyncedAt: 'sync.lastSyncedAt',
 };
 
-function getMeta(db, key) {
+const getMeta = (db, key) => {
     return db.get('SELECT value FROM meta WHERE key = ?', [key])?.value ?? null;
-}
+};
 
-function setMeta(db, key, value) {
+const setMeta = (db, key, value) => {
     db.run('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value', [
         key,
         value == null ? null : String(value),
     ]);
-}
+};
 
-export function getSettings(db) {
+export const getSettings = (db) => {
     return {
         apiUrl: getMeta(db, KEYS.apiUrl) ?? '/api',
         token: getMeta(db, KEYS.token) ?? '',
         autoSync: (getMeta(db, KEYS.autoSync) ?? '1') === '1',
     };
-}
+};
 
-export function saveSettings(db, { apiUrl, token, autoSync }) {
+export const saveSettings = (db, { apiUrl, token, autoSync }) => {
     const previous = getSettings(db);
     db.transaction(() => {
         setMeta(db, KEYS.apiUrl, apiUrl.trim() || '/api');
@@ -44,34 +44,34 @@ export function saveSettings(db, { apiUrl, token, autoSync }) {
         }
     });
     return getSettings(db);
-}
+};
 
-export function getCursor(db) {
+export const getCursor = (db) => {
     return Number(getMeta(db, KEYS.cursor) ?? 0);
-}
+};
 
-export function setCursor(db, cursor) {
+export const setCursor = (db, cursor) => {
     setMeta(db, KEYS.cursor, cursor);
-}
+};
 
-export function getLastSyncedAt(db) {
+export const getLastSyncedAt = (db) => {
     const v = getMeta(db, KEYS.lastSyncedAt);
     return v ? Number(v) : null;
-}
+};
 
-export function setLastSyncedAt(db, t) {
+export const setLastSyncedAt = (db, t) => {
     setMeta(db, KEYS.lastSyncedAt, t);
-}
+};
 
-export function countPending(db) {
+export const countPending = (db) => {
     return (
         db.get('SELECT COUNT(*) AS n FROM playlists WHERE dirty = 1').n +
         db.get('SELECT COUNT(*) AS n FROM videos WHERE dirty = 1').n
     );
-}
+};
 
 /** Local rows that changed since the last successful push (incl. deletions). */
-export function collectChanges(db, limit = 2000) {
+export const collectChanges = (db, limit = 2000) => {
     const playlists = db
         .all('SELECT * FROM playlists WHERE dirty = 1 ORDER BY updated_at LIMIT ?', [limit])
         .map((r) => ({
@@ -100,23 +100,23 @@ export function collectChanges(db, limit = 2000) {
             deleted: r.deleted === 1,
         }));
     return { playlists, videos };
-}
+};
 
 /**
  * Clears the dirty flag of pushed rows, unless they were edited again while
  * the request was in flight (their updated_at moved on).
  */
-export function markPushed(db, changes) {
+export const markPushed = (db, changes) => {
     for (const p of changes.playlists) {
         db.run('UPDATE playlists SET dirty = 0 WHERE id = ? AND updated_at = ?', [p.id, p.updatedAt]);
     }
     for (const v of changes.videos) {
         db.run('UPDATE videos SET dirty = 0 WHERE id = ? AND updated_at = ?', [v.id, v.updatedAt]);
     }
-}
+};
 
 /** Applies server rows with last-write-wins; returns how many rows changed. */
-export function applyRemote(db, changes) {
+export const applyRemote = (db, changes) => {
     let applied = 0;
     for (const p of changes.playlists ?? []) {
         applied += db.run(
@@ -157,4 +157,4 @@ export function applyRemote(db, changes) {
         );
     }
     return applied;
-}
+};

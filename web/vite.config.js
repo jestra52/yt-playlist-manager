@@ -12,7 +12,7 @@ const apiProxy = {
 
 // `vite preview` serves the same site-wide headers Netlify reads from
 // public/_headers, so the Content-Security-Policy is tested locally too.
-function siteHeaders() {
+const siteHeaders = () => {
     const headers = {};
     let inSiteBlock = false;
     for (const line of readFileSync(new URL('./public/_headers', import.meta.url), 'utf8').split('\n')) {
@@ -27,7 +27,7 @@ function siteHeaders() {
         }
     }
     return headers;
-}
+};
 
 export default defineConfig({
     plugins: [tailwindcss(), svelte()],

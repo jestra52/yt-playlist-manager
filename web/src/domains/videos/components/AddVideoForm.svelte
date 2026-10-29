@@ -5,11 +5,11 @@
     let { playlistId } = $props();
     let text = $state('');
 
-    async function submit(event) {
+    const submit = async (event) => {
         event.preventDefault();
         if (!text.trim() || videos.importing) return;
         if (await videos.addFromText(text, playlistId)) text = '';
-    }
+    };
 </script>
 
 <form class="join w-full" onsubmit={submit}>

@@ -124,14 +124,14 @@ export class Database {
 
 /** Monotonic "now" so an edit always gets a strictly newer updated_at. */
 let lastStamp = 0;
-export function now() {
+export const now = () => {
     const t = Date.now();
     lastStamp = t > lastStamp ? t : lastStamp + 1;
     return lastStamp;
-}
+};
 
 /** Collision-resistant row id (letters, digits, '-' only). */
-export function newId() {
+export const newId = () => {
     if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
     return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
-}
+};
