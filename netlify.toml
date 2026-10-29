@@ -1,0 +1,20 @@
+# Netlify builds the Svelte app from web/ and the Go sync API from
+# netlify/functions/api (Go module at the repository root).
+
+[build]
+  command = "npm --prefix web ci && npm --prefix web run build"
+  publish = "web/dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "22"
+  GO_VERSION = "1.24.7"
+
+# The web app calls /api/...; serve it from the Go function.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+# Security and caching headers live in web/public/_headers.

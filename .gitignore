@@ -1,0 +1,9 @@
+node_modules/
+web/dist/
+.netlify/
+*.db
+*.db-*
+*.sqlite
+/server
+.env
+.DS_Store

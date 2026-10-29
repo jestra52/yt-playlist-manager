@@ -1,0 +1,49 @@
+// Design tokens shared by every Sass file and component <style lang="scss">.
+// Colors come from the active daisyUI theme (CSS variables), so light and
+// dark mode keep working; Sass holds the values that don't change per theme.
+
+@use 'sass:map';
+
+// Same breakpoints as Tailwind's defaults, so `md:` classes and `@include from(md)` agree.
+$breakpoints: (
+  sm: 40rem,
+  md: 48rem,
+  lg: 64rem,
+  xl: 80rem,
+);
+
+// Theme colors, as Sass names for the daisyUI variables.
+$base-100: var(--color-base-100);
+$base-200: var(--color-base-200);
+$base-300: var(--color-base-300);
+$base-content: var(--color-base-content);
+$primary: var(--color-primary);
+$success: var(--color-success);
+$neutral: var(--color-neutral);
+$neutral-content: var(--color-neutral-content);
+
+$font-display: var(--font-display);
+$font-body: var(--font-sans);
+
+$radius-field: var(--radius-field);
+$radius-box: var(--radius-box);
+
+$ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+$duration-fast: 150ms;
+$duration: 240ms;
+
+// The red "tally light" used to mark what is playing.
+$tally: $primary;
+
+// Thumbnails are 16:9 at these widths.
+$thumb-width: 10rem;
+$thumb-width-compact: 7.5rem;
+
+@function breakpoint($name) {
+  @return map.get($breakpoints, $name);
+}
+
+// Mixes a theme color with transparency, e.g. tint($primary, 10%).
+@function tint($color, $amount) {
+  @return color-mix(in oklab, #{$color} #{$amount}, transparent);
+}

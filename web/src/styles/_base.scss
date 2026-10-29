@@ -1,0 +1,39 @@
+@use 'tokens' as *;
+
+// Inside Tailwind's `base` layer so utilities and daisyUI classes still win.
+@layer base {
+  // daisyUI paints :root with base-100; the app's page color is base-200.
+  :root {
+    background-color: $base-200;
+  }
+
+  html,
+  body {
+    min-height: 100%;
+  }
+
+  body {
+    background-color: $base-200;
+    color: $base-content;
+    font-family: $font-body;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: tint($primary, 25%);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-secondary);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

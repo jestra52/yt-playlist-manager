@@ -1,0 +1,6 @@
+// Global Sass layer, loaded after Tailwind/daisyUI (see src/main.js).
+// Component-specific styles live in each component's <style lang="scss">,
+// which can `@use 'tokens' as *;` and `@use 'mixins' as *;` directly.
+
+@use 'base';
+@use 'components';
