@@ -12,15 +12,15 @@ const HOSTS = new Set([
 ]);
 const PATH_PREFIXES = ['embed', 'shorts', 'live', 'v', 'e'];
 
-export function isYouTubeId(value) {
+export const isYouTubeId = (value) => {
     return ID.test(value);
-}
+};
 
 /**
  * Extracts the video ID from a YouTube link (watch, youtu.be, shorts, embed,
  * live, music) or a bare 11-character ID. Returns null when there is none.
  */
-export function parseYouTubeId(input) {
+export const parseYouTubeId = (input) => {
     const raw = String(input ?? '').trim();
     if (!raw) return null;
     if (isYouTubeId(raw)) return raw;
@@ -43,9 +43,9 @@ export function parseYouTubeId(input) {
     if (v && isYouTubeId(v)) return v;
     if (parts.length >= 2 && PATH_PREFIXES.includes(parts[0]) && isYouTubeId(parts[1])) return parts[1];
     return null;
-}
+};
 
-function toYouTubeUrl(raw) {
+const toYouTubeUrl = (raw) => {
     try {
         const url = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
         const host = url.hostname.toLowerCase();
@@ -53,32 +53,32 @@ function toYouTubeUrl(raw) {
     } catch {
         return null;
     }
-}
+};
 
 /**
  * Extracts the playlist ID from a YouTube playlist link
  * (youtube.com/playlist?list=…, or any watch link with a `list` parameter)
  * or a bare playlist ID such as PL…. Returns null when there is none.
  */
-export function parsePlaylistId(input) {
+export const parsePlaylistId = (input) => {
     const raw = String(input ?? '').trim();
     if (!raw) return null;
     if (BARE_LIST_ID.test(raw)) return raw;
     const list = toYouTubeUrl(raw)?.searchParams.get('list');
     return list && LIST_ID.test(list) ? list : null;
-}
+};
 
 /** The playlist ID of a link that points to a playlist rather than one video. */
-function playlistOnlyId(token) {
+const playlistOnlyId = (token) => {
     return parseYouTubeId(token) ? null : parsePlaylistId(token);
-}
+};
 
 /**
  * Splits pasted text (one or many links, separated by spaces, commas or new
  * lines) into unique video IDs and playlist IDs, and reports what couldn't be
  * read. A watch link that also names a playlist counts as that one video.
  */
-export function extractYouTubeIds(text) {
+export const extractYouTubeIds = (text) => {
     const tokens = String(text ?? '')
         .split(/[\s,]+/)
         .map((t) => t.trim())
@@ -98,16 +98,16 @@ export function extractYouTubeIds(text) {
         }
     }
     return { ids, playlistIds, invalid };
-}
+};
 
-export function thumbnailFor(youtubeId) {
+export const thumbnailFor = (youtubeId) => {
     return `https://i.ytimg.com/vi/${youtubeId}/mqdefault.jpg`;
-}
+};
 
-export function watchUrl(youtubeId) {
+export const watchUrl = (youtubeId) => {
     return `https://www.youtube.com/watch?v=${youtubeId}`;
-}
+};
 
-export function embedUrl(youtubeId) {
+export const embedUrl = (youtubeId) => {
     return `https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0`;
-}
+};

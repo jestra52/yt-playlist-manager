@@ -22,32 +22,32 @@
 
     const watched = $derived(videos.filter((v) => v.watched).length);
 
-    function saveName() {
+    const saveName = () => {
         if (name.trim() && name.trim() !== playlist.name) playlists.rename(playlist.id, name);
         else name = playlist.name;
-    }
+    };
 
-    function saveDescription() {
+    const saveDescription = () => {
         if (description.trim() !== playlist.description) playlists.describe(playlist.id, description);
-    }
+    };
 
-    function blurOnEnter(event) {
+    const blurOnEnter = (event) => {
         if (event.key === 'Enter') event.currentTarget.blur();
         if (event.key === 'Escape') {
             name = playlist.name;
             description = playlist.description;
             event.currentTarget.blur();
         }
-    }
+    };
 
-    function remove() {
+    const remove = () => {
         if (!confirming) {
             confirming = true;
             setTimeout(() => (confirming = false), 4000);
             return;
         }
         playlists.remove(playlist.id);
-    }
+    };
 </script>
 
 <header class="pb-5">

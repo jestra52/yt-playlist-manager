@@ -8,10 +8,10 @@
 
     const isLink = $derived(Boolean(parsePlaylistId(name)));
 
-    function submit(event) {
+    const submit = (event) => {
         event.preventDefault();
         playlists.createFromInput(name);
-    }
+    };
 </script>
 
 <section class="max-w-xl pt-[12vh]">

@@ -13,26 +13,26 @@
 
     const isLink = $derived(Boolean(parsePlaylistId(name)));
 
-    function startCreating() {
+    const startCreating = () => {
         creating = true;
         queueMicrotask(() => input?.focus());
-    }
+    };
 
-    async function submit(event) {
+    const submit = async (event) => {
         event.preventDefault();
         if (await playlists.createFromInput(name)) {
             ui.toggleSidebar(false);
             name = '';
             creating = false;
         }
-    }
+    };
 
-    function cancel(event) {
+    const cancel = (event) => {
         if (event.key === 'Escape') {
             name = '';
             creating = false;
         }
-    }
+    };
 </script>
 
 <nav class="rack bg-neutral text-neutral-content flex min-h-full w-72 flex-col px-3 pb-4 pt-5" aria-label="Playlists">

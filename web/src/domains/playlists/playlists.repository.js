@@ -1,7 +1,7 @@
 import { now, newId } from '../../core/db/index.js';
 
 /** Maps a SQLite row to the playlist shape used by stores and views. */
-export function toPlaylist(row) {
+export const toPlaylist = (row) => {
     return {
         id: row.id,
         name: row.name,
@@ -10,18 +10,18 @@ export function toPlaylist(row) {
         createdAt: row.created_at,
         updatedAt: row.updated_at,
     };
-}
+};
 
-export function listPlaylists(db) {
+export const listPlaylists = (db) => {
     return db.all('SELECT * FROM playlists WHERE deleted = 0 ORDER BY position, created_at').map(toPlaylist);
-}
+};
 
-export function getPlaylist(db, id) {
+export const getPlaylist = (db, id) => {
     const row = db.get('SELECT * FROM playlists WHERE id = ? AND deleted = 0', [id]);
     return row ? toPlaylist(row) : null;
-}
+};
 
-export function createPlaylist(db, { name, description = '' }) {
+export const createPlaylist = (db, { name, description = '' }) => {
     const clean = name.trim();
     if (!clean) throw new Error('Give the playlist a name');
     const t = now();
@@ -33,9 +33,9 @@ export function createPlaylist(db, { name, description = '' }) {
         [id, clean.slice(0, 200), description.trim(), next, t, t],
     );
     return getPlaylist(db, id);
-}
+};
 
-export function updatePlaylist(db, id, { name, description }) {
+export const updatePlaylist = (db, id, { name, description }) => {
     const current = getPlaylist(db, id);
     if (!current) throw new Error('That playlist no longer exists');
     const nextName = name === undefined ? current.name : name.trim().slice(0, 200);
@@ -48,10 +48,10 @@ export function updatePlaylist(db, id, { name, description }) {
         id,
     ]);
     return getPlaylist(db, id);
-}
+};
 
 /** Soft-deletes the playlist and its videos so the deletion syncs. */
-export function deletePlaylist(db, id) {
+export const deletePlaylist = (db, id) => {
     db.transaction(() => {
         const t = now();
         db.run('UPDATE playlists SET deleted = 1, updated_at = ?, dirty = 1 WHERE id = ?', [t, id]);
@@ -60,4 +60,4 @@ export function deletePlaylist(db, id) {
             id,
         ]);
     });
-}
+};

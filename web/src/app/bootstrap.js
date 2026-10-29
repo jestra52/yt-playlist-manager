@@ -5,7 +5,7 @@ import { videos } from '../domains/videos/videos.service.svelte.js';
 import { sync } from '../domains/sync/sync.service.svelte.js';
 
 /** Opens the local database and loads every domain's state. */
-export async function bootstrap() {
+export const bootstrap = async () => {
     const db = await openBrowserDatabase();
     setDatabase(db);
     sync.load();
@@ -27,4 +27,4 @@ export async function bootstrap() {
         };
     }
     return db;
-}
+};

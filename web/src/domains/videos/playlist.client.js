@@ -6,7 +6,7 @@ export class PlaylistImportError extends Error {}
  * Returns { id, title, author, videos: [{ youtubeId, title, author, thumbnailUrl }], skipped, partial, source }.
  * Throws PlaylistImportError with a message ready to show to the person.
  */
-export async function fetchYouTubePlaylist(listId, apiBase = '/api') {
+export const fetchYouTubePlaylist = async (listId, apiBase = '/api') => {
     const url = `${apiBase.replace(/\/+$/, '')}/playlist?id=${encodeURIComponent(listId)}`;
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 30000);
@@ -38,8 +38,8 @@ export async function fetchYouTubePlaylist(listId, apiBase = '/api') {
         throw new PlaylistImportError(body?.error ? capitalize(body.error) : 'YouTube didn’t return the playlist.');
     }
     return body;
-}
+};
 
-function capitalize(text) {
+const capitalize = (text) => {
     return text.charAt(0).toUpperCase() + text.slice(1);
-}
+};

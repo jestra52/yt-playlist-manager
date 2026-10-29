@@ -1,6 +1,6 @@
 import { thumbnailFor, watchUrl } from './youtube.js';
 
-async function fetchJson(url, timeoutMs) {
+const fetchJson = async (url, timeoutMs) => {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
@@ -13,14 +13,14 @@ async function fetchJson(url, timeoutMs) {
     } finally {
         clearTimeout(timer);
     }
-}
+};
 
 /**
  * Looks up a video's title and channel. Tries the app's Go API first (which
  * proxies YouTube oEmbed), then the public noembed.com service. Returns null
  * when neither is reachable, so the video keeps its placeholder title.
  */
-export async function fetchVideoMetadata(youtubeId, apiBase = '/api') {
+export const fetchVideoMetadata = async (youtubeId, apiBase = '/api') => {
     const base = apiBase.replace(/\/+$/, '');
     const fromApi = await fetchJson(`${base}/oembed?id=${encodeURIComponent(youtubeId)}`, 5000);
     if (fromApi?.title) {
@@ -44,4 +44,4 @@ export async function fetchVideoMetadata(youtubeId, apiBase = '/api') {
         };
     }
     return null;
-}
+};

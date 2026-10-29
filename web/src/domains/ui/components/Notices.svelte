@@ -1,10 +1,10 @@
 <script>
     import { ui } from '../ui.service.svelte.js';
 
-    function undo(notice) {
+    const undo = (notice) => {
         notice.undo();
         ui.dismiss(notice.id);
-    }
+    };
 </script>
 
 <div class="toast toast-center toast-bottom z-50" aria-live="polite">

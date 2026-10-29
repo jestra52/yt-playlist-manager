@@ -4,10 +4,10 @@
  */
 let apiBase = '/api';
 
-export function getApiBase() {
+export const getApiBase = () => {
     return apiBase;
-}
+};
 
-export function setApiBase(value) {
+export const setApiBase = (value) => {
     apiBase = (value || '/api').replace(/\/+$/, '');
-}
+};

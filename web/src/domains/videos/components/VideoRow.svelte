@@ -13,29 +13,29 @@
 
     const displayTitle = $derived(video.title || `YouTube video ${video.youtubeId}`);
 
-    function openNotes() {
+    const openNotes = () => {
         draft = video.notes;
         editingNotes = true;
         queueMicrotask(() => notesField?.focus());
-    }
+    };
 
-    function closeNotes() {
+    const closeNotes = () => {
         if (draft !== video.notes) videos.saveNotes(video.id, draft.trim());
         editingNotes = false;
-    }
+    };
 
-    function onNotesKey(event) {
+    const onNotesKey = (event) => {
         if (event.key === 'Escape') {
             draft = video.notes;
             editingNotes = false;
         }
         if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) closeNotes();
-    }
+    };
 
-    function moveTo(playlist) {
+    const moveTo = (playlist) => {
         moveMenu.open = false;
         videos.moveToPlaylist(video.id, playlist);
-    }
+    };
 </script>
 
 <li class="row list-row items-start" class:watched={video.watched} class:playing>

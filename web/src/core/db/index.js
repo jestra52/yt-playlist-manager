@@ -4,13 +4,13 @@
  */
 let current = null;
 
-export function setDatabase(db) {
+export const setDatabase = (db) => {
     current = db;
-}
+};
 
-export function getDatabase() {
+export const getDatabase = () => {
     if (!current) throw new Error('Database is not open yet');
     return current;
-}
+};
 
 export { Database, now, newId } from './database.js';

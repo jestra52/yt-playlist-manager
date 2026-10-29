@@ -23,21 +23,21 @@
         result = null;
     });
 
-    async function test() {
+    const test = async () => {
         testing = true;
         result = await sync.testConnection({ apiUrl });
         testing = false;
-    }
+    };
 
-    async function save(event) {
+    const save = async (event) => {
         event.preventDefault();
         sync.saveSettings({ apiUrl, token, autoSync });
         ui.closeSettings();
         if (token.trim()) sync.syncNow();
         else notify('Sync is off. Your playlists stay on this device.');
-    }
+    };
 
-    function exportDatabase() {
+    const exportDatabase = () => {
         const bytes = getDatabase().export();
         const url = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.sqlite3' }));
         const a = Object.assign(document.createElement('a'), {
@@ -46,7 +46,7 @@
         });
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }
+    };
 </script>
 
 <Dialog open={ui.settingsOpen} title="Sync across devices" onclose={() => ui.closeSettings()}>

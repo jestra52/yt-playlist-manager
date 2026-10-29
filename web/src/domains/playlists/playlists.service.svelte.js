@@ -9,21 +9,21 @@ import * as repo from './playlists.repository.js';
 
 const LAST_SELECTED_KEY = 'ytpm:selectedPlaylist';
 
-function remember(id) {
+const remember = (id) => {
     try {
         if (id) localStorage.setItem(LAST_SELECTED_KEY, id);
     } catch {
         /* storage unavailable: the selection just isn't remembered */
     }
-}
+};
 
-function recall() {
+const recall = () => {
     try {
         return localStorage.getItem(LAST_SELECTED_KEY);
     } catch {
         return null;
     }
-}
+};
 
 /** Application layer for playlists: reactive list + selection + use cases. */
 class PlaylistsService {
