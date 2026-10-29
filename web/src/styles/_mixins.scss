@@ -1,0 +1,52 @@
+@use 'tokens' as *;
+
+// Styles from a breakpoint up (mobile first), e.g. @include from(md) { … }
+@mixin from($name) {
+    @media (min-width: breakpoint($name)) {
+        @content;
+    }
+}
+
+// Styles below a breakpoint.
+@mixin until($name) {
+    @media (max-width: calc(#{breakpoint($name)} - 1px)) {
+        @content;
+    }
+}
+
+@mixin line-clamp($lines) {
+    display: -webkit-box;
+    -webkit-line-clamp: $lines;
+    line-clamp: $lines;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+@mixin truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+// Display type: tight, heavy, tabular when it shows numbers.
+@mixin display($size, $weight: 800) {
+    font-family: $font-display;
+    font-size: $size;
+    font-weight: $weight;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+}
+
+@mixin reveal-on-hover($parent) {
+    opacity: 0;
+    transform: scale(0.85);
+    transition:
+        opacity $duration-fast ease,
+        transform $duration-fast $ease-out;
+
+    #{$parent}:hover &,
+    #{$parent}:focus-visible & {
+        opacity: 1;
+        transform: none;
+    }
+}

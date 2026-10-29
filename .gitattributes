@@ -1,0 +1,9 @@
+# Keep LF line endings in the repository on every OS (matches .editorconfig).
+* text=auto eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.ico binary
+*.wasm binary
+*.sqlite binary
