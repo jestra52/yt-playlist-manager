@@ -361,7 +361,12 @@
             opacity: 1;
         }
 
+        // On phones the buttons get their own line. Spanning the whole row keeps their
+        // width out of the title column, which would otherwise squeeze the thumbnail
+        // column until the thumbnail covered the title (with 5 buttons, i.e. 2+ playlists).
         @include until(md) {
+            grid-column: 1 / -1;
+            justify-content: flex-end;
             opacity: 1;
         }
     }
