@@ -4,7 +4,7 @@ import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import tailwindcss from '@tailwindcss/vite';
 
-// During development the Go API runs on :8787 (see README); Vite forwards
+// During development the .NET API runs on :8787 (see README); Vite forwards
 // /api to it so the app uses the same URL locally and on Netlify.
 const apiProxy = {
     '/api': { target: process.env.API_URL ?? 'http://localhost:8787', changeOrigin: true },

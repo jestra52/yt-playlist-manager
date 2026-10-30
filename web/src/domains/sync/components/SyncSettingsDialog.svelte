@@ -67,7 +67,7 @@
                 aria-label="API address"
             />
             <p class="label whitespace-normal">
-                Keep <code>/api</code> when the app and API are deployed together on Netlify.
+                Keep <code>/api</code>: the Netlify site forwards it to the API.
             </p>
         </fieldset>
 
@@ -79,7 +79,7 @@
                     class="input join-item min-w-0 flex-1"
                     type={showToken ? 'text' : 'password'}
                     bind:value={token}
-                    placeholder="The SYNC_TOKEN you set on Netlify"
+                    placeholder="The SYNC_TOKEN set on the API"
                     autocomplete="off"
                     spellcheck="false"
                     aria-label="Sync token"

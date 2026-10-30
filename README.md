@@ -1,15 +1,15 @@
 # Queue: a YouTube playlist manager
 
-Save YouTube videos into your own playlists, put them in order, mark what you've watched, keep notes, and play them in place. Everything is stored in a **SQLite database inside your browser**, so the app works offline. A small **Go API** syncs that database with a cloud SQLite database (**Turso**) so your phone and laptop stay in step. The whole thing deploys to **Netlify** as one site.
+Save YouTube videos into your own playlists, put them in order, mark what you've watched, keep notes, and play them in place. Everything is stored in a **SQLite database inside your browser**, so the app works offline. An **ASP.NET Core API** with **Entity Framework Core** syncs that database with **PostgreSQL** (Neon) so your phone and laptop stay in step. The web app is hosted on **Netlify**; the API runs as a Docker container on **Render**, and Netlify forwards `/api` to it.
 
 ```
-┌──────────── Browser ────────────┐        ┌──────── Netlify ────────┐      ┌─ Turso ─┐
-│ Svelte components (daisyUI)     │        │ /api/* → Go function    │      │ libSQL  │
-│   ↓ call                        │  HTTPS │   POST /api/sync        │ HTTP │ (cloud  │
-│ Domain services ($state) ───────┼───────►│   GET  /api/oembed      ├─────►│ SQLite) │
-│   ↓ read / write                │        │   GET  /api/health      │      └─────────┘
-│ Repositories ↔ SQLite (sql.js)  │        └─────────────────────────┘
-│   ↕ saved to IndexedDB          │
+┌──────────── Browser ────────────┐       ┌── Netlify ──┐       ┌────── Render ───────┐      ┌──── Neon ────┐
+│ Svelte components (daisyUI)     │       │ web app     │       │ ASP.NET Core API    │      │ PostgreSQL   │
+│ ↓ call                          │ HTTPS │             │ HTTPS │  POST /api/sync     │ EF   │ playlists    │
+│ Domain services ($state)        │──────►│ /api/* proxy│──────►│  GET  /api/oembed   │─────►│ videos       │
+│ ↓ read / write                  │       └─────────────┘       │  GET  /api/playlist │ Core │ sync_counter │
+│ Repositories ↔ SQLite (sql.js)  │                             └─────────────────────┘      └──────────────┘
+│ ↕ saved to IndexedDB            │
 └─────────────────────────────────┘
 ```
 
@@ -18,18 +18,21 @@ Components and deployment diagrams: [docs/architecture.md](docs/architecture.md)
 ## Project layout
 
 ```
-netlify.toml                 build + /api redirect
-go.mod                       Go module (root, so Netlify can build the function)
-netlify/functions/api/       Netlify Function entry point (Go)
-api/
-  domain/                    sync data model + validation
-  storage/                   Hrana-over-HTTP client for Turso/libSQL, sync repository
-  httpapi/                   routes, auth, CORS (plain net/http)
-  youtube/                   oEmbed lookup (titles, channels)
-  lambdaadapter/             runs the http.Handler inside a Lambda/Netlify Function
-  app/                       wiring from environment variables
-  cmd/server/                local development server
+netlify.toml                 Netlify build for the web app
+render.yaml                  Render Blueprint for the API container
+.github/workflows/ci.yml     builds and tests the web app and the API on every push
+api/                         .NET 10 solution (YtPlaylist.slnx)
+  Dockerfile                 API image for Render
+  compose.yaml               local PostgreSQL for development
+  src/
+    YtPlaylist.Domain/          entities (Playlist, Video, SyncCounter), ID rules, limits
+    YtPlaylist.Application/     use cases (SyncService), validation, ports (ISyncStore, YouTube sources)
+    YtPlaylist.Infrastructure/  EF Core: AppDbContext, entity configurations, migrations, EfSyncStore;
+                                HTTP clients for YouTube oEmbed, Data API and playlist feed
+    YtPlaylist.Api/             ASP.NET Core minimal API: endpoints, bearer-token auth, CORS
+  tests/YtPlaylist.Tests/       xUnit: validation, sync store (SQLite + PostgreSQL), YouTube clients, endpoints
 web/
+  scripts/write-redirects.mjs  writes the Netlify /api proxy rule from API_ORIGIN
   public/_headers            security headers (CSP) for Netlify
   src/
     app/bootstrap.js         opens the database and loads every domain
@@ -52,7 +55,7 @@ web/
         components/
         sync.service.svelte.js       two-way sync use case + auto-sync
         sync.repository.js           cursor, settings, dirty rows
-        sync.client.js               HTTP client for the Go API
+        sync.client.js               HTTP client for the sync API
       ui/                            app shell: drawer, dialog, theme, notices
     shared/components/       Dialog, Icon
     styles/
@@ -73,6 +76,8 @@ Each domain is split the same way, and calls only go downwards:
 
 Services signal local writes through `core/events.js`; the sync service listens and schedules a background sync, so the playlists and videos domains don't depend on sync.
 
+The API follows the same idea with one project per layer: **Api** (HTTP) → **Application** (use cases and interfaces) → **Domain** (entities and rules), with **Infrastructure** implementing the Application interfaces with EF Core and `HttpClient`.
+
 ### Styles
 
 Tailwind v4 and daisyUI are loaded from plain CSS (`styles/tailwind.css`), because Tailwind v4 reads its own directives and isn't designed to run through Sass. Everything hand-written is Sass: the global layer in `styles/*.scss` and the component `<style lang="scss">` blocks, which can `@use 'tokens' as *;` and `@use 'mixins' as *;` from anywhere. The app ships two daisyUI themes, `queue` (light) and `queue-night` (dark); the switch at the bottom of the sidebar follows the system or pins one.
@@ -81,24 +86,25 @@ Tailwind v4 and daisyUI are loaded from plain CSS (`styles/tailwind.css`), becau
 
 * Every synced row has `updated_at` (ms), `deleted` (tombstone) and, locally, `dirty`.
 * `POST /api/sync` sends `{ since, changes }`: every dirty row plus the last server cursor the device has seen.
-* The server applies rows in one transaction with **last-write-wins** (`updated_at` must be newer), stamps each with an increasing `seq`, and answers with every row whose `seq > since` and a new cursor (paged with `hasMore`).
+* The server applies rows in one transaction with **last-write-wins** (`updated_at` must be newer), stamps each with an increasing `seq`, and answers with every row whose `seq > since` and a new cursor (paged with `hasMore`). Each sync first locks the single `sync_counter` row, so writes are serialized and `seq` values are committed in order; a device never skips a row.
 * The client clears `dirty` only for rows that weren't edited again during the request, then applies the server rows with the same last-write-wins rule.
 
 Sync runs after edits (2.5 s debounce), every minute while the tab is visible, when the network comes back, and from the sync button.
 
 ## Run it locally
 
-Requirements: Node 22+, Go 1.24+, and the [Turso CLI](https://docs.turso.tech/cli/installation) for a local libSQL server.
+Requirements: Node 22+, the [.NET 10 SDK](https://dotnet.microsoft.com/download), and Docker (for a local PostgreSQL).
 
 ```bash
-# 1. local cloud database (keeps running)
-turso dev --db-file local.db            # serves http://127.0.0.1:8080
+# 1. local PostgreSQL (keeps running)
+cd api && docker compose up -d
 
-# 2. Go API (keeps running) — uses SYNC_TOKEN=dev-token by default
-go run ./api/cmd/server                 # http://localhost:8787
+# 2. API on http://localhost:8787. Applies the EF Core migrations on start;
+#    uses DATABASE_URL and SYNC_TOKEN=dev-token from Properties/launchSettings.json
+dotnet run --project src/YtPlaylist.Api
 
-# 3. web app — Vite proxies /api to :8787
-cd web && npm install && npm run dev    # http://localhost:5173
+# 3. web app: Vite proxies /api to :8787
+cd ../web && npm install && npm run dev    # http://localhost:5173
 ```
 
 In the app, open the sync status at the bottom of the sidebar, enter `dev-token`, and choose **Save and sync**. The app works without steps 1 and 2; it just stays on one device.
@@ -106,10 +112,19 @@ In the app, open the sync status at the bottom of the sidebar, enter `dev-token`
 Tests:
 
 ```bash
-go test ./...                                         # API (storage test skips without a server)
-LIBSQL_TEST_URL=http://127.0.0.1:8080 go test ./api/storage/   # against `turso dev`
-cd web && npm test                                    # services, URL parsing, SQLite repositories, sync rules
+cd api && dotnet test                     # validation, sync store on SQLite, YouTube clients, endpoints
+TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ytplaylist dotnet test   # also on PostgreSQL
+cd web && npm test                        # services, URL parsing, SQLite repositories, sync rules
 ```
+
+Database changes: edit the entity configurations in `YtPlaylist.Infrastructure/Persistence/Configurations`, then add a migration from `api/`:
+
+```bash
+dotnet tool install --global dotnet-ef
+dotnet ef migrations add <Name> --project src/YtPlaylist.Infrastructure --output-dir Persistence/Migrations
+```
+
+A test (`MigrationsMatchTheModel`) fails if the model changes without a migration. The API applies pending migrations when it starts.
 
 Linting and formatting (in `web/`):
 
@@ -122,61 +137,40 @@ npm run format:check
 
 Rules live in `web/eslint.config.js`. In VS Code (or VSCodium), install the recommended extensions from `.vscode/extensions.json` to see ESLint errors and warnings underlined as you type.
 
-## Deploy to Netlify
+## Deploy
 
-### 1. Create the cloud database
+Three free services: **Neon** (database), **Render** (API) and **Netlify** (web app).
 
-```bash
-turso auth login
-turso db create yt-playlists
-turso db show yt-playlists --url        # → libsql://yt-playlists-<you>.turso.io
-turso db tokens create yt-playlists     # → a long token
-```
+### 1. Create the database on Neon
 
-The API creates its tables on first use.
+1. Sign up at [neon.tech](https://neon.tech) and create a project.
+2. Copy the connection string from **Connect**. It looks like `postgresql://user:password@ep-….neon.tech/neondb?sslmode=require`.
 
-### 2. Pick a sync token
+The API creates its tables (EF Core migrations) the first time it starts.
 
-This is the password your devices use to sync. Generate a long random one:
+### 2. Deploy the API on Render
 
-```bash
-openssl rand -hex 32
-```
+1. In [Render](https://render.com): **New → Blueprint**, connect this GitHub repository, and pick `render.yaml`.
+2. When Render asks for the values:
 
-### 3. Create the Netlify site
+   | Variable          | Value                                                     |
+   | ----------------- | --------------------------------------------------------- |
+   | `DATABASE_URL`    | the Neon connection string from step 1                    |
+   | `SYNC_TOKEN`      | generated by Render; copy it from the service's **Environment** page |
+   | `YOUTUBE_API_KEY` | optional, see "Importing YouTube playlists" below         |
+   | `ALLOWED_ORIGIN`  | optional, your Netlify URL                                |
 
-**Option A: from Git (recommended, deploys on every push)**
+3. Wait for the deploy, then open `https://<your-service>.onrender.com/api/health`. It should answer `{"ok":true,"syncConfigured":true}`.
 
-1. Push this folder to a GitHub, GitLab or Bitbucket repository.
-2. In Netlify: **Add new site → Import an existing project** and pick the repo. The build settings come from `netlify.toml`; leave them as they are.
-3. In **Site configuration → Environment variables**, add:
+### 3. Deploy the web app on Netlify
 
-   | Variable             | Value                                   |
-   | -------------------- | --------------------------------------- |
-   | `TURSO_DATABASE_URL` | the `libsql://…` URL from step 1        |
-   | `TURSO_AUTH_TOKEN`   | the token from step 1                   |
-   | `SYNC_TOKEN`         | the token from step 2                   |
-   | `YOUTUBE_API_KEY`    | optional, see "Importing YouTube playlists" below |
-
-4. **Deploys → Trigger deploy**.
-
-**Option B: from your computer with the Netlify CLI** (needs Node and Go installed locally)
-
-```bash
-npm install -g netlify-cli
-netlify login
-netlify init                                   # create/link a site
-netlify env:set TURSO_DATABASE_URL "libsql://…"
-netlify env:set TURSO_AUTH_TOKEN "…"
-netlify env:set SYNC_TOKEN "…"
-netlify deploy --build --prod
-```
+1. In Netlify: **Add new site → Import an existing project** and pick the repo. The build settings come from `netlify.toml`.
+2. In **Site configuration → Environment variables**, add `API_ORIGIN` = your Render URL, e.g. `https://yt-playlist-manager-api.onrender.com`. The build turns it into a proxy rule, so the app calls `/api` on its own domain.
+3. **Deploys → Trigger deploy**.
 
 ### 4. Connect your devices
 
 Open the site, click the sync status at the bottom of the sidebar, keep the API address as `/api`, paste your `SYNC_TOKEN`, choose **Test connection**, then **Save and sync**. Do the same on every device.
-
-Check the API directly at `https://<your-site>.netlify.app/api/health`; it should answer `{"ok":true,"syncConfigured":true}`.
 
 ## Importing YouTube playlists
 
@@ -185,9 +179,9 @@ Paste a YouTube playlist link (`youtube.com/playlist?list=…`, or a watch link 
 * in **New playlist** (or the first-run screen) to create a playlist with the same title and videos, or
 * in the **add videos** box to add the playlist's videos to the playlist you have open.
 
-The Go API reads the playlist (`GET /api/playlist?id=…`):
+The API reads the playlist (`GET /api/playlist?id=…`):
 
-* **With `YOUTUBE_API_KEY` set**, it uses the YouTube Data API and imports the whole playlist (up to 1,000 videos). Create a key in Google Cloud Console: enable **YouTube Data API v3**, then **Credentials → Create credentials → API key**. Each 50 videos costs 1 unit of the free 10,000-unit daily quota.
+* **With `YOUTUBE_API_KEY` set on Render**, it uses the YouTube Data API and imports the whole playlist (up to 1,000 videos). Create a key in Google Cloud Console: enable **YouTube Data API v3**, then **Credentials → Create credentials → API key**. Each 50 videos costs 1 unit of the free 10,000-unit daily quota.
 * **Without a key**, it uses YouTube's public playlist feed, which only lists the latest 15 videos. The app says so when an import may be incomplete.
 
 Only public and unlisted playlists can be imported; private playlists, Watch Later and auto-generated mixes can't.
@@ -197,4 +191,5 @@ Only public and unlisted playlists can be imported; private playlists, Watch Lat
 * **One library per deployment.** Everyone with the sync token shares the same playlists. For several people, deploy one site each or extend `SYNC_TOKEN` into per-user tokens.
 * **Local data lives in this browser.** Clearing site data removes it; with sync on, it comes back from the cloud on the next sync. The sync dialog can also export the database as a `.sqlite` file.
 * **Video titles** come from YouTube's public oEmbed endpoint through `/api/oembed` (falling back to noembed.com). No YouTube API key or Google sign-in is needed, and the app can't read or change your playlists on youtube.com.
-* **Hosting the API elsewhere** works (set the API address in the sync dialog and `ALLOWED_ORIGIN` on the API), but add that origin to `connect-src` in `web/public/_headers`.
+* **Render's free plan sleeps** after about 15 minutes without requests, and waking up can take close to a minute. Netlify gives up on a proxied request after 26 seconds, so the first sync after a quiet period may fail; the app retries on its own and the next attempt goes through. A paid Render plan stays awake.
+* **Hosting the API elsewhere** works: point `API_ORIGIN` at it. To call it directly instead of through Netlify, set the API address in the sync dialog and `ALLOWED_ORIGIN` on the API, and add that origin to `connect-src` in `web/public/_headers`.

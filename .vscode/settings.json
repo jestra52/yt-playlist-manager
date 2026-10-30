@@ -8,6 +8,7 @@
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "prettier.prettierPath": "web/node_modules/prettier",
   "[svelte]": { "editor.defaultFormatter": "svelte.svelte-vscode" },
-  "[go]": { "editor.defaultFormatter": "golang.go" },
+  // C# formatting comes from the C# extension and .editorconfig.
+  "[csharp]": { "editor.defaultFormatter": "muhammad-sammy.csharp" },
   "editor.codeActionsOnSave": { "source.fixAll.eslint": "explicit" }
 }

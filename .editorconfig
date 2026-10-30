@@ -1,6 +1,6 @@
 # EditorConfig: https://editorconfig.org
 # Shared formatting for the Svelte web app (modern ECMAScript modules,
-# Svelte 5 components, Sass) and the Go sync API in the same repository.
+# Svelte 5 components, Sass) and the .NET sync API in the same repository.
 
 root = true
 
@@ -30,10 +30,22 @@ indent_size = 2
 trim_trailing_whitespace = false
 max_line_length = off
 
-# Go sources follow gofmt (tabs)
-[{*.go,go.mod,go.sum}]
-indent_style = tab
-indent_size = 4
+# C# (the .NET API)
+[*.cs]
+max_line_length = 120
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_prefer_braces = true:warning
+dotnet_sort_system_directives_first = true
+
+# Generated EF Core migrations keep the tool's own layout
+[api/src/YtPlaylist.Infrastructure/Persistence/Migrations/*.cs]
+csharp_style_namespace_declarations = block_scoped:none
+
+# Project and solution files
+[*.{csproj,props,targets,slnx,xml}]
+indent_size = 2
 
 # Netlify _headers: indentation is meaningful, keep it as written
 [web/public/_headers]

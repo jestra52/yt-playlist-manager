@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/YtPlaylist.Domain/YtPlaylist.Domain.csproj" />
+    <Project Path="src/YtPlaylist.Application/YtPlaylist.Application.csproj" />
+    <Project Path="src/YtPlaylist.Infrastructure/YtPlaylist.Infrastructure.csproj" />
+    <Project Path="src/YtPlaylist.Api/YtPlaylist.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/YtPlaylist.Tests/YtPlaylist.Tests.csproj" />
+  </Folder>
+</Solution>
