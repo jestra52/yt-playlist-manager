@@ -101,6 +101,70 @@ public sealed class YouTubeClientTests
         await Assert.ThrowsAsync<YouTubeNotFoundException>(() => client.GetPlaylistAsync("PLzzzzzzzzzzzzzzzzzz", CancellationToken.None));
     }
 
+    [Theory]
+    // Seen on real playlists with unavailable videos: the last page points to a page that is
+    // empty and points to itself.
+    [InlineData("""{"nextPageToken":"p3","items":[]}""", 3)]
+    // A token that repeats while still returning items.
+    [InlineData("""{"nextPageToken":"p2","items":[{"snippet":{"title":"Again","resourceId":{"videoId":"aaaaaaaaaaa"}}}]}""", 2)]
+    public async Task DataApiStopsWhenPagingRepeats(string loopingPage, int pageRequests)
+    {
+        using var handler = new StubHandler(request =>
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith("/playlists", StringComparison.Ordinal))
+            {
+                return StubHandler.Json("""{"items":[{"snippet":{"title":"City Pop","channelTitle":"Juan"}}]}""");
+            }
+            return Query(request, "pageToken") switch
+            {
+                "" => StubHandler.Json("""
+                    {"nextPageToken":"p2","items":[
+                      {"snippet":{"title":"One","videoOwnerChannelTitle":"A","resourceId":{"videoId":"dQw4w9WgXcQ"}}}]}
+                    """),
+                "p2" when pageRequests == 3 => StubHandler.Json("""
+                    {"nextPageToken":"p3","items":[
+                      {"snippet":{"title":"Two","videoOwnerChannelTitle":"B","resourceId":{"videoId":"9bZkp7q19f0"}}}]}
+                    """),
+                _ => StubHandler.Json(loopingPage),
+            };
+        });
+        using var http = new HttpClient(handler);
+        var client = new YouTubePlaylistClient(http, Microsoft.Extensions.Options.Options.Create(Options("k")));
+
+        var playlist = await client.GetPlaylistAsync(ListId, CancellationToken.None);
+
+        Assert.False(playlist.Partial);
+        Assert.Equal("dQw4w9WgXcQ", playlist.Videos[0].YouTubeId);
+        Assert.Equal(pageRequests, handler.Requests.Count(u => u.AbsolutePath.EndsWith("/playlistItems", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public async Task DataApiStopsAtThePageCap()
+    {
+        var page = 0;
+        using var handler = new StubHandler(request =>
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith("/playlists", StringComparison.Ordinal))
+            {
+                return StubHandler.Json("""{"items":[{"snippet":{"title":"Endless","channelTitle":"Juan"}}]}""");
+            }
+            // Every page has a new token and only unavailable videos, so neither the video limit
+            // nor the repeat check ends the import.
+            page++;
+            return StubHandler.Json($$"""
+                {"nextPageToken":"p{{page + 1}}","items":[{"snippet":{"title":"Gone","resourceId":{"videoId":"aaaaaaaaaaa"}}}]}
+                """);
+        });
+        using var http = new HttpClient(handler);
+        var client = new YouTubePlaylistClient(http, Microsoft.Extensions.Options.Options.Create(Options("k")));
+
+        var playlist = await client.GetPlaylistAsync(ListId, CancellationToken.None);
+
+        Assert.True(playlist.Partial);
+        Assert.Empty(playlist.Videos);
+        Assert.Equal(YouTubePlaylistClient.MaxDataApiPages, page);
+    }
+
     [Fact]
     public async Task DataApiErrorsMapToNotFoundOrUnavailable()
     {
