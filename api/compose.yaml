@@ -1,5 +1,5 @@
 # Local PostgreSQL for development: `docker compose up -d` in api/.
-# Matches DATABASE_URL in src/YtPlaylist.Api/Properties/launchSettings.json.
+# Matches DATABASE_URL in api/.env.example.
 services:
   postgres:
     image: postgres:17

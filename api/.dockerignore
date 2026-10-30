@@ -2,3 +2,6 @@
 **/obj/
 tests/
 *.md
+# Local settings and secrets never go into the image.
+.env
+.env.*
