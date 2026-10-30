@@ -41,6 +41,17 @@ public sealed class ChangeSetValidatorTests
         Assert.Throws<DomainValidationException>(() => ChangeSetValidator.Validate(new ChangeSet { Videos = [Video("nope")] }));
 
     [Fact]
+    public void AcceptsPlaceholdersWithATitle()
+    {
+        // A placeholder restored from an old report has no youtubeId until its link is pasted.
+        ChangeSetValidator.Validate(new ChangeSet { Videos = [Video("") with { Title = "Anri - Windy Summer" }] });
+        ChangeSetValidator.Validate(new ChangeSet { Videos = [Video("") with { Deleted = true }] });
+        Assert.Throws<DomainValidationException>(() => ChangeSetValidator.Validate(new ChangeSet { Videos = [Video("")] }));
+        Assert.Throws<DomainValidationException>(
+            () => ChangeSetValidator.Validate(new ChangeSet { Videos = [Video("") with { Title = "   " }] }));
+    }
+
+    [Fact]
     public void CountsCharactersNotBytes()
     {
         // 5000 emoji are 5000 characters for the browser, and fit.

@@ -6,9 +6,11 @@ export const toVideo = (row) => {
         id: row.id,
         playlistId: row.playlist_id,
         youtubeId: row.youtube_id,
+        // A placeholder from an old report: known by its title until its link is pasted.
+        missing: row.youtube_id === '',
         title: row.title,
         author: row.author,
-        thumbnailUrl: row.thumbnail_url || thumbnailFor(row.youtube_id),
+        thumbnailUrl: row.thumbnail_url || (row.youtube_id ? thumbnailFor(row.youtube_id) : ''),
         notes: row.notes,
         watched: row.watched === 1,
         position: row.position,
@@ -30,6 +32,28 @@ const nextPosition = (db, playlistId) => {
     return db.get('SELECT COALESCE(MAX(position), 0) + 1 AS next FROM videos WHERE playlist_id = ? AND deleted = 0', [
         playlistId,
     ]).next;
+};
+
+const insertVideo = (db, playlistId, { youtubeId, title = '', author = '', thumbnailUrl }, position) => {
+    const t = now();
+    const id = newId();
+    db.run(
+        `INSERT INTO videos (id, playlist_id, youtube_id, title, author, thumbnail_url, notes, watched,
+                             position, created_at, updated_at, deleted, dirty)
+         VALUES (?, ?, ?, ?, ?, ?, '', 0, ?, ?, ?, 0, 1)`,
+        [
+            id,
+            playlistId,
+            youtubeId,
+            title.slice(0, 400),
+            author.slice(0, 200),
+            thumbnailUrl || (youtubeId ? thumbnailFor(youtubeId) : ''),
+            position,
+            t,
+            t,
+        ],
+    );
+    return getVideo(db, id);
 };
 
 /**
@@ -59,32 +83,69 @@ export const addVideos = (db, playlistId, entries) => {
                 skipped.push(youtubeId);
                 continue;
             }
-            const t = now();
-            const id = newId();
-            db.run(
-                `INSERT INTO videos (id, playlist_id, youtube_id, title, author, thumbnail_url, notes, watched,
-                                     position, created_at, updated_at, deleted, dirty)
-                 VALUES (?, ?, ?, ?, ?, ?, '', 0, ?, ?, ?, 0, 1)`,
-                [
-                    id,
-                    playlistId,
-                    youtubeId,
-                    title.slice(0, 400),
-                    author.slice(0, 200),
-                    thumbnailUrl || thumbnailFor(youtubeId),
-                    position++,
-                    t,
-                    t,
-                ],
-            );
             existing.add(youtubeId);
-            added.push(getVideo(db, id));
+            added.push(insertVideo(db, playlistId, { youtubeId, title, author, thumbnailUrl }, position++));
         }
         return { added, skipped };
     });
 };
 
+/**
+ * Inserts `{ title, youtubeId, afterId }` entries into a playlist. Entries that
+ * share an `afterId` go right after that video (at the start when it is null,
+ * at the end when the video is gone), in their given order. An empty
+ * `youtubeId` makes a placeholder. Returns the inserted videos.
+ */
+export const insertVideosAfter = (db, playlistId, entries) => {
+    return db.transaction(() => {
+        const rows = db.all(
+            'SELECT id, youtube_id, position FROM videos WHERE playlist_id = ? AND deleted = 0 ORDER BY position',
+            [playlistId],
+        );
+        const existing = new Set(rows.map((r) => r.youtube_id).filter(Boolean));
+        const groups = new Map();
+        for (const entry of entries) {
+            if (entry.youtubeId && existing.has(entry.youtubeId)) continue;
+            if (entry.youtubeId) existing.add(entry.youtubeId);
+            const key = entry.afterId ?? null;
+            groups.set(key, [...(groups.get(key) ?? []), entry]);
+        }
+
+        const added = [];
+        for (const [afterId, group] of groups) {
+            // Spread the group evenly between its anchor and the next video.
+            const span = group.length + 1;
+            const index = afterId === null ? -1 : rows.findIndex((r) => r.id === afterId);
+            let low;
+            let high;
+            if (afterId === null) {
+                high = rows[0]?.position ?? span;
+                low = high - span;
+            } else if (index === -1) {
+                low = rows.at(-1)?.position ?? 0;
+                high = low + span;
+            } else {
+                low = rows[index].position;
+                high = rows[index + 1]?.position ?? low + span;
+            }
+            group.forEach((entry, i) => {
+                const position = low + ((high - low) * (i + 1)) / span;
+                added.push(
+                    insertVideo(
+                        db,
+                        playlistId,
+                        { youtubeId: entry.youtubeId ?? '', title: entry.title ?? '' },
+                        position,
+                    ),
+                );
+            });
+        }
+        return added;
+    });
+};
+
 const COLUMNS = {
+    youtubeId: 'youtube_id',
     title: 'title',
     author: 'author',
     thumbnailUrl: 'thumbnail_url',
@@ -139,10 +200,12 @@ export const reorderVideo = (db, id, toIndex) => {
 export const moveVideoToPlaylist = (db, id, playlistId) => {
     const video = getVideo(db, id);
     if (!video || video.playlistId === playlistId) return { video, duplicate: false };
-    const dup = db.get('SELECT 1 AS x FROM videos WHERE playlist_id = ? AND youtube_id = ? AND deleted = 0', [
-        playlistId,
-        video.youtubeId,
-    ]);
+    const dup =
+        video.youtubeId &&
+        db.get('SELECT 1 AS x FROM videos WHERE playlist_id = ? AND youtube_id = ? AND deleted = 0', [
+            playlistId,
+            video.youtubeId,
+        ]);
     if (dup) return { video, duplicate: true };
     return { video: updateVideo(db, id, { playlistId, position: nextPosition(db, playlistId) }), duplicate: false };
 };

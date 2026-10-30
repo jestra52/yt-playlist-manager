@@ -41,7 +41,16 @@ public static partial class ChangeSetValidator
     {
         RequireId("video id", v.Id);
         RequireId("video playlistId", v.PlaylistId);
-        if (!YouTubeIds.IsVideoId(v.YouTubeId))
+        // An empty youtubeId is a placeholder restored from an old report: it waits for its
+        // link and is known by its title until then.
+        if (v.YouTubeId.Length == 0)
+        {
+            if (!v.Deleted && string.IsNullOrWhiteSpace(v.Title))
+            {
+                throw new DomainValidationException($"video {v.Id} has neither a youtubeId nor a title");
+            }
+        }
+        else if (!YouTubeIds.IsVideoId(v.YouTubeId))
         {
             throw new DomainValidationException($"video {v.Id} has an invalid youtubeId");
         }

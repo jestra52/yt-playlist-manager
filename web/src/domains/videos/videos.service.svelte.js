@@ -2,7 +2,7 @@ import { getDatabase } from '../../core/db/index.js';
 import { getApiBase } from '../../core/config.js';
 import { dataChanged } from '../../core/events.js';
 import { notify } from '../ui/ui.service.svelte.js';
-import { extractYouTubeIds } from './youtube.js';
+import { extractYouTubeIds, parseYouTubeId, thumbnailFor } from './youtube.js';
 import { fetchVideoMetadata } from './metadata.client.js';
 import { fetchYouTubePlaylist } from './playlist.client.js';
 import * as repo from './videos.repository.js';
@@ -21,7 +21,7 @@ export const PARTIAL_IMPORT_NOTE =
  */
 class VideosService {
     items = $state([]);
-    filter = $state('all'); // 'all' | 'unwatched' | 'watched'
+    filter = $state('all'); // 'all' | 'unwatched' | 'watched' | 'missing'
     query = $state('');
     playingId = $state(null);
     importing = $state(false);
@@ -50,7 +50,12 @@ class VideosService {
     visibleFor(playlistId) {
         const q = this.query.trim().toLowerCase();
         return this.forPlaylist(playlistId)
-            .filter((v) => (this.filter === 'watched' ? v.watched : this.filter === 'unwatched' ? !v.watched : true))
+            .filter((v) => {
+                if (this.filter === 'watched') return v.watched;
+                if (this.filter === 'unwatched') return !v.watched;
+                if (this.filter === 'missing') return v.missing;
+                return true;
+            })
             .filter(
                 (v) =>
                     !q ||
@@ -136,8 +141,56 @@ class VideosService {
         return result;
     }
 
+    /**
+     * Puts back entries missing since an old report (see playlists/report-compare.js)
+     * near their old place. Entries with a YouTube link become videos; the rest
+     * become placeholders that wait for a link. Returns the inserted videos.
+     */
+    addFromReport(playlistId, missing) {
+        const entries = missing.map((entry) => ({
+            youtubeId: entry.youtubeId ?? '',
+            // A link stands in for an unknown title; YouTube's title replaces it below.
+            title: entry.youtubeId ? '' : entry.title,
+            afterId: entry.afterId,
+        }));
+        const added = repo.insertVideosAfter(getDatabase(), playlistId, entries);
+        if (added.length) {
+            this.items = [...this.items, ...added];
+            dataChanged();
+        }
+        this.enrichMetadata(added.filter((v) => !v.missing && !v.title));
+        return added;
+    }
+
+    /**
+     * Completes a placeholder with the YouTube video at `link`: its ID, then the
+     * title, channel and thumbnail from YouTube. Resolves to true when saved.
+     */
+    async complete(id, link) {
+        const video = repo.getVideo(getDatabase(), id);
+        if (!video) return false;
+        const youtubeId = parseYouTubeId(link.trim());
+        if (!youtubeId) {
+            notify('Paste a YouTube video link, like https://youtu.be/…', { tone: 'error' });
+            return false;
+        }
+        const duplicate = this.items.find(
+            (v) => v.playlistId === video.playlistId && v.youtubeId === youtubeId && v.id !== id,
+        );
+        if (duplicate) {
+            notify(`That video is already in this playlist: “${duplicate.title || youtubeId}”`, { tone: 'error' });
+            return false;
+        }
+        this.#update(id, { youtubeId, thumbnailUrl: thumbnailFor(youtubeId) });
+        const meta = await fetchVideoMetadata(youtubeId, getApiBase());
+        if (meta && !meta.unavailable && repo.getVideo(getDatabase(), id)?.youtubeId === youtubeId) {
+            this.#update(id, meta);
+        }
+        return true;
+    }
+
     /** Fetches titles for videos that don't have one yet, three at a time. */
-    async enrichMetadata(videos = this.items.filter((v) => !v.title)) {
+    async enrichMetadata(videos = this.items.filter((v) => !v.title && !v.missing)) {
         const queue = [...videos];
         const worker = async () => {
             while (queue.length) {
@@ -210,6 +263,7 @@ class VideosService {
     }
 
     play(id) {
+        if (this.items.find((v) => v.id === id)?.missing) return;
         this.playingId = id;
     }
 
@@ -223,7 +277,8 @@ class VideosService {
         if (!current) return;
         this.setWatched(current.id, true);
         const queue = this.forPlaylist(current.playlistId);
-        const next = queue.find((v) => v.position > current.position && !v.watched) ?? queue.find((v) => !v.watched);
+        const playable = (v) => !v.watched && !v.missing;
+        const next = queue.find((v) => v.position > current.position && playable(v)) ?? queue.find(playable);
         if (next) this.play(next.id);
         else {
             this.closePlayer();

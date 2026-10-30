@@ -1,6 +1,7 @@
 <script>
     import Icon from '../../../shared/components/Icon.svelte';
     import ProgressStrip from '../../videos/components/ProgressStrip.svelte';
+    import CompareReportDialog from './CompareReportDialog.svelte';
     import { playlists } from '../playlists.service.svelte.js';
     import { videos as videoService } from '../../videos/videos.service.svelte.js';
     import { ui } from '../../ui/ui.service.svelte.js';
@@ -12,6 +13,7 @@
     let name = $state('');
     let description = $state('');
     let confirming = $state(false);
+    let comparing = $state(false);
 
     // Reset the editable fields whenever another playlist (or a synced edit) arrives.
     $effect(() => {
@@ -74,6 +76,16 @@
         <button
             class="btn btn-ghost btn-sm"
             type="button"
+            onclick={() => (comparing = true)}
+            aria-label="Compare with an old report and add back missing videos"
+            title="Find videos missing since an old report"
+        >
+            <Icon name="upload" size={16} />
+            <span class="max-md:hidden">Compare</span>
+        </button>
+        <button
+            class="btn btn-ghost btn-sm"
+            type="button"
             onclick={() => playlists.downloadReport(playlist.id)}
             disabled={videos.length === 0}
             aria-label="Download a report of this playlist's videos"
@@ -121,6 +133,8 @@
         </p>
     </div>
 </header>
+
+<CompareReportDialog {playlist} open={comparing} onclose={() => (comparing = false)} />
 
 <style lang="scss">
     @use 'mixins' as *;

@@ -7,6 +7,7 @@ import { parsePlaylistId } from '../videos/youtube.js';
 import { fetchYouTubePlaylist } from '../videos/playlist.client.js';
 import { downloadTextFile } from '../../shared/download.js';
 import { buildPlaylistReport, reportFileName } from './report.js';
+import { compareReport, parseReport } from './report-compare.js';
 import * as repo from './playlists.repository.js';
 
 const LAST_SELECTED_KEY = 'ytpm:selectedPlaylist';
@@ -108,6 +109,28 @@ class PlaylistsService {
         const fileName = reportFileName(playlist.name);
         downloadTextFile(fileName, buildPlaylistReport(videos.forPlaylist(id)));
         notify(`Saved ${fileName}`);
+    }
+
+    /**
+     * Compares an old report's text with the playlist as it is now.
+     * Returns { total, found, missing } (see report-compare.js), or null when the
+     * text has no numbered lines.
+     */
+    compareWithReport(id, text) {
+        const entries = parseReport(text);
+        if (!entries.length) return null;
+        return compareReport(entries, videos.forPlaylist(id));
+    }
+
+    /** Adds the entries a comparison found missing back to the playlist. */
+    addMissingFromReport(id, missing) {
+        const added = videos.addFromReport(id, missing);
+        const waiting = added.filter((v) => v.missing).length;
+        const parts = [`Added ${added.length} missing item${added.length === 1 ? '' : 's'}`];
+        if (waiting) parts.push(`${waiting} need${waiting === 1 ? 's' : ''} a YouTube link`);
+        notify(parts.join('. '));
+        if (waiting) videos.setFilter('missing');
+        return added;
     }
 
     /** Deletes the playlist and its videos (as tombstones, so it syncs). */

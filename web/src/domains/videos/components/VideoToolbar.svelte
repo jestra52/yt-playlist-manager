@@ -2,11 +2,17 @@
     import Icon from '../../../shared/components/Icon.svelte';
     import { videos } from '../videos.service.svelte.js';
 
-    const filters = [
+    let { playlistId } = $props();
+
+    const missingCount = $derived(videos.forPlaylist(playlistId).filter((v) => v.missing).length);
+
+    // "Missing" only shows while there are placeholders waiting for a link.
+    const filters = $derived([
         { id: 'all', label: 'All' },
         { id: 'unwatched', label: 'To watch' },
         { id: 'watched', label: 'Watched' },
-    ];
+        ...(missingCount || videos.filter === 'missing' ? [{ id: 'missing', label: `Missing (${missingCount})` }] : []),
+    ]);
 </script>
 
 <div class="mb-3 mt-6 flex flex-wrap items-center justify-between gap-3">

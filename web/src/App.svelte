@@ -57,7 +57,7 @@
                         <PlayerPanel />
                         <PlaylistHeader {playlist} />
                         <AddVideoForm playlistId={playlist.id} />
-                        <VideoToolbar />
+                        <VideoToolbar playlistId={playlist.id} />
                         <VideoQueue {playlist} />
                     {:else}
                         <FirstPlaylist />

@@ -1,6 +1,6 @@
 # Architecture
 
-Two views of Queue: how the code is split into components, and where each part runs once deployed. GitHub renders both diagrams from the Mermaid source below.
+Two views of YouTube Playlist Manager: how the code is split into components, and where each part runs once deployed. GitHub renders both diagrams from the Mermaid source below.
 
 ## Components
 
@@ -139,7 +139,7 @@ Netlify serves the static web app and forwards `/api` to the .NET API, which run
 flowchart LR
     subgraph device["User device: web browser"]
         direction TB
-        spa["Queue web app<br/>HTML · JS · CSS"]
+        spa["YouTube Playlist Manager<br/>web app · HTML · JS · CSS"]
         wasm["sql.js<br/>SQLite in WebAssembly"]
         idb[("IndexedDB<br/>main.sqlite")]
         spa --> wasm <--> idb
