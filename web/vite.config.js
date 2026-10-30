@@ -1,14 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import tailwindcss from '@tailwindcss/vite';
 
 // During development the .NET API runs on :8787 (see README); Vite forwards
-// /api to it so the app uses the same URL locally and on Netlify.
-const apiProxy = {
-    '/api': { target: process.env.API_URL ?? 'http://localhost:8787', changeOrigin: true },
-};
+// /api to it so the app uses the same URL locally and on Netlify. API_URL in the
+// git-ignored web/.env (see .env.example) or the shell points it elsewhere.
+const apiProxy = (apiUrl) => ({
+    '/api': { target: apiUrl || 'http://localhost:8787', changeOrigin: true },
+});
 
 // `vite preview` serves the same site-wide headers Netlify reads from
 // public/_headers, so the Content-Security-Policy is tested locally too.
@@ -29,21 +30,27 @@ const siteHeaders = () => {
     return headers;
 };
 
-export default defineConfig({
-    plugins: [tailwindcss(), svelte()],
-    // Sass partials in src/styles can be used from anywhere: `@use 'tokens' as *;`
-    css: {
-        preprocessorOptions: {
-            scss: { loadPaths: [fileURLToPath(new URL('./src/styles', import.meta.url))] },
+export default defineConfig(({ mode }) => {
+    // '' loads every variable from web/.env*, not only VITE_*; shell variables win.
+    const env = loadEnv(mode, fileURLToPath(new URL('.', import.meta.url)), '');
+    const proxy = apiProxy(env.API_URL);
+
+    return {
+        plugins: [tailwindcss(), svelte()],
+        // Sass partials in src/styles can be used from anywhere: `@use 'tokens' as *;`
+        css: {
+            preprocessorOptions: {
+                scss: { loadPaths: [fileURLToPath(new URL('./src/styles', import.meta.url))] },
+            },
         },
-    },
-    server: { proxy: apiProxy },
-    preview: { proxy: apiProxy, headers: siteHeaders() },
-    build: { target: 'es2022' },
-    // Tests run the browser build of Svelte so runes-based services are reactive.
-    resolve: process.env.VITEST ? { conditions: ['browser'] } : undefined,
-    test: {
-        environment: 'node',
-        include: ['src/**/*.test.js'],
-    },
+        server: { proxy },
+        preview: { proxy, headers: siteHeaders() },
+        build: { target: 'es2022' },
+        // Tests run the browser build of Svelte so runes-based services are reactive.
+        resolve: process.env.VITEST ? { conditions: ['browser'] } : undefined,
+        test: {
+            environment: 'node',
+            include: ['src/**/*.test.js'],
+        },
+    };
 });

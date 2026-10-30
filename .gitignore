@@ -8,5 +8,8 @@ bin/
 obj/
 *.user
 TestResults/
+# Local settings and secrets (api/.env, web/.env). Copy the .env.example next to each.
 .env
+.env.*
+!.env.example
 .DS_Store

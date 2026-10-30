@@ -99,15 +99,29 @@ Requirements: Node 22+, the [.NET 10 SDK](https://dotnet.microsoft.com/download)
 # 1. local PostgreSQL (keeps running)
 cd api && docker compose up -d
 
-# 2. API on http://localhost:8787. Applies the EF Core migrations on start;
-#    uses DATABASE_URL and SYNC_TOKEN=dev-token from Properties/launchSettings.json
+# 2. local settings: copy the examples (the copies are git-ignored)
+cp .env.example .env                       # api/.env: DATABASE_URL, SYNC_TOKEN=dev-token, YOUTUBE_API_KEY
+cp ../web/.env.example ../web/.env         # web/.env: API_URL for the dev proxy
+
+# 3. API on http://localhost:8787. Reads api/.env and applies the EF Core migrations on start
 dotnet run --project src/YtPlaylist.Api
 
-# 3. web app: Vite proxies /api to :8787
+# 4. web app: Vite proxies /api to API_URL (http://localhost:8787 by default)
 cd ../web && npm install && npm run dev    # http://localhost:5173
 ```
 
-In the app, open the sync status at the bottom of the sidebar, enter `dev-token`, and choose **Save and sync**. The app works without steps 1 and 2; it just stays on one device.
+In the app, open the sync status at the bottom of the sidebar, enter `dev-token`, and choose **Save and sync**. The app works without steps 1 to 3; it just stays on one device.
+
+### Local settings
+
+Settings and secrets for local development live in two git-ignored files, each with a committed `.env.example` to copy from:
+
+| File       | Read by                                           | Variables                                                         |
+| ---------- | ------------------------------------------------- | ----------------------------------------------------------------- |
+| `api/.env` | `dotnet run`, only in the Development environment | `DATABASE_URL`, `SYNC_TOKEN`, `YOUTUBE_API_KEY`, `ALLOWED_ORIGIN` |
+| `web/.env` | `npm run dev` and `npm run preview`               | `API_URL` (where the dev server forwards `/api`)                  |
+
+Variables set in the shell win over both files, and deployed hosts (Render, Netlify) use their own environment settings, never these files. `.gitignore` covers `.env` and `.env.*` everywhere except `.env.example`, and `api/.dockerignore` keeps them out of the Docker image.
 
 Tests:
 
