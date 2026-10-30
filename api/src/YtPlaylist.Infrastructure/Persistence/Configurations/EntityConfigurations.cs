@@ -6,8 +6,6 @@ using YtPlaylist.Domain.Videos;
 
 namespace YtPlaylist.Infrastructure.Persistence.Configurations;
 
-// Table and column names use snake_case, matching the web app's local SQLite schema.
-
 public sealed class PlaylistConfiguration : IEntityTypeConfiguration<Playlist>
 {
     public void Configure(EntityTypeBuilder<Playlist> builder)

@@ -101,10 +101,7 @@ public sealed class YouTubeClientTests
     }
 
     [Theory]
-    // Seen on real playlists with unavailable videos: the last page points to a page that is
-    // empty and points to itself.
     [InlineData(/*lang=json,strict*/ """{"nextPageToken":"p3","items":[]}""", 3)]
-    // A token that repeats while still returning items.
     [InlineData(/*lang=json,strict*/ """{"nextPageToken":"p2","items":[{"snippet":{"title":"Again","resourceId":{"videoId":"aaaaaaaaaaa"}}}]}""", 2)]
     public async Task DataApiStopsWhenPagingRepeats(string loopingPage, int pageRequests)
     {
@@ -149,8 +146,6 @@ public sealed class YouTubeClientTests
             {
                 return StubHandler.Json(/*lang=json,strict*/ """{"items":[{"snippet":{"title":"Endless","channelTitle":"Juan"}}]}""");
             }
-            // Every page has a new token and only unavailable videos, so neither the video limit
-            // nor the repeat check ends the import.
             page++;
             return StubHandler.Json(
                 $"{{\"nextPageToken\":\"p{page + 1}\",\"items\":" + UnavailableItems);

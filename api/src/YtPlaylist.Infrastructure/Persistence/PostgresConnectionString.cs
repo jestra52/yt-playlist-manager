@@ -65,7 +65,6 @@ public static class PostgresConnectionString
                     };
                     break;
                 default:
-                    // Other URL options (e.g. application_name) aren't needed by the API.
                     break;
             }
         }

@@ -36,7 +36,6 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
         {
             if (playlists.TryGetValue(change.Id, out var row))
             {
-                // Last write wins: an older or equal edit never replaces the stored row.
                 if (change.UpdatedAt <= row.UpdatedAt)
                 {
                     continue;
@@ -125,7 +124,6 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
             .Take(limit)
             .ToListAsync(cancellationToken);
 
-        // Merge both tables by change number and keep the oldest `limit` rows.
         var merged = playlists.Select(p => (p.Seq, Playlist: (Playlist?)p, Video: (Video?)null))
             .Concat(videos.Select(v => (v.Seq, Playlist: (Playlist?)null, Video: (Video?)v)))
             .OrderBy(item => item.Seq)

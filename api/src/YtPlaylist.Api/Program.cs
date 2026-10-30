@@ -5,14 +5,11 @@ using YtPlaylist.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Local development reads settings and secrets from the git-ignored api/.env (see api/.env.example).
-// Hosts such as Render set real environment variables instead, and those always win.
 if (builder.Environment.IsDevelopment() && DotEnvFile.Find(builder.Environment.ContentRootPath) is { } envFile)
 {
     builder.Configuration.AddDotEnvFile(envFile);
 }
 
-// Render (and most container hosts) tell the app which port to listen on.
 if (builder.Configuration["PORT"] is { Length: > 0 } port)
 {
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");

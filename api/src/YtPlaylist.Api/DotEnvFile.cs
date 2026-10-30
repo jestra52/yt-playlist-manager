@@ -59,7 +59,6 @@ public static class DotEnvFile
             var equals = line.IndexOf('=');
             if (equals <= 0)
             {
-                // The line itself isn't echoed: it may hold a secret.
                 throw new FormatException($"{FileName} line {number} is not KEY=value.");
             }
 

@@ -53,7 +53,6 @@ public sealed class DotEnvFileTests : IDisposable
 
         Assert.Null(DotEnvFile.Find(project));
 
-        // Outside the repository: never read.
         File.WriteAllText(Path.Combine(this.root, ".env"), "A=outside");
         Assert.Null(DotEnvFile.Find(project));
 

@@ -43,7 +43,6 @@ public sealed class ChangeSetValidatorTests
     [Fact]
     public void AcceptsPlaceholdersWithATitle()
     {
-        // A placeholder restored from an old report has no youtubeId until its link is pasted.
         ChangeSetValidator.Validate(new ChangeSet { Videos = [Video("") with { Title = "Anri - Windy Summer" }] });
         ChangeSetValidator.Validate(new ChangeSet { Videos = [Video("") with { Deleted = true }] });
         Assert.Throws<DomainValidationException>(() => ChangeSetValidator.Validate(new ChangeSet { Videos = [Video("")] }));
@@ -54,7 +53,6 @@ public sealed class ChangeSetValidatorTests
     [Fact]
     public void CountsCharactersNotBytes()
     {
-        // 5000 emoji are 5000 characters for the browser, and fit.
         ChangeSetValidator.Validate(new ChangeSet { Videos = [Video(notes: string.Concat(Enumerable.Repeat("🎵", 5000)))] });
         Assert.Throws<DomainValidationException>(
             () => ChangeSetValidator.Validate(new ChangeSet { Videos = [Video(notes: new string('a', 5001))] }));

@@ -2,9 +2,6 @@ using System.Text.Json.Serialization;
 
 namespace YtPlaylist.Application.Sync;
 
-// JSON shapes exchanged with the web app (camelCase on the wire). They match
-// the rows the client keeps in its local SQLite database.
-
 public sealed record PlaylistChange
 {
     public string Id { get; init; } = "";

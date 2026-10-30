@@ -34,14 +34,11 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
         {
             throw new DomainValidationException("invalid playlist id");
         }
-        // RD… lists are auto-generated mixes; they can't be read without signing in.
         if (playlistId.StartsWith("RD", StringComparison.Ordinal))
         {
             throw new PlaylistNotSupportedException();
         }
 
-        // One deadline for the whole import, so a slow or misbehaving YouTube can't keep a
-        // request (and its quota use) going after the caller has given up.
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(options.Value.PlaylistTimeout);
         try
@@ -55,8 +52,6 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
             throw new YouTubeUnavailableException("reading the playlist from YouTube took too long", ex);
         }
     }
-
-    // ---- YouTube Data API ------------------------------------------------
 
     private async Task<YouTubePlaylist> FromDataApiAsync(string id, CancellationToken cancellationToken)
     {
@@ -84,7 +79,6 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
             {
                 var s = item.Snippet;
                 var videoId = s?.ResourceId?.VideoId;
-                // Deleted and private videos have no owner channel.
                 if (s is null || string.IsNullOrEmpty(s.VideoOwnerChannelTitle) || !YouTubeIds.IsVideoId(videoId))
                 {
                     skipped++;
@@ -100,8 +94,6 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
                 videos.Add(new VideoMetadata(videoId, s.Title ?? "", s.VideoOwnerChannelTitle, Thumbnail(videoId, thumbnail)));
             }
 
-            // Once a playlist has unavailable videos, the Data API can keep answering with the same
-            // nextPageToken and no items, forever. Stop on an empty page or a token seen before.
             var next = page.NextPageToken;
             if (string.IsNullOrEmpty(next) || page.Items is not { Count: > 0 } || !seenTokens.Add(next))
             {
@@ -132,7 +124,6 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
             }
             catch (JsonException)
             {
-                // Not a Data API error body; reported below with the status code.
             }
             var reason = (error?.Error?.Errors is { Count: > 0 } errors ? errors[0] : null)?.Reason ?? "";
             if (response.StatusCode == HttpStatusCode.NotFound
@@ -146,8 +137,6 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
         return JsonSerializer.Deserialize<T>(body, Json)
             ?? throw new YouTubeUnavailableException("youtube api returned an empty body");
     }
-
-    // ---- Public feed (no API key) ----------------------------------------
 
     private async Task<YouTubePlaylist> FromFeedAsync(string id, CancellationToken cancellationToken)
     {
@@ -165,7 +154,6 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
         XDocument feed;
         await using (var stream = await response.Content.ReadAsStreamAsync(cancellationToken))
         {
-            // No DTDs or external entities from a remote document.
             var settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null, Async = true };
             using var reader = XmlReader.Create(stream, settings);
             try
@@ -202,15 +190,12 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
             (string?)root.Element(Atom + "author")?.Element(Atom + "name") ?? "",
             videos,
             skipped,
-            // The feed stops at its page size, so a full page means there may be more.
             entries.Count >= FeedPageSize,
             "feed");
     }
 
     private static string Thumbnail(string videoId, string? fromApi) =>
         string.IsNullOrEmpty(fromApi) ? $"https://i.ytimg.com/vi/{videoId}/mqdefault.jpg" : fromApi;
-
-    // ---- Data API response shapes ------------------------------------------
 
     private sealed record PlaylistListResponse(IReadOnlyList<PlaylistResource>? Items);
 

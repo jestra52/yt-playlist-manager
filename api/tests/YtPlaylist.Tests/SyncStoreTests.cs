@@ -53,7 +53,6 @@ public abstract class SyncStoreTests
         };
         Assert.Equal(2, await store.ApplyAsync(new ChangeSet { Playlists = [playlist], Videos = [video] }, CancellationToken.None));
 
-        // An older playlist edit loses; a newer video edit wins.
         var stale = playlist with { Name = "Stale", UpdatedAt = 50 };
         var newer = video with { Watched = true, UpdatedAt = 200 };
         Assert.Equal(1, await store.ApplyAsync(new ChangeSet { Playlists = [stale], Videos = [newer] }, CancellationToken.None));
@@ -68,7 +67,6 @@ public abstract class SyncStoreTests
         Assert.Equal(video.Title, storedVideo.Title);
         Assert.Equal(1.5, storedVideo.Position);
 
-        // The video changed after the playlist, so a page of one returns the playlist first.
         var first = await store.GetChangesAsync(head, 1, CancellationToken.None);
         Assert.True(first.HasMore);
         Assert.Single(first.Changes.Playlists);
@@ -77,7 +75,6 @@ public abstract class SyncStoreTests
         Assert.Single(second.Changes.Videos);
         Assert.Equal(all.Cursor, second.Cursor);
 
-        // Nothing new after the cursor.
         var none = await store.GetChangesAsync(all.Cursor, 1000, CancellationToken.None);
         Assert.Equal(0, none.Changes.Count);
         Assert.Equal(all.Cursor, none.Cursor);
