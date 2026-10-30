@@ -1,6 +1,5 @@
 using System.Net;
 using System.Text;
-using Microsoft.Extensions.Options;
 using YtPlaylist.Application.YouTube;
 using YtPlaylist.Domain.Common;
 using YtPlaylist.Infrastructure.YouTube;
@@ -14,7 +13,7 @@ internal sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> 
 
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        Requests.Add(request.RequestUri!);
+        this.Requests.Add(request.RequestUri!);
         return Task.FromResult(respond(request));
     }
 
@@ -51,7 +50,7 @@ public sealed class YouTubeClientTests
         using var handler = new StubHandler(request =>
             Query(request, "url") == "https://www.youtube.com/watch?v=aaaaaaaaaaa"
                 ? new HttpResponseMessage(HttpStatusCode.NotFound)
-                : StubHandler.Json("""{"title":"Never Gonna","author_name":"Rick","thumbnail_url":"https://i.ytimg.com/x.jpg"}"""));
+                : StubHandler.Json(/*lang=json,strict*/ """{"title":"Never Gonna","author_name":"Rick","thumbnail_url":"https://i.ytimg.com/x.jpg"}"""));
         using var http = new HttpClient(handler);
         var client = new OEmbedClient(http, Microsoft.Extensions.Options.Options.Create(Options()));
 
@@ -71,17 +70,17 @@ public sealed class YouTubeClientTests
             if (path.EndsWith("/playlists", StringComparison.Ordinal))
             {
                 return Query(request, "id") == ListId
-                    ? StubHandler.Json("""{"items":[{"snippet":{"title":"Road trip","channelTitle":"Juan"}}]}""")
-                    : StubHandler.Json("""{"items":[]}""");
+                    ? StubHandler.Json(/*lang=json,strict*/ """{"items":[{"snippet":{"title":"Road trip","channelTitle":"Juan"}}]}""")
+                    : StubHandler.Json(/*lang=json,strict*/ """{"items":[]}""");
             }
             return Query(request, "pageToken") == ""
-                ? StubHandler.Json("""
+                ? StubHandler.Json(/*lang=json,strict*/ """
                     {"nextPageToken":"p2","items":[
                       {"snippet":{"title":"One","videoOwnerChannelTitle":"A","resourceId":{"videoId":"dQw4w9WgXcQ"},
                         "thumbnails":{"medium":{"url":"https://i.ytimg.com/vi/dQw4w9WgXcQ/mq.jpg"}}}},
                       {"snippet":{"title":"Deleted video","resourceId":{"videoId":"aaaaaaaaaaa"}}}]}
                     """)
-                : StubHandler.Json("""
+                : StubHandler.Json(/*lang=json,strict*/ """
                     {"items":[{"snippet":{"title":"Two","videoOwnerChannelTitle":"B","resourceId":{"videoId":"9bZkp7q19f0"}}}]}
                     """);
         });
@@ -90,7 +89,7 @@ public sealed class YouTubeClientTests
 
         var playlist = await client.GetPlaylistAsync(ListId, CancellationToken.None);
         Assert.Equal(("Road trip", "Juan", "api", false, 1), (playlist.Title, playlist.Author, playlist.Source, playlist.Partial, playlist.Skipped));
-        Assert.Equal(new[] { "dQw4w9WgXcQ", "9bZkp7q19f0" }, playlist.Videos.Select(v => v.YouTubeId));
+        Assert.Equal(["dQw4w9WgXcQ", "9bZkp7q19f0"], playlist.Videos.Select(v => v.YouTubeId));
         Assert.Equal("https://i.ytimg.com/vi/9bZkp7q19f0/mqdefault.jpg", playlist.Videos[1].ThumbnailUrl);
 
         var limited = new YouTubePlaylistClient(http, Microsoft.Extensions.Options.Options.Create(Options("k", maxVideos: 1)));
@@ -102,26 +101,23 @@ public sealed class YouTubeClientTests
     }
 
     [Theory]
-    // Seen on real playlists with unavailable videos: the last page points to a page that is
-    // empty and points to itself.
-    [InlineData("""{"nextPageToken":"p3","items":[]}""", 3)]
-    // A token that repeats while still returning items.
-    [InlineData("""{"nextPageToken":"p2","items":[{"snippet":{"title":"Again","resourceId":{"videoId":"aaaaaaaaaaa"}}}]}""", 2)]
+    [InlineData(/*lang=json,strict*/ """{"nextPageToken":"p3","items":[]}""", 3)]
+    [InlineData(/*lang=json,strict*/ """{"nextPageToken":"p2","items":[{"snippet":{"title":"Again","resourceId":{"videoId":"aaaaaaaaaaa"}}}]}""", 2)]
     public async Task DataApiStopsWhenPagingRepeats(string loopingPage, int pageRequests)
     {
         using var handler = new StubHandler(request =>
         {
             if (request.RequestUri!.AbsolutePath.EndsWith("/playlists", StringComparison.Ordinal))
             {
-                return StubHandler.Json("""{"items":[{"snippet":{"title":"City Pop","channelTitle":"Juan"}}]}""");
+                return StubHandler.Json(/*lang=json,strict*/ """{"items":[{"snippet":{"title":"City Pop","channelTitle":"Juan"}}]}""");
             }
             return Query(request, "pageToken") switch
             {
-                "" => StubHandler.Json("""
+                "" => StubHandler.Json(/*lang=json,strict*/ """
                     {"nextPageToken":"p2","items":[
                       {"snippet":{"title":"One","videoOwnerChannelTitle":"A","resourceId":{"videoId":"dQw4w9WgXcQ"}}}]}
                     """),
-                "p2" when pageRequests == 3 => StubHandler.Json("""
+                "p2" when pageRequests == 3 => StubHandler.Json(/*lang=json,strict*/ """
                     {"nextPageToken":"p3","items":[
                       {"snippet":{"title":"Two","videoOwnerChannelTitle":"B","resourceId":{"videoId":"9bZkp7q19f0"}}}]}
                     """),
@@ -148,10 +144,8 @@ public sealed class YouTubeClientTests
         {
             if (request.RequestUri!.AbsolutePath.EndsWith("/playlists", StringComparison.Ordinal))
             {
-                return StubHandler.Json("""{"items":[{"snippet":{"title":"Endless","channelTitle":"Juan"}}]}""");
+                return StubHandler.Json(/*lang=json,strict*/ """{"items":[{"snippet":{"title":"Endless","channelTitle":"Juan"}}]}""");
             }
-            // Every page has a new token and only unavailable videos, so neither the video limit
-            // nor the repeat check ends the import.
             page++;
             return StubHandler.Json(
                 $"{{\"nextPageToken\":\"p{page + 1}\",\"items\":" + UnavailableItems);
@@ -170,8 +164,8 @@ public sealed class YouTubeClientTests
     public async Task DataApiErrorsMapToNotFoundOrUnavailable()
     {
         using var handler = new StubHandler(request => Query(request, "id") == "PLprivateprivate"
-            ? StubHandler.Json("""{"error":{"code":403,"errors":[{"reason":"playlistItemsNotAccessible"}]}}""", HttpStatusCode.Forbidden)
-            : StubHandler.Json("""{"error":{"code":403,"errors":[{"reason":"quotaExceeded"}],"message":"quota"}}""", HttpStatusCode.Forbidden));
+            ? StubHandler.Json(/*lang=json,strict*/ """{"error":{"code":403,"errors":[{"reason":"playlistItemsNotAccessible"}]}}""", HttpStatusCode.Forbidden)
+            : StubHandler.Json(/*lang=json,strict*/ """{"error":{"code":403,"errors":[{"reason":"quotaExceeded"}],"message":"quota"}}""", HttpStatusCode.Forbidden));
         using var http = new HttpClient(handler);
         var client = new YouTubePlaylistClient(http, Microsoft.Extensions.Options.Options.Create(Options("k")));
 

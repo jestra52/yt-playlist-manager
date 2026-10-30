@@ -31,7 +31,7 @@ public abstract class SyncStoreTests
     [Fact]
     public async Task AppliesLastWriteWinsAndPagesInOrder()
     {
-        await using var db = CreateContext();
+        await using var db = this.CreateContext();
         if (db is null)
         {
             return;
@@ -53,7 +53,6 @@ public abstract class SyncStoreTests
         };
         Assert.Equal(2, await store.ApplyAsync(new ChangeSet { Playlists = [playlist], Videos = [video] }, CancellationToken.None));
 
-        // An older playlist edit loses; a newer video edit wins.
         var stale = playlist with { Name = "Stale", UpdatedAt = 50 };
         var newer = video with { Watched = true, UpdatedAt = 200 };
         Assert.Equal(1, await store.ApplyAsync(new ChangeSet { Playlists = [stale], Videos = [newer] }, CancellationToken.None));
@@ -68,7 +67,6 @@ public abstract class SyncStoreTests
         Assert.Equal(video.Title, storedVideo.Title);
         Assert.Equal(1.5, storedVideo.Position);
 
-        // The video changed after the playlist, so a page of one returns the playlist first.
         var first = await store.GetChangesAsync(head, 1, CancellationToken.None);
         Assert.True(first.HasMore);
         Assert.Single(first.Changes.Playlists);
@@ -77,7 +75,6 @@ public abstract class SyncStoreTests
         Assert.Single(second.Changes.Videos);
         Assert.Equal(all.Cursor, second.Cursor);
 
-        // Nothing new after the cursor.
         var none = await store.GetChangesAsync(all.Cursor, 1000, CancellationToken.None);
         Assert.Equal(0, none.Changes.Count);
         Assert.Equal(all.Cursor, none.Cursor);
@@ -86,7 +83,7 @@ public abstract class SyncStoreTests
     [Fact]
     public async Task SyncsDeletionsAsTombstones()
     {
-        await using var db = CreateContext();
+        await using var db = this.CreateContext();
         if (db is null)
         {
             return;
@@ -110,15 +107,15 @@ public sealed class SqliteSyncStoreTests : SyncStoreTests, IDisposable
 
     public SqliteSyncStoreTests()
     {
-        connection.Open();
-        using var db = CreateContext();
+        this.connection.Open();
+        using var db = this.CreateContext();
         db.Database.EnsureCreated();
     }
 
     protected override AppDbContext CreateContext() =>
-        new(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options);
+        new(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(this.connection).Options);
 
-    public void Dispose() => connection.Dispose();
+    public void Dispose() => this.connection.Dispose();
 }
 
 public sealed class PostgresSyncStoreTests : SyncStoreTests
@@ -157,13 +154,13 @@ public sealed class PostgresSyncStoreTests : SyncStoreTests
         var run = $"c{Guid.NewGuid():N}"[..20];
         var writers = Enumerable.Range(0, 8).Select(async i =>
         {
-            await using var db = CreateContext()!;
+            await using var db = this.CreateContext()!;
             var change = new PlaylistChange { Id = $"{run}-{i}", Name = $"P{i}", CreatedAt = 1, UpdatedAt = 1 };
             return await new EfSyncStore(db).ApplyAsync(new ChangeSet { Playlists = [change] }, CancellationToken.None);
         });
         Assert.All(await Task.WhenAll(writers), applied => Assert.Equal(1, applied));
 
-        await using var check = CreateContext()!;
+        await using var check = this.CreateContext()!;
         var seqs = await check.Playlists
             .Where(p => p.Id.StartsWith(run))
             .Select(p => p.Seq)

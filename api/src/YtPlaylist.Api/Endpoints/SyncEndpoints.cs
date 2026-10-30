@@ -66,7 +66,7 @@ public static class SyncEndpoints
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
-            loggerFactory.CreateLogger("Sync").LogError(ex, "Sync failed");
+            loggerFactory.CreateLogger("Sync").SyncFailed(ex);
             return ApiResults.Error(StatusCodes.Status502BadGateway, "could not sync with the cloud database");
         }
     }

@@ -39,7 +39,7 @@ public static class YouTubeEndpoints
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
-            loggerFactory.CreateLogger("YouTube").LogWarning(ex, "oEmbed lookup for {VideoId} failed", id);
+            loggerFactory.CreateLogger("YouTube").OEmbedLookupFailed(ex, id);
             return ApiResults.Error(StatusCodes.Status502BadGateway, "could not reach YouTube");
         }
     }
@@ -67,7 +67,7 @@ public static class YouTubeEndpoints
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
-            loggerFactory.CreateLogger("YouTube").LogWarning(ex, "Playlist {PlaylistId} could not be read", id);
+            loggerFactory.CreateLogger("YouTube").PlaylistReadFailed(ex, id);
             return ApiResults.Error(StatusCodes.Status502BadGateway, "could not read the playlist from YouTube");
         }
     }

@@ -8,7 +8,9 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest</AnalysisLevel>
-    <!-- Public types don't need XML docs in this app. -->
+    <!-- Needed for IDE0005 (unnecessary usings) on build. Public types don't need XML docs
+         in this app, so the missing-docs warning stays off. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 </Project>

@@ -41,8 +41,6 @@ public static partial class ChangeSetValidator
     {
         RequireId("video id", v.Id);
         RequireId("video playlistId", v.PlaylistId);
-        // An empty youtubeId is a placeholder restored from an old report: it waits for its
-        // link and is known by its title until then.
         if (v.YouTubeId.Length == 0)
         {
             if (!v.Deleted && string.IsNullOrWhiteSpace(v.Title))
@@ -71,7 +69,6 @@ public static partial class ChangeSetValidator
 
     private static void MaxLength(string field, string? value, int limit)
     {
-        // Count characters as the browser does (UTF-16 code units would over-count emoji).
         if (value is not null && value.EnumerateRunes().Count() > limit)
         {
             throw new DomainValidationException($"{field} is longer than {limit} characters");
