@@ -138,6 +138,8 @@ public sealed class YouTubeClientTests
         Assert.Equal(pageRequests, handler.Requests.Count(u => u.AbsolutePath.EndsWith("/playlistItems", StringComparison.Ordinal)));
     }
 
+    private const string UnavailableItems = """[{"snippet":{"title":"Gone","resourceId":{"videoId":"aaaaaaaaaaa"}}}]}""";
+
     [Fact]
     public async Task DataApiStopsAtThePageCap()
     {
@@ -151,9 +153,8 @@ public sealed class YouTubeClientTests
             // Every page has a new token and only unavailable videos, so neither the video limit
             // nor the repeat check ends the import.
             page++;
-            return StubHandler.Json($$"""
-                {"nextPageToken":"p{{page + 1}}","items":[{"snippet":{"title":"Gone","resourceId":{"videoId":"aaaaaaaaaaa"}}}]}
-                """);
+            return StubHandler.Json(
+                $"{{\"nextPageToken\":\"p{page + 1}\",\"items\":" + UnavailableItems);
         });
         using var http = new HttpClient(handler);
         var client = new YouTubePlaylistClient(http, Microsoft.Extensions.Options.Options.Create(Options("k")));
