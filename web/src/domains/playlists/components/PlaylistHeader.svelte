@@ -72,6 +72,17 @@
             spellcheck="false"
         />
         <button
+            class="btn btn-ghost btn-sm"
+            type="button"
+            onclick={() => playlists.downloadReport(playlist.id)}
+            disabled={videos.length === 0}
+            aria-label="Download a report of this playlist's videos"
+            title="Download a .txt list of the videos"
+        >
+            <Icon name="download" size={16} />
+            <span class="max-md:hidden">Report</span>
+        </button>
+        <button
             class="btn btn-sm"
             class:btn-ghost={!confirming}
             class:btn-error={confirming}
