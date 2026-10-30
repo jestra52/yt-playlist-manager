@@ -12,4 +12,7 @@ public sealed class YouTubeOptions
 
     /// <summary>Most videos one playlist import reads.</summary>
     public int MaxPlaylistVideos { get; set; } = 1000;
+
+    /// <summary>Longest one playlist import may take; under Netlify's 26-second proxy limit.</summary>
+    public TimeSpan PlaylistTimeout { get; set; } = TimeSpan.FromSeconds(20);
 }

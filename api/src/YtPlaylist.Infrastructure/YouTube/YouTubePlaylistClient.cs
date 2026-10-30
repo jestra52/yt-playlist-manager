@@ -22,7 +22,13 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
     private static readonly XNamespace Atom = "http://www.w3.org/2005/Atom";
     private static readonly XNamespace Yt = "http://www.youtube.com/xml/schemas/2015";
 
-    public Task<YouTubePlaylist> GetPlaylistAsync(string playlistId, CancellationToken cancellationToken)
+    /// <summary>
+    /// The Data API returns at most 50 items per page and a playlist holds at most 5,000 videos,
+    /// so a real playlist never needs more pages than this.
+    /// </summary>
+    internal const int MaxDataApiPages = 100;
+
+    public async Task<YouTubePlaylist> GetPlaylistAsync(string playlistId, CancellationToken cancellationToken)
     {
         if (!YouTubeIds.IsPlaylistId(playlistId))
         {
@@ -33,9 +39,21 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
         {
             throw new PlaylistNotSupportedException();
         }
-        return string.IsNullOrEmpty(options.Value.ApiKey)
-            ? FromFeedAsync(playlistId, cancellationToken)
-            : FromDataApiAsync(playlistId, cancellationToken);
+
+        // One deadline for the whole import, so a slow or misbehaving YouTube can't keep a
+        // request (and its quota use) going after the caller has given up.
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(options.Value.PlaylistTimeout);
+        try
+        {
+            return string.IsNullOrEmpty(options.Value.ApiKey)
+                ? await FromFeedAsync(playlistId, deadline.Token)
+                : await FromDataApiAsync(playlistId, deadline.Token);
+        }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new YouTubeUnavailableException("reading the playlist from YouTube took too long", ex);
+        }
     }
 
     // ---- YouTube Data API ------------------------------------------------
@@ -50,8 +68,10 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
         var limit = options.Value.MaxPlaylistVideos > 0 ? options.Value.MaxPlaylistVideos : 1000;
         var videos = new List<VideoMetadata>();
         var skipped = 0;
+        var pages = 0;
+        var seenTokens = new HashSet<string>(StringComparer.Ordinal);
         string? pageToken = null;
-        do
+        while (true)
         {
             var path = $"playlistItems?part=snippet&maxResults=50&playlistId={Uri.EscapeDataString(id)}";
             if (pageToken is not null)
@@ -59,6 +79,7 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
                 path += $"&pageToken={Uri.EscapeDataString(pageToken)}";
             }
             var page = await DataApiGetAsync<PlaylistItemListResponse>(path, cancellationToken);
+            pages++;
             foreach (var item in page.Items ?? [])
             {
                 var s = item.Snippet;
@@ -78,9 +99,20 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
                     : null;
                 videos.Add(new VideoMetadata(videoId!, s.Title ?? "", s.VideoOwnerChannelTitle, Thumbnail(videoId!, thumbnail)));
             }
-            pageToken = string.IsNullOrEmpty(page.NextPageToken) ? null : page.NextPageToken;
+
+            // Once a playlist has unavailable videos, the Data API can keep answering with the same
+            // nextPageToken and no items, forever. Stop on an empty page or a token seen before.
+            var next = page.NextPageToken;
+            if (string.IsNullOrEmpty(next) || page.Items is not { Count: > 0 } || !seenTokens.Add(next))
+            {
+                break;
+            }
+            if (pages == MaxDataApiPages)
+            {
+                return new YouTubePlaylist(id, snippet.Title ?? "", snippet.ChannelTitle ?? "", videos, skipped, true, "api");
+            }
+            pageToken = next;
         }
-        while (pageToken is not null);
 
         return new YouTubePlaylist(id, snippet.Title ?? "", snippet.ChannelTitle ?? "", videos, skipped, false, "api");
     }
