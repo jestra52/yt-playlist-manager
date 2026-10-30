@@ -1,3 +1,5 @@
+namespace YtPlaylist.Infrastructure.Persistence;
+
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -5,8 +7,6 @@ using YtPlaylist.Application.Sync;
 using YtPlaylist.Domain.Common;
 using YtPlaylist.Domain.Playlists;
 using YtPlaylist.Domain.Videos;
-
-namespace YtPlaylist.Infrastructure.Persistence;
 
 /// <summary>Stores synced rows with Entity Framework Core.</summary>
 /// <remarks>
@@ -25,7 +25,7 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
         }
 
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-        var seq = await LockCounterAsync(transaction, cancellationToken);
+        var seq = await this.LockCounterAsync(transaction, cancellationToken);
         var applied = 0;
 
         var playlistIds = changes.Playlists.Select(p => p.Id).Distinct().ToList();
@@ -107,7 +107,7 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
 
     public async Task<ChangePage> GetChangesAsync(long since, int limit, CancellationToken cancellationToken)
     {
-        if (limit <= 0 || limit > SyncLimits.MaxPullPageSize)
+        if (limit is <= 0 or > SyncLimits.MaxPullPageSize)
         {
             limit = SyncLimits.MaxPullPageSize;
         }
@@ -135,8 +135,8 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
 
         var changes = new ChangeSet
         {
-            Playlists = page.Where(i => i.Playlist is not null).Select(i => ToChange(i.Playlist!)).ToList(),
-            Videos = page.Where(i => i.Video is not null).Select(i => ToChange(i.Video!)).ToList(),
+            Playlists = [.. page.Where(i => i.Playlist is not null).Select(i => ToChange(i.Playlist!))],
+            Videos = [.. page.Where(i => i.Video is not null).Select(i => ToChange(i.Video!))],
         };
         var cursor = page.Count > 0 ? page[^1].Seq : since;
         return new ChangePage(changes, cursor, hasMore);

@@ -1,10 +1,10 @@
+namespace YtPlaylist.Infrastructure.Persistence.Configurations;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using YtPlaylist.Domain.Common;
 using YtPlaylist.Domain.Playlists;
 using YtPlaylist.Domain.Videos;
-
-namespace YtPlaylist.Infrastructure.Persistence.Configurations;
 
 // Table and column names use snake_case, matching the web app's local SQLite schema.
 

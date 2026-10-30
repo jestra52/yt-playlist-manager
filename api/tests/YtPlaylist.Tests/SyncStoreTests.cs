@@ -1,9 +1,9 @@
+namespace YtPlaylist.Tests;
+
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using YtPlaylist.Application.Sync;
 using YtPlaylist.Infrastructure.Persistence;
-
-namespace YtPlaylist.Tests;
 
 /// <summary>
 /// Sync store behaviour, run against SQLite in memory and, when TEST_DATABASE_URL is
@@ -31,7 +31,7 @@ public abstract class SyncStoreTests
     [Fact]
     public async Task AppliesLastWriteWinsAndPagesInOrder()
     {
-        await using var db = CreateContext();
+        await using var db = this.CreateContext();
         if (db is null)
         {
             return;
@@ -86,7 +86,7 @@ public abstract class SyncStoreTests
     [Fact]
     public async Task SyncsDeletionsAsTombstones()
     {
-        await using var db = CreateContext();
+        await using var db = this.CreateContext();
         if (db is null)
         {
             return;
@@ -110,15 +110,15 @@ public sealed class SqliteSyncStoreTests : SyncStoreTests, IDisposable
 
     public SqliteSyncStoreTests()
     {
-        connection.Open();
-        using var db = CreateContext();
+        this.connection.Open();
+        using var db = this.CreateContext();
         db.Database.EnsureCreated();
     }
 
     protected override AppDbContext CreateContext() =>
-        new(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options);
+        new(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(this.connection).Options);
 
-    public void Dispose() => connection.Dispose();
+    public void Dispose() => this.connection.Dispose();
 }
 
 public sealed class PostgresSyncStoreTests : SyncStoreTests
@@ -157,13 +157,13 @@ public sealed class PostgresSyncStoreTests : SyncStoreTests
         var run = $"c{Guid.NewGuid():N}"[..20];
         var writers = Enumerable.Range(0, 8).Select(async i =>
         {
-            await using var db = CreateContext()!;
+            await using var db = this.CreateContext()!;
             var change = new PlaylistChange { Id = $"{run}-{i}", Name = $"P{i}", CreatedAt = 1, UpdatedAt = 1 };
             return await new EfSyncStore(db).ApplyAsync(new ChangeSet { Playlists = [change] }, CancellationToken.None);
         });
         Assert.All(await Task.WhenAll(writers), applied => Assert.Equal(1, applied));
 
-        await using var check = CreateContext()!;
+        await using var check = this.CreateContext()!;
         var seqs = await check.Playlists
             .Where(p => p.Id.StartsWith(run))
             .Select(p => p.Seq)

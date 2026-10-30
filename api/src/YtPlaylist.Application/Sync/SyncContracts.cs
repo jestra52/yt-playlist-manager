@@ -1,6 +1,6 @@
-using System.Text.Json.Serialization;
-
 namespace YtPlaylist.Application.Sync;
+
+using System.Text.Json.Serialization;
 
 // JSON shapes exchanged with the web app (camelCase on the wire). They match
 // the rows the client keeps in its local SQLite database.
@@ -40,7 +40,7 @@ public sealed record ChangeSet
     public IReadOnlyList<VideoChange> Videos { get; init; } = [];
 
     [JsonIgnore]
-    public int Count => Playlists.Count + Videos.Count;
+    public int Count => this.Playlists.Count + this.Videos.Count;
 }
 
 /// <summary>What a device sends: its local changes and the last server change it has seen.</summary>

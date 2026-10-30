@@ -1,7 +1,7 @@
+namespace YtPlaylist.Domain.Common;
+
 using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
-
-namespace YtPlaylist.Domain.Common;
 
 /// <summary>Shape checks for the IDs YouTube uses in links.</summary>
 public static partial class YouTubeIds

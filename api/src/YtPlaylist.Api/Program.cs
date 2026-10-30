@@ -51,6 +51,3 @@ app.MapYouTubeEndpoints();
 app.MapFallback((HttpContext http) => ApiResults.Error(StatusCodes.Status404NotFound, $"not found: {http.Request.Path}"));
 
 await app.RunAsync();
-
-/// <summary>Entry point, public so integration tests can host the API.</summary>
-public partial class Program;

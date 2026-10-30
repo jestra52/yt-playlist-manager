@@ -1,7 +1,7 @@
+namespace YtPlaylist.Api.Endpoints;
+
 using Microsoft.Extensions.Options;
 using YtPlaylist.Application.Sync;
-
-namespace YtPlaylist.Api.Endpoints;
 
 public static class HealthEndpoints
 {

@@ -1,3 +1,5 @@
+namespace YtPlaylist.Infrastructure.YouTube;
+
 using System.Net;
 using System.Text.Json;
 using System.Xml;
@@ -5,8 +7,6 @@ using System.Xml.Linq;
 using Microsoft.Extensions.Options;
 using YtPlaylist.Application.YouTube;
 using YtPlaylist.Domain.Common;
-
-namespace YtPlaylist.Infrastructure.YouTube;
 
 /// <summary>
 /// Reads public playlists. With an API key it uses the YouTube Data API and reads the
@@ -47,8 +47,8 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
         try
         {
             return string.IsNullOrEmpty(options.Value.ApiKey)
-                ? await FromFeedAsync(playlistId, deadline.Token)
-                : await FromDataApiAsync(playlistId, deadline.Token);
+                ? await this.FromFeedAsync(playlistId, deadline.Token)
+                : await this.FromDataApiAsync(playlistId, deadline.Token);
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
@@ -60,9 +60,9 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
 
     private async Task<YouTubePlaylist> FromDataApiAsync(string id, CancellationToken cancellationToken)
     {
-        var info = await DataApiGetAsync<PlaylistListResponse>(
+        var info = await this.DataApiGetAsync<PlaylistListResponse>(
             $"playlists?part=snippet&id={Uri.EscapeDataString(id)}", cancellationToken);
-        var snippet = info.Items?.FirstOrDefault()?.Snippet
+        var snippet = (info.Items is { Count: > 0 } items ? items[0] : null)?.Snippet
             ?? throw new YouTubeNotFoundException("playlist not found, or it is private");
 
         var limit = options.Value.MaxPlaylistVideos > 0 ? options.Value.MaxPlaylistVideos : 1000;
@@ -78,7 +78,7 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
             {
                 path += $"&pageToken={Uri.EscapeDataString(pageToken)}";
             }
-            var page = await DataApiGetAsync<PlaylistItemListResponse>(path, cancellationToken);
+            var page = await this.DataApiGetAsync<PlaylistItemListResponse>(path, cancellationToken);
             pages++;
             foreach (var item in page.Items ?? [])
             {
@@ -97,7 +97,7 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
                 var thumbnail = s.Thumbnails is not null && s.Thumbnails.TryGetValue("medium", out var medium)
                     ? medium.Url
                     : null;
-                videos.Add(new VideoMetadata(videoId!, s.Title ?? "", s.VideoOwnerChannelTitle, Thumbnail(videoId!, thumbnail)));
+                videos.Add(new VideoMetadata(videoId, s.Title ?? "", s.VideoOwnerChannelTitle, Thumbnail(videoId, thumbnail)));
             }
 
             // Once a playlist has unavailable videos, the Data API can keep answering with the same
@@ -134,7 +134,7 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
             {
                 // Not a Data API error body; reported below with the status code.
             }
-            var reason = error?.Error?.Errors?.FirstOrDefault()?.Reason ?? "";
+            var reason = (error?.Error?.Errors is { Count: > 0 } errors ? errors[0] : null)?.Reason ?? "";
             if (response.StatusCode == HttpStatusCode.NotFound
                 || reason is "playlistItemsNotAccessible" or "playlistNotFound")
             {

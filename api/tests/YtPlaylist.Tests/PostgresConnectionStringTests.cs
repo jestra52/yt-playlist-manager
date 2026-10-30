@@ -1,7 +1,7 @@
+namespace YtPlaylist.Tests;
+
 using Npgsql;
 using YtPlaylist.Infrastructure.Persistence;
-
-namespace YtPlaylist.Tests;
 
 public sealed class PostgresConnectionStringTests
 {

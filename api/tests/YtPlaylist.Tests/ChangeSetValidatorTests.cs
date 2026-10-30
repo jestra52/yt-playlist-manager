@@ -1,7 +1,7 @@
+namespace YtPlaylist.Tests;
+
 using YtPlaylist.Application.Sync;
 using YtPlaylist.Domain.Common;
-
-namespace YtPlaylist.Tests;
 
 public sealed class ChangeSetValidatorTests
 {

@@ -1,3 +1,5 @@
+namespace YtPlaylist.Api.Endpoints;
+
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -6,8 +8,6 @@ using Microsoft.Extensions.Options;
 using YtPlaylist.Application.Sync;
 using YtPlaylist.Domain.Common;
 using JsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
-
-namespace YtPlaylist.Api.Endpoints;
 
 public static class SyncEndpoints
 {
@@ -66,7 +66,7 @@ public static class SyncEndpoints
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
-            loggerFactory.CreateLogger("Sync").LogError(ex, "Sync failed");
+            loggerFactory.CreateLogger("Sync").SyncFailed(ex);
             return ApiResults.Error(StatusCodes.Status502BadGateway, "could not sync with the cloud database");
         }
     }

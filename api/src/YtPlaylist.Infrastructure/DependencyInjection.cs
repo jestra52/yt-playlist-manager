@@ -1,3 +1,5 @@
+namespace YtPlaylist.Infrastructure;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -5,8 +7,6 @@ using YtPlaylist.Application.Sync;
 using YtPlaylist.Application.YouTube;
 using YtPlaylist.Infrastructure.Persistence;
 using YtPlaylist.Infrastructure.YouTube;
-
-namespace YtPlaylist.Infrastructure;
 
 public static class DependencyInjection
 {

@@ -1,13 +1,13 @@
+namespace YtPlaylist.Tests;
+
 using Microsoft.Extensions.Configuration;
 using YtPlaylist.Api;
-
-namespace YtPlaylist.Tests;
 
 public sealed class DotEnvFileTests : IDisposable
 {
     private readonly string root = Directory.CreateTempSubdirectory("dotenv-").FullName;
 
-    public void Dispose() => Directory.Delete(root, recursive: true);
+    public void Dispose() => Directory.Delete(this.root, recursive: true);
 
     [Fact]
     public void ParsesKeyValueLines()
@@ -48,16 +48,16 @@ public sealed class DotEnvFileTests : IDisposable
     [Fact]
     public void FindsTheNearestFileUpToTheRepositoryRoot()
     {
-        var project = Directory.CreateDirectory(Path.Combine(root, "repo", "api", "src", "Project")).FullName;
-        Directory.CreateDirectory(Path.Combine(root, "repo", ".git"));
+        var project = Directory.CreateDirectory(Path.Combine(this.root, "repo", "api", "src", "Project")).FullName;
+        Directory.CreateDirectory(Path.Combine(this.root, "repo", ".git"));
 
         Assert.Null(DotEnvFile.Find(project));
 
         // Outside the repository: never read.
-        File.WriteAllText(Path.Combine(root, ".env"), "A=outside");
+        File.WriteAllText(Path.Combine(this.root, ".env"), "A=outside");
         Assert.Null(DotEnvFile.Find(project));
 
-        var apiEnv = Path.Combine(root, "repo", "api", ".env");
+        var apiEnv = Path.Combine(this.root, "repo", "api", ".env");
         File.WriteAllText(apiEnv, "A=api");
         Assert.Equal(apiEnv, DotEnvFile.Find(project));
     }
@@ -66,7 +66,7 @@ public sealed class DotEnvFileTests : IDisposable
     public void EnvironmentVariablesWinOverTheFile()
     {
         var shellKey = $"DOTENV_TEST_{Guid.NewGuid():N}";
-        var path = Path.Combine(root, ".env");
+        var path = Path.Combine(this.root, ".env");
         File.WriteAllLines(path, [$"{shellKey}=from-file", "FILE_ONLY=from-file"]);
         Environment.SetEnvironmentVariable(shellKey, "from-shell");
         try

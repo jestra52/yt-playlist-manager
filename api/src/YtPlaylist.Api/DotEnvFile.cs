@@ -1,7 +1,7 @@
+namespace YtPlaylist.Api;
+
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Configuration.Memory;
-
-namespace YtPlaylist.Api;
 
 /// <summary>
 /// Reads a local, git-ignored <c>.env</c> file (<c>KEY=value</c> lines) so development settings and

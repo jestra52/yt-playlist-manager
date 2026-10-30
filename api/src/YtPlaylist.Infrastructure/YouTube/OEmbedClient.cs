@@ -1,11 +1,11 @@
+namespace YtPlaylist.Infrastructure.YouTube;
+
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
 using YtPlaylist.Application.YouTube;
 using YtPlaylist.Domain.Common;
-
-namespace YtPlaylist.Infrastructure.YouTube;
 
 /// <summary>
 /// Reads video titles through YouTube's public oEmbed endpoint, which needs no API

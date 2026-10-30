@@ -1,6 +1,6 @@
-using Npgsql;
-
 namespace YtPlaylist.Infrastructure.Persistence;
+
+using Npgsql;
 
 /// <summary>
 /// Accepts the URL form Neon and other hosts hand out
