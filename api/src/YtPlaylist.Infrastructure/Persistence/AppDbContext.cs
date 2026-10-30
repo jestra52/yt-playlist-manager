@@ -1,9 +1,9 @@
-namespace YtPlaylist.Infrastructure.Persistence;
-
 using Microsoft.EntityFrameworkCore;
 using YtPlaylist.Domain.Common;
 using YtPlaylist.Domain.Playlists;
 using YtPlaylist.Domain.Videos;
+
+namespace YtPlaylist.Infrastructure.Persistence;
 
 /// <summary>Entity Framework Core context for the cloud copy of every device's data.</summary>
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)

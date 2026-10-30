@@ -1,7 +1,7 @@
-namespace YtPlaylist.Infrastructure.Persistence;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+
+namespace YtPlaylist.Infrastructure.Persistence;
 
 /// <summary>
 /// Lets <c>dotnet ef</c> build the model without starting the API. Creating

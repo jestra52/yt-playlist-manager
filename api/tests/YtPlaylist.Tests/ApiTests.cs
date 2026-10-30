@@ -1,5 +1,3 @@
-namespace YtPlaylist.Tests;
-
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -12,6 +10,8 @@ using Microsoft.Extensions.DependencyInjection;
 using YtPlaylist.Application.Sync;
 using YtPlaylist.Application.YouTube;
 using YtPlaylist.Domain.Common;
+
+namespace YtPlaylist.Tests;
 
 internal sealed class FakeSyncStore : ISyncStore
 {

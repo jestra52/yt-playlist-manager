@@ -1,5 +1,3 @@
-namespace YtPlaylist.Infrastructure.Persistence;
-
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -7,6 +5,8 @@ using YtPlaylist.Application.Sync;
 using YtPlaylist.Domain.Common;
 using YtPlaylist.Domain.Playlists;
 using YtPlaylist.Domain.Videos;
+
+namespace YtPlaylist.Infrastructure.Persistence;
 
 /// <summary>Stores synced rows with Entity Framework Core.</summary>
 /// <remarks>

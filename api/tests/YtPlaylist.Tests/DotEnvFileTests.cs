@@ -1,7 +1,7 @@
-namespace YtPlaylist.Tests;
-
 using Microsoft.Extensions.Configuration;
 using YtPlaylist.Api;
+
+namespace YtPlaylist.Tests;
 
 public sealed class DotEnvFileTests : IDisposable
 {

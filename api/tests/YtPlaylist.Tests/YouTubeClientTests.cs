@@ -1,10 +1,10 @@
-namespace YtPlaylist.Tests;
-
 using System.Net;
 using System.Text;
 using YtPlaylist.Application.YouTube;
 using YtPlaylist.Domain.Common;
 using YtPlaylist.Infrastructure.YouTube;
+
+namespace YtPlaylist.Tests;
 
 /// <summary>Answers HTTP requests from a function, so clients run without the network.</summary>
 internal sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler

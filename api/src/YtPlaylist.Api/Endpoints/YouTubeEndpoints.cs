@@ -1,7 +1,7 @@
-namespace YtPlaylist.Api.Endpoints;
-
 using YtPlaylist.Application.YouTube;
 using YtPlaylist.Domain.Common;
+
+namespace YtPlaylist.Api.Endpoints;
 
 public static class YouTubeEndpoints
 {

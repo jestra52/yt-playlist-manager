@@ -1,7 +1,7 @@
-namespace YtPlaylist.Tests;
-
 using Microsoft.EntityFrameworkCore;
 using YtPlaylist.Infrastructure.Persistence;
+
+namespace YtPlaylist.Tests;
 
 public sealed class MigrationTests
 {

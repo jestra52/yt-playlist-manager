@@ -1,6 +1,6 @@
-namespace YtPlaylist.Application.Sync;
-
 using YtPlaylist.Domain.Common;
+
+namespace YtPlaylist.Application.Sync;
 
 /// <summary>
 /// The two-way sync use case: store the device's changes, then return every

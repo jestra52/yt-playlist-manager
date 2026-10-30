@@ -1,7 +1,7 @@
-namespace YtPlaylist.Application.Sync;
-
 using System.Text.RegularExpressions;
 using YtPlaylist.Domain.Common;
+
+namespace YtPlaylist.Application.Sync;
 
 /// <summary>Checks rows coming from a device before they are stored.</summary>
 public static partial class ChangeSetValidator

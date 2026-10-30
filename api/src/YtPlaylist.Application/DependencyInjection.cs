@@ -1,7 +1,7 @@
-namespace YtPlaylist.Application;
-
 using Microsoft.Extensions.DependencyInjection;
 using YtPlaylist.Application.Sync;
+
+namespace YtPlaylist.Application;
 
 public static class DependencyInjection
 {

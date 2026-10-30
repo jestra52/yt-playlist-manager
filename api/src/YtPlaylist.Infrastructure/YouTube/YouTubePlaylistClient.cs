@@ -1,5 +1,3 @@
-namespace YtPlaylist.Infrastructure.YouTube;
-
 using System.Net;
 using System.Text.Json;
 using System.Xml;
@@ -7,6 +5,8 @@ using System.Xml.Linq;
 using Microsoft.Extensions.Options;
 using YtPlaylist.Application.YouTube;
 using YtPlaylist.Domain.Common;
+
+namespace YtPlaylist.Infrastructure.YouTube;
 
 /// <summary>
 /// Reads public playlists. With an API key it uses the YouTube Data API and reads the

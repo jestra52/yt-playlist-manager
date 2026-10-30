@@ -1,9 +1,9 @@
-namespace YtPlaylist.Tests;
-
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using YtPlaylist.Application.Sync;
 using YtPlaylist.Infrastructure.Persistence;
+
+namespace YtPlaylist.Tests;
 
 /// <summary>
 /// Sync store behaviour, run against SQLite in memory and, when TEST_DATABASE_URL is
