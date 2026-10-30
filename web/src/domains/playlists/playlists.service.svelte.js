@@ -5,6 +5,8 @@ import { getApiBase } from '../../core/config.js';
 import { videos, PARTIAL_IMPORT_NOTE } from '../videos/videos.service.svelte.js';
 import { parsePlaylistId } from '../videos/youtube.js';
 import { fetchYouTubePlaylist } from '../videos/playlist.client.js';
+import { downloadTextFile } from '../../shared/download.js';
+import { buildPlaylistReport, reportFileName } from './report.js';
 import * as repo from './playlists.repository.js';
 
 const LAST_SELECTED_KEY = 'ytpm:selectedPlaylist';
@@ -97,6 +99,15 @@ class PlaylistsService {
 
     describe(id, description) {
         this.#update(id, { description });
+    }
+
+    /** Downloads a numbered list of the playlist's videos as a .txt file. */
+    downloadReport(id) {
+        const playlist = this.items.find((p) => p.id === id);
+        if (!playlist) return;
+        const fileName = reportFileName(playlist.name);
+        downloadTextFile(fileName, buildPlaylistReport(videos.forPlaylist(id)));
+        notify(`Saved ${fileName}`);
     }
 
     /** Deletes the playlist and its videos (as tombstones, so it syncs). */
