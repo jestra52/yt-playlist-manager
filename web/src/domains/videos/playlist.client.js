@@ -1,4 +1,4 @@
-/** Reads a public YouTube playlist through the app's Go API (/api/playlist). */
+/** Reads a public YouTube playlist through the app's API (/api/playlist). */
 
 export class PlaylistImportError extends Error {}
 

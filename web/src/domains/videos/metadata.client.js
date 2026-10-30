@@ -16,7 +16,7 @@ const fetchJson = async (url, timeoutMs) => {
 };
 
 /**
- * Looks up a video's title and channel. Tries the app's Go API first (which
+ * Looks up a video's title and channel. Tries the app's API first (which
  * proxies YouTube oEmbed), then the public noembed.com service. Returns null
  * when neither is reachable, so the video keeps its placeholder title.
  */

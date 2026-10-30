@@ -4,6 +4,9 @@ web/dist/
 *.db
 *.db-*
 *.sqlite
-/server
+bin/
+obj/
+*.user
+TestResults/
 .env
 .DS_Store
