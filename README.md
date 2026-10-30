@@ -2,6 +2,30 @@
 
 Save YouTube videos into your own playlists, put them in order, mark what you've watched, keep notes, and play them in place. Everything is stored in a **SQLite database inside your browser**, so the app works offline. An **ASP.NET Core API** with **Entity Framework Core** syncs that database with **PostgreSQL** (Neon) so your phone and laptop stay in step. The web app is hosted on **Netlify**; the API runs as a Docker container on **Render**, and Netlify forwards `/api` to it.
 
+## Screenshots
+
+| Light | Dark |
+| --- | --- |
+| ![A City Pop playlist in the light theme: sidebar with two playlists, progress strip, and videos with thumbnails, three marked as watched](docs/screenshots/playlist-light.png) | ![The same playlist in the dark theme](docs/screenshots/playlist-dark.png) |
+
+**Compare with an old report.** Load a report you saved earlier to see which videos the playlist no longer has, then add them back in their old place:
+
+![Compare dialog: 12 items in the report, 10 still here, 2 missing, listed by number and title](docs/screenshots/compare-report.png)
+
+**Missing items** wait for their YouTube link; paste it and the video gets its title, channel and thumbnail:
+
+![Missing filter showing two placeholder items, each with a box to paste its YouTube link](docs/screenshots/missing-items.png)
+
+<img src="docs/screenshots/phone.png" alt="The playlist on a phone in the dark theme, with buttons for compare, report and delete in the header" width="300" align="right" />
+
+**On a phone** the sidebar folds away behind the menu button, and the header buttons shrink to icons: compare, download report, delete.
+
+The screenshots use sample data and placeholder thumbnails.
+
+<br clear="right" />
+
+## How it fits together
+
 ```
 ┌──────────── Browser ────────────┐       ┌── Netlify ──┐       ┌────── Render ───────┐      ┌──── Neon ────┐
 │ Svelte components (daisyUI)     │       │ web app     │       │ ASP.NET Core API    │      │ PostgreSQL   │
