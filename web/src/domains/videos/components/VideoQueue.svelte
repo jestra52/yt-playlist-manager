@@ -23,6 +23,9 @@
         {#if videos.query}
             <p class="mb-4 font-display text-2xl font-bold tracking-tight">Nothing matches “{videos.query}”.</p>
             <button class="btn btn-sm" type="button" onclick={() => videos.setQuery('')}>Clear search</button>
+        {:else if videos.filter === 'missing'}
+            <p class="mb-4 font-display text-2xl font-bold tracking-tight">Every item has its YouTube link.</p>
+            <button class="btn btn-sm" type="button" onclick={() => videos.setFilter('all')}>Show all videos</button>
         {:else if videos.filter === 'unwatched'}
             <p class="mb-4 font-display text-2xl font-bold tracking-tight">You’ve watched everything here.</p>
             <button class="btn btn-sm" type="button" onclick={() => videos.setFilter('all')}>Show all videos</button>

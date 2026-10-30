@@ -11,7 +11,21 @@
     let notesField = $state();
     let moveMenu = $state();
 
-    const displayTitle = $derived(video.title || `YouTube video ${video.youtubeId}`);
+    const displayTitle = $derived(video.title || (video.missing ? 'Untitled' : `YouTube video ${video.youtubeId}`));
+
+    let link = $state('');
+    let saving = $state(false);
+
+    const completeWithLink = async (event) => {
+        event.preventDefault();
+        if (!link.trim() || saving) return;
+        saving = true;
+        try {
+            if (await videos.complete(video.id, link)) link = '';
+        } finally {
+            saving = false;
+        }
+    };
 
     const openNotes = () => {
         draft = video.notes;
@@ -50,31 +64,59 @@
         {#if video.watched}
             <span class="check"><Icon name="check" size={20} /></span>
         {:else}
-            <span class="num">{number}</span>
+            <span class="num" class:long={number >= 100} class:longer={number >= 1000}>{number}</span>
         {/if}
     </button>
 
-    <button type="button" class="thumb" onclick={() => videos.play(video.id)} aria-label="Play {displayTitle}">
-        {#if !thumbFailed}
-            <img
-                src={video.thumbnailUrl}
-                alt=""
-                loading="lazy"
-                width="320"
-                height="180"
-                onerror={() => (thumbFailed = true)}
-            />
-        {:else}
-            <span class="placeholder"><Icon name="play" size={28} /></span>
-        {/if}
-        <span class="play"><Icon name="play" size={18} /></span>
-    </button>
+    {#if video.missing}
+        <div class="thumb missing-thumb" title="Not on YouTube yet: paste its link">
+            <Icon name="link" size={22} />
+            <span>Missing</span>
+        </div>
+    {:else}
+        <button type="button" class="thumb" onclick={() => videos.play(video.id)} aria-label="Play {displayTitle}">
+            {#if !thumbFailed}
+                <img
+                    src={video.thumbnailUrl}
+                    alt=""
+                    loading="lazy"
+                    width="320"
+                    height="180"
+                    onerror={() => (thumbFailed = true)}
+                />
+            {:else}
+                <span class="placeholder"><Icon name="play" size={28} /></span>
+            {/if}
+            <span class="play"><Icon name="play" size={18} /></span>
+        </button>
+    {/if}
 
     <div class="body list-col-grow min-w-0">
-        <a class="title link link-hover" href={watchUrl(video.youtubeId)} target="_blank" rel="noopener noreferrer"
-            >{displayTitle}</a
-        >
-        {#if video.author}<p class="mt-0.5 text-sm text-base-content/65">{video.author}</p>{/if}
+        {#if video.missing}
+            <p class="title">{displayTitle}</p>
+            <form class="join mt-2 w-full max-w-xl" onsubmit={completeWithLink}>
+                <label class="sr-only" for="link-{video.id}">YouTube link for {displayTitle}</label>
+                <input
+                    id="link-{video.id}"
+                    class="input input-sm join-item min-w-0 flex-1"
+                    bind:value={link}
+                    placeholder="Paste the YouTube link to complete it"
+                    autocomplete="off"
+                    spellcheck="false"
+                    inputmode="url"
+                    disabled={saving}
+                />
+                <button class="btn btn-sm btn-primary join-item" type="submit" disabled={!link.trim() || saving}>
+                    {#if saving}<span class="loading loading-spinner loading-xs"></span>{/if}
+                    Save
+                </button>
+            </form>
+        {:else}
+            <a class="title link link-hover" href={watchUrl(video.youtubeId)} target="_blank" rel="noopener noreferrer"
+                >{displayTitle}</a
+            >
+            {#if video.author}<p class="mt-0.5 text-sm text-base-content/65">{video.author}</p>{/if}
+        {/if}
 
         {#if editingNotes}
             <textarea
@@ -182,6 +224,8 @@
         @include display(1.75rem, 700);
         font-variant-numeric: tabular-nums;
         line-height: 1;
+        // Never wrap "100" onto two lines; long numbers shrink to fit instead.
+        white-space: nowrap;
 
         .mark:hover & {
             color: $success;
@@ -189,6 +233,23 @@
 
         @include until(md) {
             font-size: 1.4rem;
+        }
+
+        // Three and four digits still fit the square button.
+        &.long {
+            font-size: 1.3rem;
+
+            @include until(md) {
+                font-size: 1.05rem;
+            }
+        }
+
+        &.longer {
+            font-size: 1rem;
+
+            @include until(md) {
+                font-size: 0.8rem;
+            }
         }
     }
 
@@ -220,6 +281,21 @@
         @include until(md) {
             width: $thumb-width-compact;
         }
+    }
+
+    .missing-thumb {
+        display: grid;
+        place-content: center;
+        justify-items: center;
+        gap: 0.2rem;
+        border: 2px dashed $base-300;
+        background: transparent;
+        color: tint($base-content, 50%);
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        cursor: default;
     }
 
     .placeholder {

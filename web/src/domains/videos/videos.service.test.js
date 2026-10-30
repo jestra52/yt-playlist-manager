@@ -152,4 +152,71 @@ describe('playlists and videos services', () => {
         expect(message).toContain('Added 3 videos. 1 video already in this playlist');
         expect(message).toContain('YOUTUBE_API_KEY');
     });
+
+    it('puts back items missing since an old report, in their old place', async () => {
+        const p = playlists.create('City Pop');
+        videos.addEntries(p.id, [
+            { youtubeId: 'dQw4w9WgXcQ', title: 'Anri - Windy Summer' },
+            { youtubeId: 'kJQP7kiw5Fk', title: 'Tomoko Aran - Midnight Pretenders' },
+        ]);
+        const report = [
+            'Total videos: 5',
+            '1: Mariya Takeuchi - Plastic Love',
+            '2: Anri - Windy Summer',
+            '3: Miki Matsubara - Mayonaka no Door',
+            '4: https://youtu.be/9bZkp7q19f0',
+            '5: Tomoko Aran - Midnight Pretenders',
+        ].join('\r\n');
+
+        const comparison = playlists.compareWithReport(p.id, report);
+        expect(comparison).toMatchObject({ total: 5, found: 2 });
+        playlists.addMissingFromReport(p.id, comparison.missing);
+
+        const list = videos.forPlaylist(p.id);
+        expect(list.map((v) => v.title || v.youtubeId)).toEqual([
+            'Mariya Takeuchi - Plastic Love',
+            'Anri - Windy Summer',
+            'Miki Matsubara - Mayonaka no Door',
+            '9bZkp7q19f0',
+            'Tomoko Aran - Midnight Pretenders',
+        ]);
+        expect(list.map((v) => v.missing)).toEqual([true, false, true, false, false]);
+        expect(ui.notices.at(-1).message).toBe('Added 3 missing items. 2 need a YouTube link');
+        expect(videos.filter).toBe('missing');
+        expect(videos.visibleFor(p.id)).toHaveLength(2);
+
+        // Comparing again finds nothing new: placeholders count as present.
+        expect(playlists.compareWithReport(p.id, report).missing).toEqual([]);
+    });
+
+    it('completes a placeholder with a pasted link and skips placeholders when playing', async () => {
+        const p = playlists.create('City Pop');
+        videos.addEntries(p.id, [{ youtubeId: 'dQw4w9WgXcQ', title: 'First' }]);
+        const [placeholder] = videos.addFromReport(p.id, [
+            { number: 2, title: 'Plastic Love', youtubeId: null, afterId: videos.forPlaylist(p.id)[0].id },
+        ]);
+        videos.addEntries(p.id, [{ youtubeId: 'kJQP7kiw5Fk', title: 'Third' }]);
+
+        const [first, , third] = videos.forPlaylist(p.id);
+        videos.play(placeholder.id);
+        expect(videos.playingId).toBeNull();
+        videos.play(first.id);
+        videos.finishAndPlayNext();
+        expect(videos.playingId).toBe(third.id);
+
+        expect(await videos.complete(placeholder.id, 'not a link')).toBe(false);
+        expect(await videos.complete(placeholder.id, 'https://youtu.be/kJQP7kiw5Fk')).toBe(false);
+        expect(ui.notices.at(-1).message).toContain('already in this playlist');
+
+        // No network in tests, so the report title stays and only the link is filled in.
+        expect(await videos.complete(placeholder.id, 'https://www.youtube.com/watch?v=9bZkp7q19f0&t=3s')).toBe(true);
+        const done = videos.forPlaylist(p.id)[1];
+        expect(done).toMatchObject({
+            id: placeholder.id,
+            youtubeId: '9bZkp7q19f0',
+            missing: false,
+            title: 'Plastic Love',
+        });
+        expect(done.thumbnailUrl).toContain('9bZkp7q19f0');
+    });
 });
