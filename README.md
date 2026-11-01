@@ -223,6 +223,20 @@ The API creates its tables (EF Core migrations) the first time it starts.
 
 Open the site, click the sync status at the bottom of the sidebar, keep the API address as `/api`, paste your `SYNC_TOKEN`, choose **Test connection**, then **Save and sync**. Do the same on every device.
 
+### Automatic deploys: only what changed
+
+Pushes to `master` deploy each service only when its own files change:
+
+| Push changes | Netlify (web app) | Render (API) |
+| --- | --- | --- |
+| `web/` or `netlify.toml` | builds and deploys | skipped |
+| `api/` (except `api/tests/` and `*.md`) or `render.yaml` | skipped | builds and deploys |
+| both | both | both |
+| only docs, `.github/` or API tests | skipped | skipped |
+
+* **Netlify** reads the `ignore` command in `netlify.toml`: it compares the commit with the last deployed one and cancels the build when nothing under `web/` or `netlify.toml` changed. The first deploy, **Clear cache and deploy**, and **Trigger deploy** always build.
+* **Render** reads the `buildFilter` in `render.yaml` when the service is managed by the Blueprint (**Blueprints → Sync**). A service created by hand needs the same filters in **Settings → Build & Deploy → Build Filters**: included paths `api/**` and `render.yaml`, ignored paths `api/**/*.md` and `api/tests/**`. Auto-deploy also needs the service linked to the GitHub repository (**Settings → Build & Deploy → Repository**), so Render hears about pushes. **Manual Deploy** and deploy hooks ignore the filters.
+
 ## Importing YouTube playlists
 
 Paste a YouTube playlist link (`youtube.com/playlist?list=…`, or a watch link with `&list=…`):
