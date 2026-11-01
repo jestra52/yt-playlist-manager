@@ -5,7 +5,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Restore first so package downloads are cached between builds.
-COPY Directory.Build.props Directory.Packages.props ./
+COPY Directory.Build.props Directory.Packages.props stylecop.json stylecop.globalconfig ./
 COPY src/YtPlaylist.Domain/YtPlaylist.Domain.csproj src/YtPlaylist.Domain/
 COPY src/YtPlaylist.Application/YtPlaylist.Application.csproj src/YtPlaylist.Application/
 COPY src/YtPlaylist.Infrastructure/YtPlaylist.Infrastructure.csproj src/YtPlaylist.Infrastructure/
