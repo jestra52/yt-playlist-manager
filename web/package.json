@@ -11,13 +11,15 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "db:generate": "drizzle-kit generate"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tailwindcss/vite": "^4.3.3",
     "daisyui": "^5.7.50",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-svelte": "^3.23.1",
@@ -31,6 +33,7 @@
     "vitest": "^5.0.5"
   },
   "dependencies": {
+    "drizzle-orm": "^0.45.4",
     "sql.js": "^1.15.2"
   },
   "allowScripts": {

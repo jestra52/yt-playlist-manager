@@ -1,36 +1,59 @@
+import { and, asc, eq, max } from 'drizzle-orm';
 import { now, newId } from '../../core/db/index.js';
+import { playlists, videos } from '../../core/db/tables.js';
 
-/** Maps a SQLite row to the playlist shape used by stores and views. */
-export const toPlaylist = (row) => {
-    return {
-        id: row.id,
-        name: row.name,
-        description: row.description,
-        position: row.position,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-    };
+/** The playlist shape used by stores and views. */
+const fields = {
+    id: playlists.id,
+    name: playlists.name,
+    description: playlists.description,
+    position: playlists.position,
+    createdAt: playlists.createdAt,
+    updatedAt: playlists.updatedAt,
 };
 
+const live = eq(playlists.deleted, false);
+
 export const listPlaylists = (db) => {
-    return db.all('SELECT * FROM playlists WHERE deleted = 0 ORDER BY position, created_at').map(toPlaylist);
+    return db.orm
+        .select(fields)
+        .from(playlists)
+        .where(live)
+        .orderBy(asc(playlists.position), asc(playlists.createdAt))
+        .all();
 };
 
 export const getPlaylist = (db, id) => {
-    const row = db.get('SELECT * FROM playlists WHERE id = ? AND deleted = 0', [id]);
-    return row ? toPlaylist(row) : null;
+    return (
+        db.orm
+            .select(fields)
+            .from(playlists)
+            .where(and(eq(playlists.id, id), live))
+            .get() ?? null
+    );
 };
 
 export const createPlaylist = (db, { name, description = '' }) => {
     const clean = name.trim();
     if (!clean) throw new Error('Give the playlist a name');
     const t = now();
-    const { next } = db.get('SELECT COALESCE(MAX(position), 0) + 1 AS next FROM playlists WHERE deleted = 0');
+    const { top } = db.orm
+        .select({ top: max(playlists.position) })
+        .from(playlists)
+        .where(live)
+        .get();
     const id = newId();
-    db.run(
-        `INSERT INTO playlists (id, name, description, position, created_at, updated_at, deleted, dirty)
-     VALUES (?, ?, ?, ?, ?, ?, 0, 1)`,
-        [id, clean.slice(0, 200), description.trim(), next, t, t],
+    db.write(
+        db.orm.insert(playlists).values({
+            id,
+            name: clean.slice(0, 200),
+            description: description.trim(),
+            position: (top ?? 0) + 1,
+            createdAt: t,
+            updatedAt: t,
+            deleted: false,
+            dirty: true,
+        }),
     );
     return getPlaylist(db, id);
 };
@@ -41,12 +64,12 @@ export const updatePlaylist = (db, id, { name, description }) => {
     const nextName = name === undefined ? current.name : name.trim().slice(0, 200);
     if (!nextName) throw new Error('Give the playlist a name');
     const nextDescription = description === undefined ? current.description : description.trim();
-    db.run('UPDATE playlists SET name = ?, description = ?, updated_at = ?, dirty = 1 WHERE id = ?', [
-        nextName,
-        nextDescription,
-        now(),
-        id,
-    ]);
+    db.write(
+        db.orm
+            .update(playlists)
+            .set({ name: nextName, description: nextDescription, updatedAt: now(), dirty: true })
+            .where(eq(playlists.id, id)),
+    );
     return getPlaylist(db, id);
 };
 
@@ -54,10 +77,14 @@ export const updatePlaylist = (db, id, { name, description }) => {
 export const deletePlaylist = (db, id) => {
     db.transaction(() => {
         const t = now();
-        db.run('UPDATE playlists SET deleted = 1, updated_at = ?, dirty = 1 WHERE id = ?', [t, id]);
-        db.run('UPDATE videos SET deleted = 1, updated_at = ?, dirty = 1 WHERE playlist_id = ? AND deleted = 0', [
-            t,
-            id,
-        ]);
+        db.write(
+            db.orm.update(playlists).set({ deleted: true, updatedAt: t, dirty: true }).where(eq(playlists.id, id)),
+        );
+        db.write(
+            db.orm
+                .update(videos)
+                .set({ deleted: true, updatedAt: t, dirty: true })
+                .where(and(eq(videos.playlistId, id), eq(videos.deleted, false))),
+        );
     });
 };

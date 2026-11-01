@@ -1,55 +1,61 @@
+import { drizzle } from 'drizzle-orm/sql-js';
 import { migrations } from './schema.js';
+import * as tables from './tables.js';
 
 /**
  * A thin wrapper around a sql.js (SQLite compiled to WebAssembly) database.
  * The whole database lives in memory and is saved to a persistence adapter
  * (IndexedDB in the browser) shortly after every write.
+ *
+ * Repositories build their queries with Drizzle ORM (`db.orm`), so values are
+ * always sent as parameters. Reads run the query directly (`.all()`, `.get()`);
+ * writes go through `db.write(query)` so the change is saved.
  */
 export class Database {
     #db;
+    #orm;
     #persistence;
     #saveTimer = null;
     #depth = 0;
     #listeners = new Set();
 
     constructor(sqlDb, persistence = null) {
-        this.#db = sqlDb;
         this.#persistence = persistence;
+        this.#open(sqlDb);
+    }
+
+    #open(sqlDb) {
+        this.#db = sqlDb;
+        this.#orm = drizzle(sqlDb, { schema: tables });
         this.#db.exec('PRAGMA foreign_keys = ON;');
         this.#migrate();
     }
 
     #migrate() {
-        const current = this.get('PRAGMA user_version')?.user_version ?? 0;
+        const current = this.#userVersion();
         for (let v = current; v < migrations.length; v++) {
             this.transaction(() => {
                 this.#db.exec(migrations[v]);
-                this.#db.exec(`PRAGMA user_version = ${v + 1}`);
+                // PRAGMA takes no parameters; the version is always a loop integer.
+                // eslint-disable-next-line no-restricted-syntax
+                this.#db.exec(`PRAGMA user_version = ${Number(v + 1)}`);
             });
         }
     }
 
-    /** Returns every row as a plain object. */
-    all(sql, params = []) {
-        const stmt = this.#db.prepare(sql);
-        try {
-            stmt.bind(params);
-            const rows = [];
-            while (stmt.step()) rows.push(stmt.getAsObject());
-            return rows;
-        } finally {
-            stmt.free();
-        }
+    #userVersion() {
+        const [result] = this.#db.exec('PRAGMA user_version');
+        return Number(result?.values[0]?.[0] ?? 0);
     }
 
-    /** Returns the first row or undefined. */
-    get(sql, params = []) {
-        return this.all(sql, params)[0];
+    /** The Drizzle ORM instance for building queries (see `tables.js`). */
+    get orm() {
+        return this.#orm;
     }
 
-    /** Runs a write statement and returns the number of changed rows. */
-    run(sql, params = []) {
-        this.#db.run(sql, params);
+    /** Runs a Drizzle insert, update or delete and returns the number of changed rows. */
+    write(query) {
+        query.run();
         const changes = this.#db.getRowsModified();
         if (this.#depth === 0) this.#changed();
         return changes;
@@ -85,8 +91,7 @@ export class Database {
         clearTimeout(this.#saveTimer);
         this.#saveTimer = null;
         const old = this.#db;
-        this.#db = sqlDb;
-        this.#migrate();
+        this.#open(sqlDb);
         old.close();
     }
 

@@ -61,14 +61,14 @@ web/
   src/
     app/bootstrap.js         opens the database and loads every domain
     core/
-      db/                    SQLite wrapper, schema migrations, IndexedDB persistence
+      db/                    SQLite wrapper, Drizzle tables (tables.js), generated migrations, IndexedDB persistence
       events.js              "data changed" signal (decouples domains from sync)
       config.js              API base address
     domains/
       playlists/
         components/                  presentation (Svelte + daisyUI)
         playlists.service.svelte.js  application: reactive state + use cases
-        playlists.repository.js      data access (SQL)
+        playlists.repository.js      data access (Drizzle ORM queries)
       videos/
         components/
         videos.service.svelte.js
@@ -95,8 +95,8 @@ Each domain is split the same way, and calls only go downwards:
 
 1. **Presentation**: Svelte components styled with daisyUI classes. Custom pieces (the progress strip, the video rows) use `<style lang="scss">` with the shared tokens and mixins.
 2. **Application**: one service per domain (`*.service.svelte.js`). It holds the domain's reactive state with Svelte 5 runes (`$state`, `$derived`) and exposes the use cases (`videos.addFromText`, `playlists.remove`, `sync.syncNow`…). Components read the state directly and call these methods.
-3. **Data**: repositories run SQL against the local database; clients talk HTTP.
-4. **Core**: the SQLite wrapper and its persistence.
+3. **Data**: repositories query the local database with Drizzle ORM, so values always travel as parameters and never as SQL text; clients talk HTTP.
+4. **Core**: the SQLite wrapper, the table definitions and the persistence.
 
 Services signal local writes through `core/events.js`; the sync service listens and schedules a background sync, so the playlists and videos domains don't depend on sync.
 
@@ -163,6 +163,14 @@ dotnet ef migrations add <Name> --project src/YtPlaylist.Infrastructure --output
 ```
 
 A test (`MigrationsMatchTheModel`) fails if the model changes without a migration. The API applies pending migrations when it starts.
+
+The browser database works the same way with Drizzle ORM: edit the tables in `web/src/core/db/tables.js`, then generate a migration from `web/`:
+
+```bash
+npm run db:generate   # writes src/core/db/migrations/NNNN_*.sql and its snapshot; commit them
+```
+
+The app applies new migrations when it opens the database, and CI fails if `tables.js` changes without a migration.
 
 Linting and formatting (in `web/`):
 

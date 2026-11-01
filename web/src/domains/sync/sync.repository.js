@@ -1,3 +1,6 @@
+import { and, asc, count, eq, gt, sql } from 'drizzle-orm';
+import { meta, playlists, videos } from '../../core/db/tables.js';
+
 /**
  * Sync bookkeeping in the local SQLite database: settings and cursor in the
  * `meta` table, and the `dirty` flags on synced rows.
@@ -12,14 +15,17 @@ const KEYS = {
 };
 
 const getMeta = (db, key) => {
-    return db.get('SELECT value FROM meta WHERE key = ?', [key])?.value ?? null;
+    return db.orm.select({ value: meta.value }).from(meta).where(eq(meta.key, key)).get()?.value ?? null;
 };
 
 const setMeta = (db, key, value) => {
-    db.run('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value', [
-        key,
-        value == null ? null : String(value),
-    ]);
+    const text = value == null ? null : String(value);
+    db.write(
+        db.orm
+            .insert(meta)
+            .values({ key, value: text })
+            .onConflictDoUpdate({ target: meta.key, set: { value: text } }),
+    );
 };
 
 export const getSettings = (db) => {
@@ -39,8 +45,8 @@ export const saveSettings = (db, { apiUrl, token, autoSync }) => {
         // A different server means a different change history: pull from scratch.
         if (previous.apiUrl !== (apiUrl.trim() || '/api')) {
             setMeta(db, KEYS.cursor, 0);
-            db.run('UPDATE playlists SET dirty = 1');
-            db.run('UPDATE videos SET dirty = 1');
+            db.write(db.orm.update(playlists).set({ dirty: true }));
+            db.write(db.orm.update(videos).set({ dirty: true }));
         }
     });
     return getSettings(db);
@@ -63,43 +69,52 @@ export const setLastSyncedAt = (db, t) => {
     setMeta(db, KEYS.lastSyncedAt, t);
 };
 
+const countDirty = (db, table) => {
+    return db.orm.select({ n: count() }).from(table).where(eq(table.dirty, true)).get().n;
+};
+
 export const countPending = (db) => {
-    return (
-        db.get('SELECT COUNT(*) AS n FROM playlists WHERE dirty = 1').n +
-        db.get('SELECT COUNT(*) AS n FROM videos WHERE dirty = 1').n
-    );
+    return countDirty(db, playlists) + countDirty(db, videos);
 };
 
 /** Local rows that changed since the last successful push (incl. deletions). */
 export const collectChanges = (db, limit = 2000) => {
-    const playlists = db
-        .all('SELECT * FROM playlists WHERE dirty = 1 ORDER BY updated_at LIMIT ?', [limit])
-        .map((r) => ({
-            id: r.id,
-            name: r.name,
-            description: r.description,
-            position: r.position,
-            createdAt: r.created_at,
-            updatedAt: r.updated_at,
-            deleted: r.deleted === 1,
-        }));
-    const videos = db
-        .all('SELECT * FROM videos WHERE dirty = 1 ORDER BY updated_at LIMIT ?', [limit - playlists.length])
-        .map((r) => ({
-            id: r.id,
-            playlistId: r.playlist_id,
-            youtubeId: r.youtube_id,
-            title: r.title,
-            author: r.author,
-            thumbnailUrl: r.thumbnail_url,
-            notes: r.notes,
-            watched: r.watched === 1,
-            position: r.position,
-            createdAt: r.created_at,
-            updatedAt: r.updated_at,
-            deleted: r.deleted === 1,
-        }));
-    return { playlists, videos };
+    const changedPlaylists = db.orm
+        .select({
+            id: playlists.id,
+            name: playlists.name,
+            description: playlists.description,
+            position: playlists.position,
+            createdAt: playlists.createdAt,
+            updatedAt: playlists.updatedAt,
+            deleted: playlists.deleted,
+        })
+        .from(playlists)
+        .where(eq(playlists.dirty, true))
+        .orderBy(asc(playlists.updatedAt))
+        .limit(limit)
+        .all();
+    const changedVideos = db.orm
+        .select({
+            id: videos.id,
+            playlistId: videos.playlistId,
+            youtubeId: videos.youtubeId,
+            title: videos.title,
+            author: videos.author,
+            thumbnailUrl: videos.thumbnailUrl,
+            notes: videos.notes,
+            watched: videos.watched,
+            position: videos.position,
+            createdAt: videos.createdAt,
+            updatedAt: videos.updatedAt,
+            deleted: videos.deleted,
+        })
+        .from(videos)
+        .where(eq(videos.dirty, true))
+        .orderBy(asc(videos.updatedAt))
+        .limit(limit - changedPlaylists.length)
+        .all();
+    return { playlists: changedPlaylists, videos: changedVideos };
 };
 
 /**
@@ -108,52 +123,93 @@ export const collectChanges = (db, limit = 2000) => {
  */
 export const markPushed = (db, changes) => {
     for (const p of changes.playlists) {
-        db.run('UPDATE playlists SET dirty = 0 WHERE id = ? AND updated_at = ?', [p.id, p.updatedAt]);
+        db.write(
+            db.orm
+                .update(playlists)
+                .set({ dirty: false })
+                .where(and(eq(playlists.id, p.id), eq(playlists.updatedAt, p.updatedAt))),
+        );
     }
     for (const v of changes.videos) {
-        db.run('UPDATE videos SET dirty = 0 WHERE id = ? AND updated_at = ?', [v.id, v.updatedAt]);
+        db.write(
+            db.orm
+                .update(videos)
+                .set({ dirty: false })
+                .where(and(eq(videos.id, v.id), eq(videos.updatedAt, v.updatedAt))),
+        );
     }
 };
+
+/** The value an upsert tried to insert into `column` (SQLite's `excluded` row). */
+const excluded = (column) => sql`excluded.${sql.identifier(column.name)}`;
 
 /** Applies server rows with last-write-wins; returns how many rows changed. */
 export const applyRemote = (db, changes) => {
     let applied = 0;
     for (const p of changes.playlists ?? []) {
-        applied += db.run(
-            `INSERT INTO playlists (id, name, description, position, created_at, updated_at, deleted, dirty)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 0)
-       ON CONFLICT (id) DO UPDATE SET
-         name = excluded.name, description = excluded.description, position = excluded.position,
-         updated_at = excluded.updated_at, deleted = excluded.deleted, dirty = 0
-       WHERE excluded.updated_at > playlists.updated_at`,
-            [p.id, p.name, p.description ?? '', p.position ?? 0, p.createdAt, p.updatedAt, p.deleted ? 1 : 0],
+        applied += db.write(
+            db.orm
+                .insert(playlists)
+                .values({
+                    id: p.id,
+                    name: p.name,
+                    description: p.description ?? '',
+                    position: p.position ?? 0,
+                    createdAt: p.createdAt,
+                    updatedAt: p.updatedAt,
+                    deleted: Boolean(p.deleted),
+                    dirty: false,
+                })
+                .onConflictDoUpdate({
+                    target: playlists.id,
+                    set: {
+                        name: excluded(playlists.name),
+                        description: excluded(playlists.description),
+                        position: excluded(playlists.position),
+                        updatedAt: excluded(playlists.updatedAt),
+                        deleted: excluded(playlists.deleted),
+                        dirty: false,
+                    },
+                    setWhere: gt(excluded(playlists.updatedAt), playlists.updatedAt),
+                }),
         );
     }
     for (const v of changes.videos ?? []) {
-        applied += db.run(
-            `INSERT INTO videos (id, playlist_id, youtube_id, title, author, thumbnail_url, notes, watched,
-                           position, created_at, updated_at, deleted, dirty)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-       ON CONFLICT (id) DO UPDATE SET
-         playlist_id = excluded.playlist_id, youtube_id = excluded.youtube_id, title = excluded.title,
-         author = excluded.author, thumbnail_url = excluded.thumbnail_url, notes = excluded.notes,
-         watched = excluded.watched, position = excluded.position, updated_at = excluded.updated_at,
-         deleted = excluded.deleted, dirty = 0
-       WHERE excluded.updated_at > videos.updated_at`,
-            [
-                v.id,
-                v.playlistId,
-                v.youtubeId,
-                v.title ?? '',
-                v.author ?? '',
-                v.thumbnailUrl ?? '',
-                v.notes ?? '',
-                v.watched ? 1 : 0,
-                v.position ?? 0,
-                v.createdAt,
-                v.updatedAt,
-                v.deleted ? 1 : 0,
-            ],
+        applied += db.write(
+            db.orm
+                .insert(videos)
+                .values({
+                    id: v.id,
+                    playlistId: v.playlistId,
+                    youtubeId: v.youtubeId,
+                    title: v.title ?? '',
+                    author: v.author ?? '',
+                    thumbnailUrl: v.thumbnailUrl ?? '',
+                    notes: v.notes ?? '',
+                    watched: Boolean(v.watched),
+                    position: v.position ?? 0,
+                    createdAt: v.createdAt,
+                    updatedAt: v.updatedAt,
+                    deleted: Boolean(v.deleted),
+                    dirty: false,
+                })
+                .onConflictDoUpdate({
+                    target: videos.id,
+                    set: {
+                        playlistId: excluded(videos.playlistId),
+                        youtubeId: excluded(videos.youtubeId),
+                        title: excluded(videos.title),
+                        author: excluded(videos.author),
+                        thumbnailUrl: excluded(videos.thumbnailUrl),
+                        notes: excluded(videos.notes),
+                        watched: excluded(videos.watched),
+                        position: excluded(videos.position),
+                        updatedAt: excluded(videos.updatedAt),
+                        deleted: excluded(videos.deleted),
+                        dirty: false,
+                    },
+                    setWhere: gt(excluded(videos.updatedAt), videos.updatedAt),
+                }),
         );
     }
     return applied;
