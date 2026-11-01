@@ -37,6 +37,7 @@ export class Database {
             this.transaction(() => {
                 this.#db.exec(migrations[v]);
                 // PRAGMA takes no parameters; the version is always a loop integer.
+                // eslint-disable-next-line no-restricted-syntax
                 this.#db.exec(`PRAGMA user_version = ${Number(v + 1)}`);
             });
         }

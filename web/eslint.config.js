@@ -44,6 +44,32 @@ export default [
             'svelte/require-each-key': 'error',
             'svelte/valid-compile': 'error',
 
+            // SQL injection: queries go through Drizzle ORM, which sends values as parameters.
+            'no-restricted-syntax': [
+                'error',
+                {
+                    selector: "MemberExpression[object.name='sql'][property.name='raw']",
+                    message:
+                        'sql.raw() puts text straight into the SQL. Build the query with Drizzle, or put values in a sql`…` template (sent as parameters) and names in sql.identifier().',
+                },
+                {
+                    selector: "ImportSpecifier[imported.name='sql'][local.name!='sql']",
+                    message: "Import Drizzle's sql tag as `sql`, so the sql.raw() check can see it.",
+                },
+                {
+                    selector:
+                        'CallExpression[callee.property.name=/^(exec|run|prepare)$/] > TemplateLiteral.arguments:first-child[expressions.length>0]',
+                    message:
+                        'This builds SQL from a template string. Use a Drizzle query, or pass values as parameters instead.',
+                },
+                {
+                    selector:
+                        "CallExpression[callee.property.name=/^(exec|run|prepare)$/] > BinaryExpression.arguments:first-child[operator='+']",
+                    message:
+                        'This builds SQL by joining strings. Use a Drizzle query, or pass values as parameters instead.',
+                },
+            ],
+
             // Functions are const arrow functions; class methods stay methods.
             'func-style': ['error', 'expression'],
             'prefer-arrow-callback': 'error',
