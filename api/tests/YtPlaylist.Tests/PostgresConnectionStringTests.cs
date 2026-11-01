@@ -27,7 +27,30 @@ public sealed class PostgresConnectionStringTests
         Assert.Equal(6543, result.Port);
         Assert.Equal("app", result.Database);
 
-        const string plain = "Host=localhost;Database=app;Username=u;Password=p";
-        Assert.Equal(plain, PostgresConnectionString.From(plain));
+        var plain = new NpgsqlConnectionStringBuilder(
+            PostgresConnectionString.From("Host=localhost;Database=app;Username=u;Password=p;SSL Mode=Require"));
+        Assert.Equal("localhost", plain.Host);
+        Assert.Equal("app", plain.Database);
+        Assert.Equal("u", plain.Username);
+        Assert.Equal("p", plain.Password);
+        Assert.Equal(SslMode.Require, plain.SslMode);
+    }
+
+    [Theory]
+    [InlineData("postgresql://u:p@ep-cool-1.neon.tech/neondb?sslmode=require")]
+    [InlineData("Host=localhost;Database=app;Username=u;Password=p")]
+    public void TurnsOffGssEncryptionByDefault(string value)
+    {
+        var result = new NpgsqlConnectionStringBuilder(PostgresConnectionString.From(value));
+        Assert.Equal(GssEncryptionMode.Disable, result.GssEncryptionMode);
+    }
+
+    [Theory]
+    [InlineData("postgresql://u:p@localhost/app?gssencmode=prefer")]
+    [InlineData("Host=localhost;Database=app;Gss Encryption Mode=Prefer")]
+    public void KeepsGssEncryptionWhenAskedFor(string value)
+    {
+        var result = new NpgsqlConnectionStringBuilder(PostgresConnectionString.From(value));
+        Assert.Equal(GssEncryptionMode.Prefer, result.GssEncryptionMode);
     }
 }

@@ -1,3 +1,4 @@
+using System.Data.Common;
 using Npgsql;
 
 namespace YtPlaylist.Infrastructure.Persistence;
@@ -7,6 +8,12 @@ namespace YtPlaylist.Infrastructure.Persistence;
 /// (<c>postgresql://user:password@host/db?sslmode=require</c>) as well as a regular
 /// Npgsql connection string (<c>Host=…;Database=…</c>).
 /// </summary>
+/// <remarks>
+/// GSS (Kerberos) encryption is turned off unless the value asks for it. Npgsql tries it
+/// first by default, which needs the native <c>libgssapi_krb5</c> library that the
+/// runtime image doesn't ship, and Neon doesn't offer it. Connections still use TLS as
+/// set by <c>sslmode</c>; with GSS off, a server that requires GSS refuses the connection.
+/// </remarks>
 public static class PostgresConnectionString
 {
     public static string From(string value)
@@ -16,7 +23,12 @@ public static class PostgresConnectionString
         if (!value.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase)
             && !value.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
         {
-            return value;
+            var plain = new NpgsqlConnectionStringBuilder(value);
+            if (!SetsGssEncryptionMode(value))
+            {
+                plain.GssEncryptionMode = GssEncryptionMode.Disable;
+            }
+            return plain.ConnectionString;
         }
 
         var uri = new Uri(value);
@@ -25,6 +37,7 @@ public static class PostgresConnectionString
             Host = uri.Host,
             Port = uri.Port > 0 ? uri.Port : 5432,
             Database = Uri.UnescapeDataString(uri.AbsolutePath.TrimStart('/')),
+            GssEncryptionMode = GssEncryptionMode.Disable,
         };
         var userInfo = uri.UserInfo.Split(':', 2);
         if (userInfo[0].Length > 0)
@@ -55,6 +68,15 @@ public static class PostgresConnectionString
                         _ => throw new FormatException($"Unknown sslmode '{setting}'."),
                     };
                     break;
+                case "GSSENCMODE":
+                    builder.GssEncryptionMode = setting switch
+                    {
+                        "DISABLE" => GssEncryptionMode.Disable,
+                        "PREFER" => GssEncryptionMode.Prefer,
+                        "REQUIRE" => GssEncryptionMode.Require,
+                        _ => throw new FormatException($"Unknown gssencmode '{setting}'."),
+                    };
+                    break;
                 case "CHANNEL_BINDING":
                     builder.ChannelBinding = setting switch
                     {
@@ -69,5 +91,15 @@ public static class PostgresConnectionString
             }
         }
         return builder.ConnectionString;
+    }
+
+    /// <summary>Whether a <c>Key=value</c> connection string sets the GSS encryption mode itself.</summary>
+    private static bool SetsGssEncryptionMode(string connectionString)
+    {
+        var keys = new DbConnectionStringBuilder { ConnectionString = connectionString }.Keys;
+        return keys.Cast<string>()
+            .Select(key => key.Replace(" ", "", StringComparison.Ordinal))
+            .Any(key => key.Equals("GssEncryptionMode", StringComparison.OrdinalIgnoreCase)
+                || key.Equals("GssEncMode", StringComparison.OrdinalIgnoreCase));
     }
 }
