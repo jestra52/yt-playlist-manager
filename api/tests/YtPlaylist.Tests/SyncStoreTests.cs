@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using YtPlaylist.Infrastructure.Persistence;
 using YtPlaylist.Models.Sync;
 
