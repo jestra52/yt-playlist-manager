@@ -51,7 +51,7 @@ flowchart TB
 
     subgraph core["core"]
         direction LR
-        db["db<br/>SQLite wrapper,<br/>migrations"]
+        db["db<br/>SQLite wrapper, Drizzle<br/>tables, migrations"]
         storage[("sql.js + IndexedDB")]
         events["events<br/>data-changed signal"]
         config["config<br/>API address"]
@@ -127,8 +127,8 @@ flowchart LR
 | --- | --- | --- |
 | Presentation | `web/src/domains/*/components`, `web/src/shared/components` | Svelte views styled with daisyUI; read service state, call service methods |
 | Application | `web/src/domains/*/*.service.svelte.js` | Reactive state (`$state`, `$derived`) and use cases such as `videos.addFromText` or `sync.syncNow` |
-| Data access | `*.repository.js`, `*.client.js` | SQL against the local database; HTTP calls to the API |
-| Core | `web/src/core` | SQLite wrapper and persistence, the data-changed signal, the API address |
+| Data access | `*.repository.js`, `*.client.js` | Drizzle ORM queries against the local database; HTTP calls to the API |
+| Core | `web/src/core` | SQLite wrapper, Drizzle table definitions and migrations, persistence, the data-changed signal, the API address |
 | API | `api/src/YtPlaylist.*` | Endpoints and auth (Api), use cases and ports (Application), entities and rules (Domain), EF Core and YouTube clients (Infrastructure) |
 
 ## Deployment
