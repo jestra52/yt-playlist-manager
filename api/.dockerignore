@@ -3,5 +3,6 @@
 tests/
 *.md
 # Local settings and secrets never go into the image.
+**/appsettings.Local*.json
 .env
 .env.*

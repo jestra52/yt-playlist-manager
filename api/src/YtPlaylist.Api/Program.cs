@@ -5,9 +5,9 @@ using YtPlaylist.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-if (builder.Environment.IsDevelopment() && DotEnvFile.Find(builder.Environment.ContentRootPath) is { } envFile)
+if (builder.Environment.IsDevelopment())
 {
-    builder.Configuration.AddDotEnvFile(envFile);
+    builder.Configuration.AddLocalSettingsFile(builder.Environment.ContentRootPath);
 }
 
 if (builder.Configuration["PORT"] is { Length: > 0 } port)
