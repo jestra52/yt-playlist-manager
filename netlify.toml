@@ -5,6 +5,14 @@
 [build]
   command = "npm --prefix web ci && npm --prefix web run build && node web/scripts/write-redirects.mjs"
   publish = "web/dist"
+  # Skip the build (exit 0) when nothing the site uses changed since the last deploy, so
+  # API-only and docs-only pushes don't redeploy the site. It builds (non-zero exit) when
+  # there's no previous deploy, on "Clear cache and deploy" (same commit), and when the
+  # previous commit isn't in the clone (git diff fails).
+  ignore = """
+    [ -n "$CACHED_COMMIT_REF" ] && [ "$CACHED_COMMIT_REF" != "$COMMIT_REF" ] &&
+    git diff --quiet "$CACHED_COMMIT_REF" "$COMMIT_REF" -- web/ netlify.toml
+  """
 
 [build.environment]
   NODE_VERSION = "22"
