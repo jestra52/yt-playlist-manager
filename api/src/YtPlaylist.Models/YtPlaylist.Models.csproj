@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Entities and the API's request/response contracts. No references to other projects. -->
+</Project>

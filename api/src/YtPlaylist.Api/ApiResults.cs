@@ -1,7 +1,6 @@
-namespace YtPlaylist.Api;
+using YtPlaylist.Models.Api;
 
-/// <summary>Error body the web app reads: <c>{ "error": "…" }</c>.</summary>
-public sealed record ApiError(string Error);
+namespace YtPlaylist.Api;
 
 public static class ApiResults
 {

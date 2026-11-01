@@ -21,7 +21,7 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("YtPlaylist.Domain.Common.SyncCounter", b =>
+            modelBuilder.Entity("YtPlaylist.Models.Entities.SyncCounter", b =>
                 {
                     b.Property<int>("Id")
                         .HasColumnType("integer")
@@ -43,7 +43,7 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("YtPlaylist.Domain.Playlists.Playlist", b =>
+            modelBuilder.Entity("YtPlaylist.Models.Entities.Playlist", b =>
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(64)
@@ -89,7 +89,7 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
                     b.ToTable("playlists", (string)null);
                 });
 
-            modelBuilder.Entity("YtPlaylist.Domain.Videos.Video", b =>
+            modelBuilder.Entity("YtPlaylist.Models.Entities.Video", b =>
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(64)

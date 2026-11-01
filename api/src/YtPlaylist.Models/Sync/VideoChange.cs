@@ -1,0 +1,20 @@
+using System.Text.Json.Serialization;
+
+namespace YtPlaylist.Models.Sync;
+
+public sealed record VideoChange
+{
+    public string Id { get; init; } = "";
+    public string PlaylistId { get; init; } = "";
+    [JsonPropertyName("youtubeId")]
+    public string YouTubeId { get; init; } = "";
+    public string Title { get; init; } = "";
+    public string Author { get; init; } = "";
+    public string ThumbnailUrl { get; init; } = "";
+    public string Notes { get; init; } = "";
+    public bool Watched { get; init; }
+    public double Position { get; init; }
+    public long CreatedAt { get; init; }
+    public long UpdatedAt { get; init; }
+    public bool Deleted { get; init; }
+}

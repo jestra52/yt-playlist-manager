@@ -5,6 +5,8 @@ using System.Xml.Linq;
 using Microsoft.Extensions.Options;
 using YtPlaylist.Application.YouTube;
 using YtPlaylist.Domain.Common;
+using YtPlaylist.Models.YouTube;
+using YtPlaylist.Models.YouTube.DataApi;
 
 namespace YtPlaylist.Infrastructure.YouTube;
 
@@ -196,30 +198,4 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
 
     private static string Thumbnail(string videoId, string? fromApi) =>
         string.IsNullOrEmpty(fromApi) ? $"https://i.ytimg.com/vi/{videoId}/mqdefault.jpg" : fromApi;
-
-    private sealed record PlaylistListResponse(IReadOnlyList<PlaylistResource>? Items);
-
-    private sealed record PlaylistResource(PlaylistSnippet? Snippet);
-
-    private sealed record PlaylistSnippet(string? Title, string? ChannelTitle);
-
-    private sealed record PlaylistItemListResponse(string? NextPageToken, IReadOnlyList<PlaylistItemResource>? Items);
-
-    private sealed record PlaylistItemResource(PlaylistItemSnippet? Snippet);
-
-    private sealed record PlaylistItemSnippet(
-        string? Title,
-        string? VideoOwnerChannelTitle,
-        ResourceId? ResourceId,
-        IReadOnlyDictionary<string, ThumbnailInfo>? Thumbnails);
-
-    private sealed record ResourceId(string? VideoId);
-
-    private sealed record ThumbnailInfo(string? Url);
-
-    private sealed record ApiErrorResponse(ApiError? Error);
-
-    private sealed record ApiError(int Code, string? Message, IReadOnlyList<ApiErrorItem>? Errors);
-
-    private sealed record ApiErrorItem(string? Reason);
 }

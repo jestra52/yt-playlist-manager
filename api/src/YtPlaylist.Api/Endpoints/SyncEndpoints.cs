@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Options;
 using YtPlaylist.Application.Sync;
 using YtPlaylist.Domain.Common;
+using YtPlaylist.Models.Sync;
 using JsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 
 namespace YtPlaylist.Api.Endpoints;

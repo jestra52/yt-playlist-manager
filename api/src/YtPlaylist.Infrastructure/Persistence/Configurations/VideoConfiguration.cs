@@ -1,32 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using YtPlaylist.Domain.Common;
-using YtPlaylist.Domain.Playlists;
-using YtPlaylist.Domain.Videos;
+using YtPlaylist.Models.Entities;
 
 namespace YtPlaylist.Infrastructure.Persistence.Configurations;
-
-public sealed class PlaylistConfiguration : IEntityTypeConfiguration<Playlist>
-{
-    public void Configure(EntityTypeBuilder<Playlist> builder)
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-        builder.ToTable("playlists");
-        builder.HasKey(p => p.Id);
-        builder.Property(p => p.Id).HasColumnName("id").HasMaxLength(SyncLimits.MaxIdLength);
-        builder.Property(p => p.Name).HasColumnName("name").HasMaxLength(SyncLimits.MaxNameLength).IsRequired();
-        builder.Property(p => p.Description)
-            .HasColumnName("description")
-            .HasMaxLength(SyncLimits.MaxTextLength)
-            .IsRequired();
-        builder.Property(p => p.Position).HasColumnName("position");
-        builder.Property(p => p.CreatedAt).HasColumnName("created_at");
-        builder.Property(p => p.UpdatedAt).HasColumnName("updated_at");
-        builder.Property(p => p.Deleted).HasColumnName("deleted");
-        builder.Property(p => p.Seq).HasColumnName("seq");
-        builder.HasIndex(p => p.Seq);
-    }
-}
 
 public sealed class VideoConfiguration : IEntityTypeConfiguration<Video>
 {
@@ -56,18 +33,5 @@ public sealed class VideoConfiguration : IEntityTypeConfiguration<Video>
         builder.Property(v => v.Seq).HasColumnName("seq");
         builder.HasIndex(v => v.Seq);
         builder.HasIndex(v => v.PlaylistId);
-    }
-}
-
-public sealed class SyncCounterConfiguration : IEntityTypeConfiguration<SyncCounter>
-{
-    public void Configure(EntityTypeBuilder<SyncCounter> builder)
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-        builder.ToTable("sync_counter");
-        builder.HasKey(c => c.Id);
-        builder.Property(c => c.Id).HasColumnName("id").ValueGeneratedNever();
-        builder.Property(c => c.Value).HasColumnName("value");
-        builder.HasData(new SyncCounter { Id = SyncCounter.SingletonId, Value = 0 });
     }
 }

@@ -9,52 +9,8 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using YtPlaylist.Application.Sync;
 using YtPlaylist.Application.YouTube;
-using YtPlaylist.Domain.Common;
 
 namespace YtPlaylist.Tests;
-
-internal sealed class FakeSyncStore : ISyncStore
-{
-    public List<ChangeSet> Applied { get; } = [];
-    public long? LastSince { get; private set; }
-    public bool Fail { get; init; }
-
-    public Task<int> ApplyAsync(ChangeSet changes, CancellationToken cancellationToken)
-    {
-        if (this.Fail)
-        {
-            throw new InvalidOperationException("boom");
-        }
-        this.Applied.Add(changes);
-        return Task.FromResult(changes.Count);
-    }
-
-    public Task<ChangePage> GetChangesAsync(long since, int limit, CancellationToken cancellationToken)
-    {
-        this.LastSince = since;
-        var remote = new PlaylistChange { Id = "p1", Name = "Remote", CreatedAt = 1, UpdatedAt = 2 };
-        return Task.FromResult(new ChangePage(new ChangeSet { Playlists = [remote] }, 42, false));
-    }
-}
-
-internal sealed class FakeYouTube : IVideoMetadataSource, IYouTubePlaylistSource
-{
-    public Task<VideoMetadata> GetVideoAsync(string youTubeId, CancellationToken cancellationToken) => youTubeId switch
-    {
-        "aaaaaaaaaaa" => throw new YouTubeNotFoundException("video not found or not embeddable"),
-        _ when !YouTubeIds.IsVideoId(youTubeId) => throw new DomainValidationException("invalid youtube id"),
-        _ => Task.FromResult(new VideoMetadata(youTubeId, $"Title {youTubeId}", "Channel", "")),
-    };
-
-    public Task<YouTubePlaylist> GetPlaylistAsync(string playlistId, CancellationToken cancellationToken) => playlistId switch
-    {
-        "PLprivateprivate" => throw new YouTubeNotFoundException("playlist not found, or it is private"),
-        "PLbrokenbroken" => throw new YouTubeUnavailableException("upstream down"),
-        "bad" => throw new DomainValidationException("invalid playlist id"),
-        _ => Task.FromResult(new YouTubePlaylist(
-            playlistId, "Road trip", "Juan", [new VideoMetadata("dQw4w9WgXcQ", "One", "A", "")], 0, false, "feed")),
-    };
-}
 
 public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
 {

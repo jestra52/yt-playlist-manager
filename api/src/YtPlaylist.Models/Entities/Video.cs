@@ -1,4 +1,4 @@
-namespace YtPlaylist.Domain.Videos;
+namespace YtPlaylist.Models.Entities;
 
 /// <summary>A YouTube video saved into a playlist, as stored in the cloud database.</summary>
 public sealed class Video

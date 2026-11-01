@@ -1,5 +1,6 @@
 using YtPlaylist.Application.Sync;
 using YtPlaylist.Domain.Common;
+using YtPlaylist.Models.Sync;
 
 namespace YtPlaylist.Tests;
 

@@ -48,9 +48,14 @@ render.yaml                  Render Blueprint for the API container
 api/                         .NET 10 solution (YtPlaylist.slnx)
   Dockerfile                 API image for Render
   compose.yaml               local PostgreSQL for development
+  stylecop.globalconfig      one type per file, named after the type (checked on every build)
   src/
-    YtPlaylist.Domain/          entities (Playlist, Video, SyncCounter), ID rules, limits
-    YtPlaylist.Application/     use cases (SyncService), validation, ports (ISyncStore, YouTube sources)
+    YtPlaylist.Models/          entities and every DTO: the API's request/response contracts (Api/, Sync/,
+                                YouTube/) and YouTube's responses (YouTube/DataApi, YouTube/OEmbed);
+                                no references to other projects
+    YtPlaylist.Domain/          ID rules, limits, validation errors
+    YtPlaylist.Application/     use cases (SyncService), validation, ports (ISyncStore, YouTube sources),
+                                errors in YouTube/Exceptions
     YtPlaylist.Infrastructure/  EF Core: AppDbContext, entity configurations, migrations, EfSyncStore;
                                 HTTP clients for YouTube oEmbed, Data API and playlist feed
     YtPlaylist.Api/             ASP.NET Core minimal API: endpoints, bearer-token auth, CORS

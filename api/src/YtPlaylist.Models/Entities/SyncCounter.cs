@@ -1,4 +1,4 @@
-namespace YtPlaylist.Domain.Common;
+namespace YtPlaylist.Models.Entities;
 
 /// <summary>
 /// Single-row table holding the last change number handed out. Locking this row

@@ -1,0 +1,18 @@
+is_global = true
+
+# StyleCop.Analyzers is used for two rules only: one type per file, named after the type.
+# The rest of StyleCop's style is not adopted. This file lives in api/ (not in the root
+# .editorconfig) so the Docker build, whose context is api/, gets the same settings.
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.DocumentationRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.LayoutRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.MaintainabilityRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.NamingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.OrderingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.ReadabilityRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpacingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpecialRules.severity = none
+
+# SA1402: a file may only contain a single type (classes, records, interfaces, structs, enums, delegates)
+dotnet_diagnostic.SA1402.severity = warning
+# SA1649: the file name must match the first type name
+dotnet_diagnostic.SA1649.severity = warning

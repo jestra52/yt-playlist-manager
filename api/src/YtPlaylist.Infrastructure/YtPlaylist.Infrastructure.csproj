@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!-- Adapters: Entity Framework Core on PostgreSQL, and HTTP clients for YouTube. -->
   <ItemGroup>
+    <ProjectReference Include="..\YtPlaylist.Models\YtPlaylist.Models.csproj" />
     <ProjectReference Include="..\YtPlaylist.Application\YtPlaylist.Application.csproj" />
   </ItemGroup>
 

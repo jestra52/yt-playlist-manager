@@ -3,8 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using YtPlaylist.Application.Sync;
 using YtPlaylist.Domain.Common;
-using YtPlaylist.Domain.Playlists;
-using YtPlaylist.Domain.Videos;
+using YtPlaylist.Models.Entities;
+using YtPlaylist.Models.Sync;
 
 namespace YtPlaylist.Infrastructure.Persistence;
 
