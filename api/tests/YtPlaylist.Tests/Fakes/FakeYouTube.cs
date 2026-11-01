@@ -1,5 +1,6 @@
 using YtPlaylist.Application.YouTube;
 using YtPlaylist.Domain.Common;
+using YtPlaylist.Models.YouTube;
 
 namespace YtPlaylist.Tests;
 

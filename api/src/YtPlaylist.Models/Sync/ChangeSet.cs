@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace YtPlaylist.Application.Sync;
+namespace YtPlaylist.Models.Sync;
 
 /// <summary>A batch of rows travelling in either direction.</summary>
 public sealed record ChangeSet

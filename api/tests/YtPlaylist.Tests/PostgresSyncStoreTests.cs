@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using YtPlaylist.Application.Sync;
 using YtPlaylist.Infrastructure.Persistence;
+using YtPlaylist.Models.Sync;
 
 namespace YtPlaylist.Tests;
 

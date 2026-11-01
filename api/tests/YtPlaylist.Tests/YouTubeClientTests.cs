@@ -2,6 +2,7 @@ using System.Net;
 using YtPlaylist.Application.YouTube;
 using YtPlaylist.Domain.Common;
 using YtPlaylist.Infrastructure.YouTube;
+using YtPlaylist.Models.YouTube;
 
 namespace YtPlaylist.Tests;
 

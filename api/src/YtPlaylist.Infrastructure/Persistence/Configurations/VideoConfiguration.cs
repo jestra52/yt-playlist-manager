@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using YtPlaylist.Domain.Common;
-using YtPlaylist.Domain.Videos;
+using YtPlaylist.Models.Entities;
 
 namespace YtPlaylist.Infrastructure.Persistence.Configurations;
 

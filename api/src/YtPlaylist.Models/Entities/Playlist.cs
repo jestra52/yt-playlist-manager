@@ -1,4 +1,4 @@
-namespace YtPlaylist.Domain.Playlists;
+namespace YtPlaylist.Models.Entities;
 
 /// <summary>A named, ordered collection of videos, as stored in the cloud database.</summary>
 public sealed class Playlist

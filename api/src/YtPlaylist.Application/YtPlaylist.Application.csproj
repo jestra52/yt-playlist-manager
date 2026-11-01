@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!-- Use cases and the ports (interfaces) that infrastructure implements. -->
   <ItemGroup>
+    <ProjectReference Include="..\YtPlaylist.Models\YtPlaylist.Models.csproj" />
     <ProjectReference Include="..\YtPlaylist.Domain\YtPlaylist.Domain.csproj" />
   </ItemGroup>
 

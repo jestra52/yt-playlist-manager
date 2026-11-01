@@ -1,3 +1,5 @@
+using YtPlaylist.Models.YouTube;
+
 namespace YtPlaylist.Application.YouTube;
 
 /// <summary>Reads video titles and channels.</summary>

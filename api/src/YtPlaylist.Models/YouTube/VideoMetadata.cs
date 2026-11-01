@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace YtPlaylist.Application.YouTube;
+namespace YtPlaylist.Models.YouTube;
 
 /// <summary>Public details of a YouTube video.</summary>
 public sealed record VideoMetadata(

@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
 using YtPlaylist.Application.YouTube;
 using YtPlaylist.Domain.Common;
+using YtPlaylist.Models.YouTube;
 
 namespace YtPlaylist.Infrastructure.YouTube;
 

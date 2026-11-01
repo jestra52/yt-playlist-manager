@@ -1,4 +1,4 @@
-namespace YtPlaylist.Application.YouTube;
+namespace YtPlaylist.Models.YouTube;
 
 /// <summary>A public YouTube playlist and the videos the app imports.</summary>
 /// <param name="Id"></param>

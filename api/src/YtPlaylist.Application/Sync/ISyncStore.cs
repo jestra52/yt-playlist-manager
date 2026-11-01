@@ -1,3 +1,5 @@
+using YtPlaylist.Models.Sync;
+
 namespace YtPlaylist.Application.Sync;
 
 /// <summary>Cloud storage for synced rows (implemented with Entity Framework Core).</summary>

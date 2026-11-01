@@ -1,4 +1,4 @@
-namespace YtPlaylist.Application.Sync;
+namespace YtPlaylist.Models.Sync;
 
 public sealed record PlaylistChange
 {

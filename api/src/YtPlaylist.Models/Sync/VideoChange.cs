@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace YtPlaylist.Application.Sync;
+namespace YtPlaylist.Models.Sync;
 
 public sealed record VideoChange
 {

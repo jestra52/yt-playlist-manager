@@ -1,4 +1,4 @@
-namespace YtPlaylist.Application.Sync;
+namespace YtPlaylist.Models.Sync;
 
 /// <summary>What a device sends: its local changes and the last server change it has seen.</summary>
 public sealed record SyncRequest

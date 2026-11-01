@@ -71,7 +71,7 @@ flowchart TB
 
 ### .NET API
 
-One project per layer. Calls go from the API project inwards; Infrastructure implements the interfaces (ports) that Application defines, so the use cases don't depend on EF Core or HTTP.
+One project per layer. Calls go from the API project inwards; Infrastructure implements the interfaces (ports) that Application defines, so the use cases don't depend on EF Core or HTTP. `YtPlaylist.Models` holds the entities and the request/response contracts, and references no other project (a first step towards the N-tier layout in #26).
 
 ```mermaid
 flowchart LR
@@ -92,8 +92,13 @@ flowchart LR
 
     subgraph domain["YtPlaylist.Domain"]
         direction TB
-        entities["Playlist · Video · SyncCounter"]
         rules["YouTubeIds · SyncLimits"]
+    end
+
+    subgraph models["YtPlaylist.Models"]
+        direction TB
+        entities["Entities<br/>Playlist · Video · SyncCounter"]
+        contracts["Contracts<br/>ChangeSet · SyncRequest · SyncResponse …<br/>VideoMetadata · YouTubePlaylist"]
     end
 
     subgraph infrastructure["YtPlaylist.Infrastructure"]
@@ -112,6 +117,7 @@ flowchart LR
     clients -.-> ports
     validator --> rules
     dbContext --> entities
+    syncEp & ports --> contracts
 
     subgraph external["External services"]
         direction TB
@@ -129,7 +135,7 @@ flowchart LR
 | Application | `web/src/domains/*/*.service.svelte.js` | Reactive state (`$state`, `$derived`) and use cases such as `videos.addFromText` or `sync.syncNow` |
 | Data access | `*.repository.js`, `*.client.js` | Drizzle ORM queries against the local database; HTTP calls to the API |
 | Core | `web/src/core` | SQLite wrapper, Drizzle table definitions and migrations, persistence, the data-changed signal, the API address |
-| API | `api/src/YtPlaylist.*` | Endpoints and auth (Api), use cases and ports (Application), entities and rules (Domain), EF Core and YouTube clients (Infrastructure) |
+| API | `api/src/YtPlaylist.*` | Endpoints and auth (Api), use cases and ports (Application), entities and contracts (Models), ID rules and limits (Domain), EF Core and YouTube clients (Infrastructure) |
 
 ## Deployment
 
