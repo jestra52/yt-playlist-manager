@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\YtPlaylist.Models\YtPlaylist.Models.csproj" />
     <ProjectReference Include="..\YtPlaylist.Application\YtPlaylist.Application.csproj" />
     <ProjectReference Include="..\YtPlaylist.Infrastructure\YtPlaylist.Infrastructure.csproj" />
   </ItemGroup>

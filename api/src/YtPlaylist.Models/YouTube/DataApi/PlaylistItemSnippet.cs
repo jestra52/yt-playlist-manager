@@ -1,7 +1,7 @@
-namespace YtPlaylist.Infrastructure.YouTube;
+namespace YtPlaylist.Models.YouTube.DataApi;
 
 /// <summary>The details of a playlist item.</summary>
-internal sealed record PlaylistItemSnippet(
+public sealed record PlaylistItemSnippet(
     string? Title,
     string? VideoOwnerChannelTitle,
     ResourceId? ResourceId,

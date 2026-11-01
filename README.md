@@ -50,8 +50,9 @@ api/                         .NET 10 solution (YtPlaylist.slnx)
   compose.yaml               local PostgreSQL for development
   stylecop.globalconfig      one type per file, named after the type (checked on every build)
   src/
-    YtPlaylist.Models/          entities (Playlist, Video, SyncCounter) and the API's request/response
-                                contracts (Sync/, YouTube/); no references to other projects
+    YtPlaylist.Models/          entities and every DTO: the API's request/response contracts (Api/, Sync/,
+                                YouTube/) and YouTube's responses (YouTube/DataApi, YouTube/OEmbed);
+                                no references to other projects
     YtPlaylist.Domain/          ID rules, limits, validation errors
     YtPlaylist.Application/     use cases (SyncService), validation, ports (ISyncStore, YouTube sources),
                                 errors in YouTube/Exceptions

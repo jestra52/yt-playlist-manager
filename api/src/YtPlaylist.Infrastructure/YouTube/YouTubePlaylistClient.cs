@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using YtPlaylist.Application.YouTube;
 using YtPlaylist.Domain.Common;
 using YtPlaylist.Models.YouTube;
+using YtPlaylist.Models.YouTube.DataApi;
 
 namespace YtPlaylist.Infrastructure.YouTube;
 

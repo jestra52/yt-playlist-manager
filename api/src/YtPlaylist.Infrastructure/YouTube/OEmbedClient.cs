@@ -1,10 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
 using YtPlaylist.Application.YouTube;
 using YtPlaylist.Domain.Common;
 using YtPlaylist.Models.YouTube;
+using YtPlaylist.Models.YouTube.OEmbed;
 
 namespace YtPlaylist.Infrastructure.YouTube;
 
@@ -41,9 +41,4 @@ public sealed class OEmbedClient(HttpClient http, IOptions<YouTubeOptions> optio
             : body.ThumbnailUrl;
         return new VideoMetadata(youTubeId, body.Title ?? "", body.AuthorName ?? "", thumbnail);
     }
-
-    private sealed record OEmbedResponse(
-        [property: JsonPropertyName("title")] string? Title,
-        [property: JsonPropertyName("author_name")] string? AuthorName,
-        [property: JsonPropertyName("thumbnail_url")] string? ThumbnailUrl);
 }

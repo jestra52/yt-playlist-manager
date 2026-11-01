@@ -1,3 +1,5 @@
+using YtPlaylist.Models.Api;
+
 namespace YtPlaylist.Api;
 
 public static class ApiResults
