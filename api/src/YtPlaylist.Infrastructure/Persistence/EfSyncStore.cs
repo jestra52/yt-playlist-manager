@@ -24,6 +24,19 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
             return 0;
         }
 
+        // The retrying execution strategy (see DependencyInjection) runs the whole
+        // transaction again when the connection drops. A replay is safe: rows whose
+        // updatedAt is already stored are skipped (last-write-wins).
+        var strategy = db.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            db.ChangeTracker.Clear();
+            return await this.ApplyOnceAsync(changes, cancellationToken);
+        });
+    }
+
+    private async Task<int> ApplyOnceAsync(ChangeSet changes, CancellationToken cancellationToken)
+    {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var seq = await this.LockCounterAsync(transaction, cancellationToken);
         var applied = 0;
