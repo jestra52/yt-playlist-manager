@@ -53,6 +53,20 @@ const PLAYLISTS = {
             ],
         },
     },
+    // The same playlist some time later, as /api/playlist returns it with deleted videos.
+    PLlaterlaterlaterlater: {
+        id: 'PLlaterlaterlaterlater',
+        title: 'Road trip',
+        author: 'Juan',
+        skipped: 0,
+        partial: false,
+        source: 'api',
+        videos: [
+            { youtubeId: 'dQw4w9WgXcQ', title: 'Deleted video', author: '', thumbnailUrl: '', unavailable: true },
+            { youtubeId: '9bZkp7q19f0', title: 'Gangnam Style', author: 'PSY', thumbnailUrl: '' },
+            { youtubeId: 'fJ9rUzIMcZQ', title: 'Queen - Bohemian Rhapsody', author: 'Queen', thumbnailUrl: '' },
+        ],
+    },
     PLpartialpartialpartial: {
         id: 'PLpartialpartialpartial',
         title: 'Latest uploads',
@@ -193,6 +207,45 @@ describe('playlists and videos services', () => {
 
         expect(playlists.linkToYouTube(p.id, '  ')).toBe(true);
         expect(playlists.selected).toMatchObject({ source: '', sourceId: '' });
+    });
+
+    it('syncs a playlist from YouTube: adds new videos, marks deleted ones, and removes only when asked', async () => {
+        const p = playlists.create('Road trip');
+        videos.addEntries(p.id, [
+            { youtubeId: 'dQw4w9WgXcQ', title: 'Never Gonna Give You Up', author: 'Rick Astley' },
+            { youtubeId: 'kJQP7kiw5Fk', title: 'Despacito', author: 'Luis Fonsi' },
+            { youtubeId: '9bZkp7q19f0', title: 'Gangnam Style', author: 'PSY' },
+        ]);
+        expect(await playlists.readLinkedYouTubePlaylist(p.id)).toBeNull();
+        playlists.linkToYouTube(p.id, 'PLlaterlaterlaterlater');
+
+        const source = await playlists.readLinkedYouTubePlaylist(p.id);
+        const diff = playlists.compareWithYouTube(p.id, source);
+        expect(diff.added.map((a) => [a.youtubeId, a.afterId])).toEqual([
+            ['fJ9rUzIMcZQ', videos.forPlaylist(p.id)[2].id],
+        ]);
+        expect(diff.nowUnavailable.map((v) => v.youtubeId)).toEqual(['dQw4w9WgXcQ']);
+        expect(diff.removed.map((v) => v.youtubeId)).toEqual(['kJQP7kiw5Fk']);
+
+        playlists.applyYouTubeSync(p.id, diff);
+        expect(videos.forPlaylist(p.id).map((v) => [v.youtubeId, v.title, v.unavailable])).toEqual([
+            // A deleted video keeps the title it had here, not YouTube's "Deleted video".
+            ['dQw4w9WgXcQ', 'Never Gonna Give You Up', true],
+            ['kJQP7kiw5Fk', 'Despacito', false],
+            ['9bZkp7q19f0', 'Gangnam Style', false],
+            ['fJ9rUzIMcZQ', 'Queen - Bohemian Rhapsody', false],
+        ]);
+        expect(videos.forPlaylist(p.id)[3]).toMatchObject({ artist: 'Queen', artistSource: 'guess' });
+        expect(ui.notices.at(-1).message).toBe(
+            'Synced with YouTube: 1 new video added, 1 marked as deleted on YouTube',
+        );
+
+        // Syncing again finds only the removal, and removes it when asked; nothing is added twice.
+        const again = playlists.compareWithYouTube(p.id, source);
+        expect(again).toMatchObject({ added: [], nowUnavailable: [] });
+        playlists.applyYouTubeSync(p.id, again, { removeMissing: true });
+        expect(videos.forPlaylist(p.id).map((v) => v.youtubeId)).toEqual(['dQw4w9WgXcQ', '9bZkp7q19f0', 'fJ9rUzIMcZQ']);
+        expect(ui.notices.at(-1).message).toBe('Synced with YouTube: 1 removed');
     });
 
     it('says when deleted videos can’t be read without an API key', async () => {
