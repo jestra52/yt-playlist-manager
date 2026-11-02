@@ -6,25 +6,25 @@ Save YouTube videos into your own playlists, put them in order, mark what you've
 
 | Light | Dark |
 | --- | --- |
-| ![A City Pop playlist in the light theme: sidebar with two playlists, progress strip, and videos with thumbnails, three marked as watched](docs/screenshots/playlist-light.png) | ![The same playlist in the dark theme](docs/screenshots/playlist-dark.png) |
+| ![A City Pop playlist in the light theme: sidebar with two playlists, progress strip, and videos with thumbnails, each showing its artist and the channel that uploaded it, three marked as watched](docs/screenshots/playlist-light.png) | ![The same playlist in the dark theme](docs/screenshots/playlist-dark.png) |
 
 **Compare with an old report.** Load a report you saved earlier to see which videos the playlist no longer has, then add them back in their old place:
 
-![Compare dialog: 12 items in the report, 10 still here, 2 missing, listed by number and title](docs/screenshots/compare-report.png)
+![Compare dialog with a report that has artists: 12 items in the report, 10 still here, 2 missing, listed by number, title and artist](docs/screenshots/compare-report.png)
 
 **Missing items** wait for their YouTube link; paste it and the video gets its title, channel and thumbnail:
 
-![Missing filter showing two placeholder items, each with a box to paste its YouTube link](docs/screenshots/missing-items.png)
+![Missing filter showing a video deleted on YouTube and a placeholder from a report, each with a box to paste a YouTube link](docs/screenshots/missing-items.png)
 
 **Artists.** Under each title the app shows the artist, then the channel that uploaded the video: "Anri · uploaded by …". The artist is guessed from YouTube Music's "Artist - Topic" channels and from titles like "Artist - Song" or "Artist「Song」"; a guess has an ⓘ badge, because it may be wrong. Click the artist to correct it: the field suggests artists already in your library and keeps one spelling for each. Search matches artists too.
 
 **Videos deleted on YouTube** keep their place: they show a "Deleted" thumbnail, count under the **Missing** filter, and wait for another link, like Missing items.
 
-<img src="docs/screenshots/phone.png" alt="The playlist on a phone in the dark theme, with buttons for compare, report and delete in the header" width="300" align="right" />
+<img src="docs/screenshots/phone.png" alt="The playlist on a phone in the dark theme, with buttons for YouTube, compare, report and delete in the header" width="300" align="right" />
 
 **On a phone** the sidebar folds away behind the menu button, and the header buttons shrink to icons: YouTube, compare, download report, delete.
 
-The screenshots use sample data and placeholder thumbnails, and were taken before artists and the YouTube button were added.
+The screenshots use sample data and placeholder thumbnails.
 
 <br clear="right" />
 
@@ -277,6 +277,8 @@ An imported playlist remembers which YouTube playlist it came from. The **YouTub
 
 1. Nothing is read from YouTube until you click **Compare with YouTube**. The dialog warns first that syncing makes the playlist follow YouTube.
 2. The comparison lists what's **new on YouTube** (added in YouTube's order), what was **deleted or made private** there (kept and marked as Missing, with the title it had here), what's **back on YouTube**, and what was **removed from the YouTube playlist**.
+![Sync from YouTube after comparing: 2 new videos, 1 deleted on YouTube and 1 removed from the YouTube playlist, with options to import deleted videos, remove the removed one, and save a report first](docs/screenshots/youtube-sync.png)
+
 3. Nothing changes until you **Apply**. Removed videos stay unless you tick **Remove … from this playlist too**, and then **Apply** asks once more before removing them, since their notes and watched marks go with them. **Save a report before applying** (on by default) downloads the playlist's report first.
 
 Without `YOUTUBE_API_KEY`, YouTube only returns the latest videos, so the dialog can still add new ones but can't tell which were removed.
