@@ -171,8 +171,8 @@
                 <button type="button" class="artist" title="Edit the artist" onclick={openArtist}>{video.artist}</button
                 >{#if video.artistSource === 'guess'}<button
                         type="button"
-                        class="guessed"
-                        title="Guessed from the YouTube title or channel, so it may be wrong. Click to correct it."
+                        class="guessed tooltip tooltip-bottom"
+                        data-tip="Guessed from the YouTube title or channel, so it may be wrong. Click to correct it."
                         aria-label="Artist guessed from YouTube, may be wrong. Correct it"
                         onclick={openArtist}><Icon name="info" size={13} /></button
                     >{/if}
@@ -426,6 +426,17 @@
         vertical-align: -0.1em;
         color: tint($base-content, 45%);
         cursor: pointer;
+        // daisyUI's tooltip uses the neutral color, which is the page's own shade in
+        // the dark theme; the text color stands out in both themes.
+        --tt-bg: var(--color-base-content);
+
+        &::before {
+            width: 16rem;
+            max-width: 70vw;
+            color: var(--color-base-100);
+            font-weight: 500;
+            text-align: left;
+        }
 
         &:hover,
         &:focus-visible {
