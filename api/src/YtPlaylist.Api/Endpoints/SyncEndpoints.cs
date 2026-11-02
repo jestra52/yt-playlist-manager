@@ -1,8 +1,6 @@
 using System.Globalization;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
 using Microsoft.Extensions.Options;
+using YtPlaylist.Application.Chains;
 using YtPlaylist.Application.Sync;
 using YtPlaylist.Domain.Common;
 using YtPlaylist.Models.Sync;
@@ -12,7 +10,10 @@ namespace YtPlaylist.Api.Endpoints;
 
 public static class SyncEndpoints
 {
-    /// <summary>POST /api/sync: push local changes, pull server changes newer than <c>since</c>.</summary>
+    /// <summary>
+    /// POST /api/sync: push local changes, pull server changes newer than <c>since</c>, both in
+    /// the sync chain of the device whose credential is sent as a bearer token.
+    /// </summary>
     public static IEndpointRouteBuilder MapSyncEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/api/sync", SyncAsync);
@@ -22,36 +23,24 @@ public static class SyncEndpoints
     private static async Task<IResult> SyncAsync(
         HttpContext http,
         SyncService sync,
-        IOptions<ApiOptions> apiOptions,
+        ChainService chains,
         IOptions<JsonOptions> jsonOptions,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
-        var token = apiOptions.Value.SyncToken;
-        if (!sync.IsAvailable || token.Length == 0)
+        if (!sync.IsAvailable)
         {
-            return ApiResults.Error(
-                StatusCodes.Status503ServiceUnavailable,
-                "sync is not configured on the server (set DATABASE_URL and SYNC_TOKEN)");
+            return DeviceAuth.NotConfigured();
         }
-        if (!IsAuthorized(http.Request, token))
+        var (device, authError) = await DeviceAuth.AuthenticateAsync(http, chains, cancellationToken);
+        if (authError is not null)
         {
-            return ApiResults.Error(StatusCodes.Status401Unauthorized, "invalid or missing sync token");
+            return authError;
         }
-
-        SyncRequest? request;
-        try
+        var (request, bodyError) = await DeviceAuth.ReadJsonAsync<SyncRequest>(http, jsonOptions, cancellationToken);
+        if (bodyError is not null)
         {
-            request = await JsonSerializer.DeserializeAsync<SyncRequest>(
-                http.Request.Body, jsonOptions.Value.SerializerOptions, cancellationToken);
-        }
-        catch (JsonException ex)
-        {
-            return ApiResults.Error(StatusCodes.Status400BadRequest, $"invalid JSON body: {ex.Message}");
-        }
-        if (request is null)
-        {
-            return ApiResults.Error(StatusCodes.Status400BadRequest, "invalid JSON body: empty");
+            return bodyError;
         }
 
         int? limit = int.TryParse(http.Request.Query["limit"].ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var l)
@@ -59,7 +48,7 @@ public static class SyncEndpoints
             : null;
         try
         {
-            return Results.Json(await sync.SyncAsync(request, limit, cancellationToken));
+            return Results.Json(await sync.SyncAsync(device!.ChainId, request!, limit, cancellationToken));
         }
         catch (DomainValidationException ex)
         {
@@ -70,17 +59,5 @@ public static class SyncEndpoints
             loggerFactory.CreateLogger("Sync").SyncFailed(ex);
             return ApiResults.Error(StatusCodes.Status502BadGateway, "could not sync with the cloud database");
         }
-    }
-
-    private static bool IsAuthorized(HttpRequest request, string token)
-    {
-        const string scheme = "Bearer ";
-        var header = request.Headers.Authorization.ToString();
-        if (header.Length <= scheme.Length || !header.StartsWith(scheme, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-        var given = Encoding.UTF8.GetBytes(header[scheme.Length..].Trim());
-        return CryptographicOperations.FixedTimeEquals(given, Encoding.UTF8.GetBytes(token));
     }
 }

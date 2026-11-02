@@ -24,9 +24,14 @@ services:
       # Neon connection string, e.g. postgresql://user:password@host/neondb?sslmode=require
       - key: DATABASE_URL
         sync: false
-      # Shared secret the web app sends to /api/sync; Render generates a random one.
-      - key: SYNC_TOKEN
+      # Key for hashing sync chain codes and device credentials; Render generates a random one.
+      # Never change it on a service in use: every chain code and device would stop working.
+      - key: SYNC_PEPPER
         generateValue: true
+      # Only for a library synced before sync chains: the old shared token, used once to claim
+      # that library as a sync chain. New services don't need it.
+      - key: SYNC_TOKEN
+        sync: false
       # Optional: YouTube Data API key, to import whole playlists.
       - key: YOUTUBE_API_KEY
         sync: false

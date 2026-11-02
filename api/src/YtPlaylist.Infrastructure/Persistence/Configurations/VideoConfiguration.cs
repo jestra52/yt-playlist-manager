@@ -13,6 +13,12 @@ public sealed class VideoConfiguration : IEntityTypeConfiguration<Video>
         builder.ToTable("videos");
         builder.HasKey(v => v.Id);
         builder.Property(v => v.Id).HasColumnName("id").HasMaxLength(SyncLimits.MaxIdLength);
+        // Rows from before sync chains (synced with SYNC_TOKEN) belong to the legacy chain.
+        builder.Property(v => v.ChainId)
+            .HasColumnName("chain_id")
+            .HasMaxLength(SyncLimits.MaxIdLength)
+            .HasDefaultValue(SyncChain.LegacyId)
+            .IsRequired();
         builder.Property(v => v.PlaylistId)
             .HasColumnName("playlist_id")
             .HasMaxLength(SyncLimits.MaxIdLength)
@@ -37,7 +43,8 @@ public sealed class VideoConfiguration : IEntityTypeConfiguration<Video>
         builder.Property(v => v.UpdatedAt).HasColumnName("updated_at");
         builder.Property(v => v.Deleted).HasColumnName("deleted");
         builder.Property(v => v.Seq).HasColumnName("seq");
-        builder.HasIndex(v => v.Seq);
+        builder.HasIndex(v => new { v.ChainId, v.Seq });
         builder.HasIndex(v => v.PlaylistId);
+        builder.HasOne<SyncChain>().WithMany().HasForeignKey(v => v.ChainId).OnDelete(DeleteBehavior.Cascade);
     }
 }

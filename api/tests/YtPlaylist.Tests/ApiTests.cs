@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using YtPlaylist.Application.Chains;
 using YtPlaylist.Application.Sync;
 using YtPlaylist.Application.YouTube;
 
@@ -14,16 +15,27 @@ namespace YtPlaylist.Tests;
 
 public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
 {
-    private HttpClient Client(ISyncStore? store = null, string syncToken = "secret") =>
+    private const string Pepper = "test-pepper-test-pepper-test-pepper-0123";
+
+    /// <summary>
+    /// A client for the API. With <paramref name="store"/>, sync is configured: a pepper, the given
+    /// sync store and an in-memory chain store (<paramref name="chains"/>, or a new one).
+    /// </summary>
+    private HttpClient Client(ISyncStore? store = null, string syncToken = "secret", FakeChainStore? chains = null) =>
         factory.WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Testing");
             builder.UseSetting("SYNC_TOKEN", syncToken);
+            if (store is not null)
+            {
+                builder.UseSetting("SYNC_PEPPER", Pepper);
+            }
             builder.ConfigureTestServices(services =>
             {
                 if (store is not null)
                 {
                     services.AddSingleton(store);
+                    services.AddSingleton<IChainStore>(chains ?? new FakeChainStore());
                 }
                 var youTube = new FakeYouTube();
                 services.AddSingleton<IVideoMetadataSource>(youTube);
@@ -31,18 +43,32 @@ public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFix
             });
         }).CreateClient();
 
-    private static HttpRequestMessage SyncRequest(string body, string? token)
+    private static HttpRequestMessage SyncRequest(string body, string? token) =>
+        Request(HttpMethod.Post, "/api/sync", body, token);
+
+    private static HttpRequestMessage Request(HttpMethod method, string path, string? body = null, string? token = null)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/sync")
+        var request = new HttpRequestMessage(method, new Uri(path, UriKind.Relative));
+        if (body is not null)
         {
-            Content = new StringContent(body, Encoding.UTF8, "application/json"),
-        };
+            request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+        }
         if (token is not null)
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
         return request;
     }
+
+    /// <summary>Creates a sync chain and returns the response body (chainId, deviceId, deviceCredential, secret).</summary>
+    private static async Task<JsonElement> CreateChainAsync(HttpClient client, string deviceName = "Laptop")
+    {
+        using var response = await client.SendAsync(Request(HttpMethod.Post, "/api/chains", $$"""{"deviceName":"{{deviceName}}"}"""));
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        return await response.Content.ReadFromJsonAsync<JsonElement>();
+    }
+
+    private static string Credential(JsonElement access) => access.GetProperty("deviceCredential").GetString()!;
 
     [Fact]
     public async Task HealthReportsWhetherSyncIsConfigured()
@@ -58,13 +84,17 @@ public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFix
     }
 
     [Fact]
-    public async Task SyncRequiresAToken()
+    public async Task SyncRequiresADeviceCredential()
     {
         using var client = this.Client(new FakeSyncStore());
         using var missing = await client.SendAsync(SyncRequest("{}", null));
         Assert.Equal(HttpStatusCode.Unauthorized, missing.StatusCode);
         using var wrong = await client.SendAsync(SyncRequest("{}", "wrong"));
         Assert.Equal(HttpStatusCode.Unauthorized, wrong.StatusCode);
+
+        // The old shared token is not a device credential.
+        using var oldToken = await client.SendAsync(SyncRequest("{}", "secret"));
+        Assert.Equal(HttpStatusCode.Unauthorized, oldToken.StatusCode);
     }
 
     [Fact]
@@ -82,13 +112,15 @@ public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFix
     {
         var store = new FakeSyncStore();
         using var client = this.Client(store);
+        var access = await CreateChainAsync(client);
         const string body = /*lang=json,strict*/ """
             {"since":7,"changes":{
               "playlists":[{"id":"p2","name":"Mine","createdAt":1,"updatedAt":5}],
               "videos":[{"id":"v1","playlistId":"p2","youtubeId":"dQw4w9WgXcQ","artist":"Anri","artistSource":"guess","createdAt":1,"updatedAt":5}]}}
             """;
-        using var response = await client.SendAsync(SyncRequest(body, "secret"));
+        using var response = await client.SendAsync(SyncRequest(body, Credential(access)));
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(access.GetProperty("chainId").GetString(), store.LastChainId);
 
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(42, json.GetProperty("cursor").GetInt64());
@@ -111,7 +143,8 @@ public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFix
     public async Task SyncRejectsInvalidRequests(string body)
     {
         using var client = this.Client(new FakeSyncStore());
-        using var response = await client.SendAsync(SyncRequest(body, "secret"));
+        var access = await CreateChainAsync(client);
+        using var response = await client.SendAsync(SyncRequest(body, Credential(access)));
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
@@ -119,9 +152,104 @@ public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFix
     public async Task SyncReportsStoreFailures()
     {
         using var client = this.Client(new FakeSyncStore { Fail = true });
+        var access = await CreateChainAsync(client);
         const string body = /*lang=json,strict*/ """{"since":0,"changes":{"playlists":[{"id":"p","name":"x","createdAt":1,"updatedAt":1}]}}""";
-        using var response = await client.SendAsync(SyncRequest(body, "secret"));
+        using var response = await client.SendAsync(SyncRequest(body, Credential(access)));
         Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ChainsAreCreatedJoinedManagedAndReplaced()
+    {
+        using var client = this.Client(new FakeSyncStore());
+
+        using var created = await client.SendAsync(Request(HttpMethod.Post, "/api/chains", """{"deviceName":"Laptop"}"""));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        Assert.Equal("no-store", created.Headers.CacheControl?.ToString());
+        var laptop = await created.Content.ReadFromJsonAsync<JsonElement>();
+        var secret = laptop.GetProperty("secret").GetString()!;
+        Assert.Equal(43, secret.Length);
+        Assert.Equal(43, Credential(laptop).Length);
+
+        // Join with the code's secret; a wrong one doesn't say whether a chain exists.
+        using var joined = await client.SendAsync(Request(HttpMethod.Post, "/api/chains/join", $$"""{"secret":"{{secret}}","deviceName":"Phone"}"""));
+        Assert.Equal(HttpStatusCode.OK, joined.StatusCode);
+        var phone = await joined.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(laptop.GetProperty("chainId").GetString(), phone.GetProperty("chainId").GetString());
+        Assert.Equal(JsonValueKind.Null, phone.GetProperty("secret").ValueKind);
+        using var wrong = await client.SendAsync(Request(HttpMethod.Post, "/api/chains/join", $$"""{"secret":"{{new string('A', 43)}}","deviceName":"X"}"""));
+        Assert.Equal(HttpStatusCode.Unauthorized, wrong.StatusCode);
+
+        using var described = await client.SendAsync(Request(HttpMethod.Get, "/api/chain", token: Credential(phone)));
+        var info = await described.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(phone.GetProperty("deviceId").GetString(), info.GetProperty("deviceId").GetString());
+        Assert.Equal(["Laptop", "Phone"], info.GetProperty("devices").EnumerateArray().Select(d => d.GetProperty("name").GetString()));
+        Assert.DoesNotContain("credential", await described.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
+
+        // A new code: the old one stops working, and so does every other device.
+        using var replaced = await client.SendAsync(Request(HttpMethod.Post, "/api/chain/replace", token: Credential(laptop)));
+        var newSecret = (await replaced.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("secret").GetString()!;
+        Assert.NotEqual(secret, newSecret);
+        using var phoneAfter = await client.SendAsync(SyncRequest("{}", Credential(phone)));
+        Assert.Equal(HttpStatusCode.Unauthorized, phoneAfter.StatusCode);
+        using var oldCode = await client.SendAsync(Request(HttpMethod.Post, "/api/chains/join", $$"""{"secret":"{{secret}}","deviceName":"Phone"}"""));
+        Assert.Equal(HttpStatusCode.Unauthorized, oldCode.StatusCode);
+        using var rejoined = await client.SendAsync(Request(HttpMethod.Post, "/api/chains/join", $$"""{"secret":"{{newSecret}}","deviceName":"Phone"}"""));
+        var phone2 = await rejoined.Content.ReadFromJsonAsync<JsonElement>();
+
+        // Remove a device, then delete the chain.
+        using var removed = await client.SendAsync(Request(HttpMethod.Delete, $"/api/chain/devices/{phone2.GetProperty("deviceId").GetString()}", token: Credential(laptop)));
+        Assert.Equal(HttpStatusCode.NoContent, removed.StatusCode);
+        using var removedAgain = await client.SendAsync(Request(HttpMethod.Delete, $"/api/chain/devices/{phone2.GetProperty("deviceId").GetString()}", token: Credential(laptop)));
+        Assert.Equal(HttpStatusCode.NotFound, removedAgain.StatusCode);
+        using var deleted = await client.SendAsync(Request(HttpMethod.Delete, "/api/chain", token: Credential(laptop)));
+        Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+        using var afterDelete = await client.SendAsync(Request(HttpMethod.Get, "/api/chain", token: Credential(laptop)));
+        Assert.Equal(HttpStatusCode.Unauthorized, afterDelete.StatusCode);
+    }
+
+    [Fact]
+    public async Task TheLibraryFromTheSyncTokenIsClaimedOnce()
+    {
+        using var client = this.Client(new FakeSyncStore());
+        const string body = """{"deviceName":"Old laptop"}""";
+
+        using var noToken = await client.SendAsync(Request(HttpMethod.Post, "/api/chains/claim", body));
+        Assert.Equal(HttpStatusCode.Unauthorized, noToken.StatusCode);
+        using var claimed = await client.SendAsync(Request(HttpMethod.Post, "/api/chains/claim", body, "secret"));
+        Assert.Equal(HttpStatusCode.OK, claimed.StatusCode);
+        var access = await claimed.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("legacy", access.GetProperty("chainId").GetString());
+        Assert.Equal(43, access.GetProperty("secret").GetString()!.Length);
+        using var again = await client.SendAsync(Request(HttpMethod.Post, "/api/chains/claim", body, "secret"));
+        Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
+
+        using var noLegacyToken = this.Client(new FakeSyncStore(), syncToken: "");
+        using var notFound = await noLegacyToken.SendAsync(Request(HttpMethod.Post, "/api/chains/claim", body, "anything"));
+        Assert.Equal(HttpStatusCode.NotFound, notFound.StatusCode);
+    }
+
+    [Fact]
+    public async Task JoiningIsRateLimited()
+    {
+        using var client = this.Client(new FakeSyncStore());
+        var body = $$"""{"secret":"{{new string('A', 43)}}","deviceName":"Guess"}""";
+        var statuses = new List<HttpStatusCode>();
+        for (var i = 0; i < 12; i++)
+        {
+            using var response = await client.SendAsync(Request(HttpMethod.Post, "/api/chains/join", body));
+            statuses.Add(response.StatusCode);
+        }
+        Assert.Equal(10, statuses.Count(s => s == HttpStatusCode.Unauthorized));
+        Assert.Equal(HttpStatusCode.TooManyRequests, statuses[^1]);
+    }
+
+    [Fact]
+    public async Task ChainsAreUnavailableWithoutAPepper()
+    {
+        using var client = this.Client();
+        using var response = await client.SendAsync(Request(HttpMethod.Post, "/api/chains", """{"deviceName":"x"}"""));
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
 
     [Theory]

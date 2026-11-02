@@ -4,6 +4,10 @@ namespace YtPlaylist.Models.Entities;
 public sealed class Playlist
 {
     public required string Id { get; set; }
+
+    /// <summary>The sync chain (library) the playlist belongs to.</summary>
+    public string ChainId { get; set; } = SyncChain.LegacyId;
+
     public string Name { get; set; } = "";
     public string Description { get; set; } = "";
     public double Position { get; set; }

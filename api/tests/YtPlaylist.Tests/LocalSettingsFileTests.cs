@@ -57,7 +57,7 @@ public sealed class LocalSettingsFileTests : IDisposable
             .AddLocalSettingsFile(this.root)
             .Build();
 
-        foreach (var key in new[] { "DATABASE_URL", "SYNC_TOKEN", "YOUTUBE_API_KEY", "ALLOWED_ORIGIN" })
+        foreach (var key in new[] { "DATABASE_URL", "SYNC_PEPPER", "SYNC_TOKEN", "YOUTUBE_API_KEY", "ALLOWED_ORIGIN" })
         {
             Assert.NotNull(configuration[key]);
         }
