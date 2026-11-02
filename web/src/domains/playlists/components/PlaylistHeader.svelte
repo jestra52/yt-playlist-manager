@@ -2,6 +2,7 @@
     import Icon from '../../../shared/components/Icon.svelte';
     import ProgressStrip from '../../videos/components/ProgressStrip.svelte';
     import CompareReportDialog from './CompareReportDialog.svelte';
+    import LinkYouTubeDialog from './LinkYouTubeDialog.svelte';
     import { playlists } from '../playlists.service.svelte.js';
     import { videos as videoService } from '../../videos/videos.service.svelte.js';
     import { ui } from '../../ui/ui.service.svelte.js';
@@ -14,6 +15,9 @@
     let description = $state('');
     let confirming = $state(false);
     let comparing = $state(false);
+    let linking = $state(false);
+
+    const linked = $derived(playlist.source === 'youtube' && Boolean(playlist.sourceId));
 
     // Reset the editable fields whenever another playlist (or a synced edit) arrives.
     $effect(() => {
@@ -76,6 +80,16 @@
         <button
             class="btn btn-ghost btn-sm"
             type="button"
+            onclick={() => (linking = true)}
+            aria-label={linked ? 'Linked to a YouTube playlist: change or unlink it' : 'Link to a YouTube playlist'}
+            title={linked ? 'Linked to a YouTube playlist' : 'Link to the YouTube playlist this came from'}
+        >
+            <Icon name="link" size={16} />
+            <span class="max-md:hidden">{linked ? 'Linked' : 'Link'}</span>
+        </button>
+        <button
+            class="btn btn-ghost btn-sm"
+            type="button"
             onclick={() => (comparing = true)}
             aria-label="Compare with an old report and add back missing videos"
             title="Find videos missing since an old report"
@@ -135,6 +149,7 @@
 </header>
 
 <CompareReportDialog {playlist} open={comparing} onclose={() => (comparing = false)} />
+<LinkYouTubeDialog {playlist} open={linking} onclose={() => (linking = false)} />
 
 <style lang="scss">
     @use 'mixins' as *;

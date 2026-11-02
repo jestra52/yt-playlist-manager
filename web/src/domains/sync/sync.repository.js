@@ -84,6 +84,8 @@ export const collectChanges = (db, limit = 2000) => {
             id: playlists.id,
             name: playlists.name,
             description: playlists.description,
+            source: playlists.source,
+            sourceId: playlists.sourceId,
             position: playlists.position,
             createdAt: playlists.createdAt,
             updatedAt: playlists.updatedAt,
@@ -106,6 +108,7 @@ export const collectChanges = (db, limit = 2000) => {
             thumbnailUrl: videos.thumbnailUrl,
             notes: videos.notes,
             watched: videos.watched,
+            unavailable: videos.unavailable,
             position: videos.position,
             createdAt: videos.createdAt,
             updatedAt: videos.updatedAt,
@@ -149,6 +152,8 @@ const excluded = (column) => sql`excluded.${sql.identifier(column.name)}`;
 export const applyRemote = (db, changes) => {
     let applied = 0;
     for (const p of changes.playlists ?? []) {
+        // A server from before imports were remembered leaves the source out: keep the local one.
+        const hasSource = p.source !== undefined;
         applied += db.write(
             db.orm
                 .insert(playlists)
@@ -156,6 +161,8 @@ export const applyRemote = (db, changes) => {
                     id: p.id,
                     name: p.name,
                     description: p.description ?? '',
+                    source: p.source ?? '',
+                    sourceId: p.sourceId ?? '',
                     position: p.position ?? 0,
                     createdAt: p.createdAt,
                     updatedAt: p.updatedAt,
@@ -167,6 +174,10 @@ export const applyRemote = (db, changes) => {
                     set: {
                         name: excluded(playlists.name),
                         description: excluded(playlists.description),
+                        ...(hasSource && {
+                            source: excluded(playlists.source),
+                            sourceId: excluded(playlists.sourceId),
+                        }),
                         position: excluded(playlists.position),
                         updatedAt: excluded(playlists.updatedAt),
                         deleted: excluded(playlists.deleted),
@@ -177,8 +188,10 @@ export const applyRemote = (db, changes) => {
         );
     }
     for (const v of changes.videos ?? []) {
-        // A server from before artists existed leaves them out: keep the local ones.
+        // A server from before artists (or the unavailable flag) existed leaves them out:
+        // keep the local values.
         const hasArtist = v.artist !== undefined;
+        const hasUnavailable = v.unavailable !== undefined;
         applied += db.write(
             db.orm
                 .insert(videos)
@@ -193,6 +206,7 @@ export const applyRemote = (db, changes) => {
                     thumbnailUrl: v.thumbnailUrl ?? '',
                     notes: v.notes ?? '',
                     watched: Boolean(v.watched),
+                    unavailable: Boolean(v.unavailable),
                     position: v.position ?? 0,
                     createdAt: v.createdAt,
                     updatedAt: v.updatedAt,
@@ -213,6 +227,7 @@ export const applyRemote = (db, changes) => {
                         thumbnailUrl: excluded(videos.thumbnailUrl),
                         notes: excluded(videos.notes),
                         watched: excluded(videos.watched),
+                        ...(hasUnavailable && { unavailable: excluded(videos.unavailable) }),
                         position: excluded(videos.position),
                         updatedAt: excluded(videos.updatedAt),
                         deleted: excluded(videos.deleted),

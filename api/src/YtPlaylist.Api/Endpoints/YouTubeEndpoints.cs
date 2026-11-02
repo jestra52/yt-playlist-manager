@@ -7,7 +7,8 @@ public static class YouTubeEndpoints
 {
     /// <summary>
     /// GET /api/oembed?id=… (video title and channel) and
-    /// GET /api/playlist?id=… (a public playlist's title and videos).
+    /// GET /api/playlist?id=…&amp;includeUnavailable=true (a public playlist's title and videos;
+    /// with includeUnavailable, also its deleted and private videos, flagged).
     /// </summary>
     public static IEndpointRouteBuilder MapYouTubeEndpoints(this IEndpointRouteBuilder app)
     {
@@ -46,6 +47,7 @@ public static class YouTubeEndpoints
 
     private static async Task<IResult> GetPlaylistAsync(
         string? id,
+        bool? includeUnavailable,
         HttpContext http,
         IYouTubePlaylistSource source,
         ILoggerFactory loggerFactory,
@@ -53,7 +55,7 @@ public static class YouTubeEndpoints
     {
         try
         {
-            var playlist = await source.GetPlaylistAsync(id ?? "", cancellationToken);
+            var playlist = await source.GetPlaylistAsync(id ?? "", includeUnavailable ?? false, cancellationToken);
             http.Response.Headers.CacheControl = "public, max-age=600";
             return Results.Json(playlist);
         }

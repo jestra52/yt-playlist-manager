@@ -3,11 +3,15 @@
 export class PlaylistImportError extends Error {}
 
 /**
- * Returns { id, title, author, videos: [{ youtubeId, title, author, thumbnailUrl }], skipped, partial, source }.
+ * Returns { id, title, author, videos: [{ youtubeId, title, author, thumbnailUrl, unavailable }],
+ * skipped, partial, source }. With `includeUnavailable`, deleted and private videos come back
+ * in their place with `unavailable: true` (only when the API reads YouTube with an API key,
+ * i.e. `source` is 'api'); otherwise they're left out and counted in `skipped`.
  * Throws PlaylistImportError with a message ready to show to the person.
  */
-export const fetchYouTubePlaylist = async (listId, apiBase = '/api') => {
-    const url = `${apiBase.replace(/\/+$/, '')}/playlist?id=${encodeURIComponent(listId)}`;
+export const fetchYouTubePlaylist = async (listId, apiBase = '/api', { includeUnavailable = false } = {}) => {
+    const query = `id=${encodeURIComponent(listId)}${includeUnavailable ? '&includeUnavailable=true' : ''}`;
+    const url = `${apiBase.replace(/\/+$/, '')}/playlist?${query}`;
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 30000);
     let res;

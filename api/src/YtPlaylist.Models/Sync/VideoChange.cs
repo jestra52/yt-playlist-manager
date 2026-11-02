@@ -17,6 +17,8 @@ public sealed record VideoChange
     public string ThumbnailUrl { get; init; } = "";
     public string Notes { get; init; } = "";
     public bool Watched { get; init; }
+    /// <summary>Null when the device's app is older than this flag; the stored value is kept then.</summary>
+    public bool? Unavailable { get; init; }
     public double Position { get; init; }
     public long CreatedAt { get; init; }
     public long UpdatedAt { get; init; }

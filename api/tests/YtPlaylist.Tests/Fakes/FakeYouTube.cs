@@ -13,12 +13,19 @@ internal sealed class FakeYouTube : IVideoMetadataSource, IYouTubePlaylistSource
         _ => Task.FromResult(new VideoMetadata(youTubeId, $"Title {youTubeId}", "Channel", "")),
     };
 
-    public Task<YouTubePlaylist> GetPlaylistAsync(string playlistId, CancellationToken cancellationToken) => playlistId switch
+    public Task<YouTubePlaylist> GetPlaylistAsync(string playlistId, bool includeUnavailable, CancellationToken cancellationToken)
     {
-        "PLprivateprivate" => throw new YouTubeNotFoundException("playlist not found, or it is private"),
-        "PLbrokenbroken" => throw new YouTubeUnavailableException("upstream down"),
-        "bad" => throw new DomainValidationException("invalid playlist id"),
-        _ => Task.FromResult(new YouTubePlaylist(
-            playlistId, "Road trip", "Juan", [new VideoMetadata("dQw4w9WgXcQ", "One", "A", "")], 0, false, "feed")),
-    };
+        List<VideoMetadata> videos = [new("dQw4w9WgXcQ", "One", "A", "")];
+        if (includeUnavailable)
+        {
+            videos.Add(new("aaaaaaaaaaa", "Deleted video", "", "", Unavailable: true));
+        }
+        return playlistId switch
+        {
+            "PLprivateprivate" => throw new YouTubeNotFoundException("playlist not found, or it is private"),
+            "PLbrokenbroken" => throw new YouTubeUnavailableException("upstream down"),
+            "bad" => throw new DomainValidationException("invalid playlist id"),
+            _ => Task.FromResult(new YouTubePlaylist(playlistId, "Road trip", "Juan", videos, 0, false, "feed")),
+        };
+    }
 }

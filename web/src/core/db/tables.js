@@ -23,6 +23,10 @@ export const playlists = sqliteTable(
         id: text('id').primaryKey(),
         name: text('name').notNull(),
         description: text('description').notNull().default(''),
+        // Where it was imported from: '' (made here) or 'youtube' (later 'spotify'),
+        // and its ID there, so it can be synced with it again.
+        source: text('source').notNull().default(''),
+        sourceId: text('source_id').notNull().default(''),
         position: real('position').notNull().default(0),
         createdAt: integer('created_at').notNull(),
         updatedAt: integer('updated_at').notNull(),
@@ -49,6 +53,9 @@ export const videos = sqliteTable(
         thumbnailUrl: text('thumbnail_url').notNull().default(''),
         notes: text('notes').notNull().default(''),
         watched: integer('watched', { mode: 'boolean' }).notNull().default(false),
+        // Deleted or made private on YouTube. The row keeps its YouTube ID, so syncing
+        // with the playlist again recognizes it, and waits for another link like a placeholder.
+        unavailable: integer('unavailable', { mode: 'boolean' }).notNull().default(false),
         position: real('position').notNull().default(0),
         createdAt: integer('created_at').notNull(),
         updatedAt: integer('updated_at').notNull(),

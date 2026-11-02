@@ -7,6 +7,8 @@ const fields = {
     id: playlists.id,
     name: playlists.name,
     description: playlists.description,
+    source: playlists.source,
+    sourceId: playlists.sourceId,
     position: playlists.position,
     createdAt: playlists.createdAt,
     updatedAt: playlists.updatedAt,
@@ -33,7 +35,8 @@ export const getPlaylist = (db, id) => {
     );
 };
 
-export const createPlaylist = (db, { name, description = '' }) => {
+/** `source` and `sourceId` say where an imported playlist came from, e.g. 'youtube' and its playlist ID. */
+export const createPlaylist = (db, { name, description = '', source = '', sourceId = '' }) => {
     const clean = name.trim();
     if (!clean) throw new Error('Give the playlist a name');
     const t = now();
@@ -48,6 +51,8 @@ export const createPlaylist = (db, { name, description = '' }) => {
             id,
             name: clean.slice(0, 200),
             description: description.trim(),
+            source,
+            sourceId: source ? sourceId : '',
             position: (top ?? 0) + 1,
             createdAt: t,
             updatedAt: t,
@@ -58,16 +63,26 @@ export const createPlaylist = (db, { name, description = '' }) => {
     return getPlaylist(db, id);
 };
 
-export const updatePlaylist = (db, id, { name, description }) => {
+/** Changes the given fields; `source` and `sourceId` link the playlist to (or unlink it from) its source. */
+export const updatePlaylist = (db, id, { name, description, source, sourceId }) => {
     const current = getPlaylist(db, id);
     if (!current) throw new Error('That playlist no longer exists');
     const nextName = name === undefined ? current.name : name.trim().slice(0, 200);
     if (!nextName) throw new Error('Give the playlist a name');
     const nextDescription = description === undefined ? current.description : description.trim();
+    const nextSource = source === undefined ? current.source : source;
+    const nextSourceId = nextSource ? (sourceId ?? current.sourceId) : '';
     db.write(
         db.orm
             .update(playlists)
-            .set({ name: nextName, description: nextDescription, updatedAt: now(), dirty: true })
+            .set({
+                name: nextName,
+                description: nextDescription,
+                source: nextSource,
+                sourceId: nextSourceId,
+                updatedAt: now(),
+                dirty: true,
+            })
             .where(eq(playlists.id, id)),
     );
     return getPlaylist(db, id);

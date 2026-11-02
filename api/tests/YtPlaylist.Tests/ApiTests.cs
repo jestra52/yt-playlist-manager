@@ -151,6 +151,13 @@ public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFix
         Assert.Equal("Road trip", playlist.GetProperty("title").GetString());
         Assert.Equal("dQw4w9WgXcQ", playlist.GetProperty("videos")[0].GetProperty("youtubeId").GetString());
         Assert.Equal("feed", playlist.GetProperty("source").GetString());
+        Assert.Single(playlist.GetProperty("videos").EnumerateArray());
+
+        var withDeleted = await client.GetFromJsonAsync<JsonElement>("/api/playlist?id=PLabcdefghijklmnop&includeUnavailable=true");
+        var deleted = withDeleted.GetProperty("videos")[1];
+        Assert.Equal("aaaaaaaaaaa", deleted.GetProperty("youtubeId").GetString());
+        Assert.True(deleted.GetProperty("unavailable").GetBoolean());
+        Assert.False(withDeleted.GetProperty("videos")[0].GetProperty("unavailable").GetBoolean());
     }
 
     [Fact]

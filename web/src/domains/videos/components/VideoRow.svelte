@@ -102,7 +102,12 @@
         {/if}
     </button>
 
-    {#if video.missing}
+    {#if video.unavailable}
+        <div class="thumb missing-thumb" title="Deleted or made private on YouTube: paste another link">
+            <Icon name="link" size={22} />
+            <span>Deleted</span>
+        </div>
+    {:else if video.missing}
         <div class="thumb missing-thumb" title="Not on YouTube yet: paste its link">
             <Icon name="link" size={22} />
             <span>Missing</span>
@@ -134,7 +139,9 @@
                     id="link-{video.id}"
                     class="input input-sm join-item min-w-0 flex-1"
                     bind:value={link}
-                    placeholder="Paste the YouTube link to complete it"
+                    placeholder={video.unavailable
+                        ? 'Deleted on YouTube: paste another link to replace it'
+                        : 'Paste the YouTube link to complete it'}
                     autocomplete="off"
                     spellcheck="false"
                     inputmode="url"

@@ -19,6 +19,8 @@ public sealed class PlaylistConfiguration : IEntityTypeConfiguration<Playlist>
             .HasMaxLength(SyncLimits.MaxTextLength)
             .IsRequired();
         builder.Property(p => p.Position).HasColumnName("position");
+        builder.Property(p => p.Source).HasColumnName("source").HasMaxLength(SyncLimits.MaxSourceLength).IsRequired();
+        builder.Property(p => p.SourceId).HasColumnName("source_id").HasMaxLength(SyncLimits.MaxIdLength).IsRequired();
         builder.Property(p => p.CreatedAt).HasColumnName("created_at");
         builder.Property(p => p.UpdatedAt).HasColumnName("updated_at");
         builder.Property(p => p.Deleted).HasColumnName("deleted");
