@@ -37,7 +37,6 @@ class PlaylistsService {
     items = $state([]);
     selectedId = $state(null);
     importing = $state(false);
-    syncing = $state(false);
 
     selected = $derived(this.items.find((p) => p.id === this.selectedId) ?? null);
 
@@ -149,14 +148,11 @@ class PlaylistsService {
     async readLinkedYouTubePlaylist(id) {
         const playlist = this.items.find((p) => p.id === id);
         if (playlist?.source !== 'youtube' || !playlist.sourceId) return null;
-        this.syncing = true;
         try {
             return await fetchYouTubePlaylist(playlist.sourceId, getApiBase(), { includeUnavailable: true });
         } catch (err) {
             notify(err.message, { tone: 'error', timeout: 6000 });
             return null;
-        } finally {
-            this.syncing = false;
         }
     }
 

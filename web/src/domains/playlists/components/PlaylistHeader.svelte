@@ -2,7 +2,6 @@
     import Icon from '../../../shared/components/Icon.svelte';
     import ProgressStrip from '../../videos/components/ProgressStrip.svelte';
     import CompareReportDialog from './CompareReportDialog.svelte';
-    import LinkYouTubeDialog from './LinkYouTubeDialog.svelte';
     import SyncYouTubeDialog from './SyncYouTubeDialog.svelte';
     import { playlists } from '../playlists.service.svelte.js';
     import { videos as videoService } from '../../videos/videos.service.svelte.js';
@@ -16,7 +15,6 @@
     let description = $state('');
     let confirming = $state(false);
     let comparing = $state(false);
-    let linking = $state(false);
     let syncing = $state(false);
 
     const linked = $derived(playlist.source === 'youtube' && Boolean(playlist.sourceId));
@@ -82,22 +80,16 @@
         <button
             class="btn btn-ghost btn-sm"
             type="button"
-            onclick={() => (linking = true)}
-            aria-label={linked ? 'Linked to a YouTube playlist: change or unlink it' : 'Link to a YouTube playlist'}
-            title={linked ? 'Linked to a YouTube playlist' : 'Link to the YouTube playlist this came from'}
-        >
-            <Icon name="link" size={16} />
-            <span class="max-md:hidden">{linked ? 'Linked' : 'Link'}</span>
-        </button>
-        <button
-            class="btn btn-ghost btn-sm"
-            type="button"
             onclick={() => (syncing = true)}
-            aria-label="Sync from YouTube: add new videos and find deleted or removed ones"
-            title="Compare with the YouTube playlist and bring this one in step"
+            aria-label={linked
+                ? 'YouTube playlist: sync from it, or change the link'
+                : 'Link to a YouTube playlist and sync from it'}
+            title={linked
+                ? 'Linked to a YouTube playlist: sync from it'
+                : 'Link to the YouTube playlist this came from'}
         >
-            <Icon name="sync" size={16} />
-            <span class="max-md:hidden">Sync</span>
+            <Icon name={linked ? 'sync' : 'link'} size={16} />
+            <span class="max-md:hidden">YouTube</span>
         </button>
         <button
             class="btn btn-ghost btn-sm"
@@ -161,7 +153,6 @@
 </header>
 
 <CompareReportDialog {playlist} open={comparing} onclose={() => (comparing = false)} />
-<LinkYouTubeDialog {playlist} open={linking} onclose={() => (linking = false)} />
 <SyncYouTubeDialog {playlist} open={syncing} onclose={() => (syncing = false)} />
 
 <style lang="scss">
