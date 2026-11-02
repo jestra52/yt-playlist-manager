@@ -61,7 +61,7 @@
                         ui.toggleSidebar(false);
                     }}
                 >
-                    <span class="name grow">{playlist.name}</span>
+                    <span class="name grow" title={playlist.name}>{playlist.name}</span>
                     <span class="count" title="{count.total - count.watched} left to watch">
                         {count.total - count.watched}<span class="of">/{count.total}</span>
                     </span>
@@ -123,6 +123,15 @@
     // daisyUI's menu-active uses the neutral color, which is this panel's
     // background, so the sidebar gets its own active and hover look.
     .playlist-menu {
+        // daisyUI's menu and its rows wrap, so a long name would widen its
+        // row (and the longest one every row) and push the counts past the
+        // panel edge.
+        flex-wrap: nowrap;
+
+        li {
+            flex-wrap: nowrap;
+        }
+
         .item {
             display: flex;
             align-items: baseline;
@@ -146,6 +155,7 @@
 
         .name {
             @include truncate;
+            min-width: 0;
         }
 
         .count {
