@@ -28,6 +28,14 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("id");
 
+                    b.Property<string>("ChainId")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasDefaultValue("legacy")
+                        .HasColumnName("chain_id");
+
                     b.Property<long>("CreatedAt")
                         .HasColumnType("bigint")
                         .HasColumnName("created_at");
@@ -74,9 +82,40 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Seq");
+                    b.HasIndex("ChainId", "Seq");
 
                     b.ToTable("playlists", (string)null);
+                });
+
+            modelBuilder.Entity("YtPlaylist.Models.Entities.SyncChain", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("id");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("SecretHash")
+                        .HasMaxLength(43)
+                        .HasColumnType("character varying(43)")
+                        .HasColumnName("secret_hash");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SecretHash")
+                        .IsUnique();
+
+                    b.ToTable("sync_chains", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = "legacy",
+                            CreatedAt = 0L
+                        });
                 });
 
             modelBuilder.Entity("YtPlaylist.Models.Entities.SyncCounter", b =>
@@ -99,6 +138,49 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
                             Id = 1,
                             Value = 0L
                         });
+                });
+
+            modelBuilder.Entity("YtPlaylist.Models.Entities.SyncDevice", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChainId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("chain_id");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CredentialHash")
+                        .IsRequired()
+                        .HasMaxLength(43)
+                        .HasColumnType("character varying(43)")
+                        .HasColumnName("credential_hash");
+
+                    b.Property<long>("LastSeenAt")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_seen_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChainId");
+
+                    b.HasIndex("CredentialHash")
+                        .IsUnique();
+
+                    b.ToTable("sync_devices", (string)null);
                 });
 
             modelBuilder.Entity("YtPlaylist.Models.Entities.Video", b =>
@@ -125,6 +207,14 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("author");
+
+                    b.Property<string>("ChainId")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasDefaultValue("legacy")
+                        .HasColumnName("chain_id");
 
                     b.Property<long>("CreatedAt")
                         .HasColumnType("bigint")
@@ -188,9 +278,36 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("PlaylistId");
 
-                    b.HasIndex("Seq");
+                    b.HasIndex("ChainId", "Seq");
 
                     b.ToTable("videos", (string)null);
+                });
+
+            modelBuilder.Entity("YtPlaylist.Models.Entities.Playlist", b =>
+                {
+                    b.HasOne("YtPlaylist.Models.Entities.SyncChain", null)
+                        .WithMany()
+                        .HasForeignKey("ChainId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("YtPlaylist.Models.Entities.SyncDevice", b =>
+                {
+                    b.HasOne("YtPlaylist.Models.Entities.SyncChain", null)
+                        .WithMany()
+                        .HasForeignKey("ChainId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("YtPlaylist.Models.Entities.Video", b =>
+                {
+                    b.HasOne("YtPlaylist.Models.Entities.SyncChain", null)
+                        .WithMany()
+                        .HasForeignKey("ChainId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

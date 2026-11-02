@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using YtPlaylist.Application.Chains;
 using YtPlaylist.Application.Sync;
 using YtPlaylist.Application.YouTube;
 using YtPlaylist.Infrastructure.Persistence;
@@ -11,9 +12,9 @@ namespace YtPlaylist.Infrastructure;
 public static class DependencyInjection
 {
     /// <summary>
-    /// Registers the database (when DATABASE_URL is set) and the YouTube clients.
-    /// Without a database the API still serves video titles and playlist imports,
-    /// and /api/sync answers 503.
+    /// Registers the database (when DATABASE_URL is set), the sync chain secrets
+    /// (SYNC_PEPPER) and the YouTube clients. Without a database or a pepper the API
+    /// still serves video titles and playlist imports, and sync answers 503.
     /// </summary>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
@@ -29,7 +30,12 @@ public static class DependencyInjection
             services.AddDbContext<AppDbContext>(
                 options => options.UseNpgsql(connectionString, npgsql => npgsql.EnableRetryOnFailure()));
             services.AddScoped<ISyncStore, EfSyncStore>();
+            services.AddScoped<IChainStore, EfChainStore>();
         }
+
+        services.AddOptions<ChainSecurityOptions>()
+            .Configure<IConfiguration>((options, config) => options.Pepper = config["SYNC_PEPPER"] ?? "");
+        services.AddSingleton<ISecretHasher, HmacSecretHasher>();
 
         services.AddOptions<YouTubeOptions>()
             .Configure<IConfiguration>((options, config) => options.ApiKey = config["YOUTUBE_API_KEY"] ?? "");

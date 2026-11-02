@@ -4,6 +4,8 @@ namespace YtPlaylist.Models.Entities;
 public sealed class Video
 {
     public required string Id { get; set; }
+    /// <summary>The sync chain (library) the video belongs to.</summary>
+    public string ChainId { get; set; } = SyncChain.LegacyId;
     public required string PlaylistId { get; set; }
     public required string YouTubeId { get; set; }
     public string Title { get; set; } = "";

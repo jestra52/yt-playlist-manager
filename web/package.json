@@ -34,7 +34,9 @@
     "vitest": "^5.0.5"
   },
   "dependencies": {
+    "@scure/bip39": "^1.6.0",
     "drizzle-orm": "^0.45.4",
+    "qrcode": "^1.5.4",
     "sql.js": "^1.15.2"
   },
   "allowScripts": {

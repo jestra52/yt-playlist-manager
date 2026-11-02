@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using YtPlaylist.Infrastructure.Persistence;
+using YtPlaylist.Models.Entities;
 using YtPlaylist.Models.Sync;
 
 namespace YtPlaylist.Tests;
@@ -40,11 +41,18 @@ public sealed class PostgresSyncStoreTests : SyncStoreTests
             return;
         }
         var run = $"c{Guid.NewGuid():N}"[..20];
+        await using (var setup = this.CreateContext()!)
+        {
+            await new EfChainStore(setup).CreateChainAsync(
+                new SyncChain { Id = run, SecretHash = $"h{run}", CreatedAt = 1 },
+                new SyncDevice { Id = $"d{run}", ChainId = run, CredentialHash = $"k{run}", Name = "Test", CreatedAt = 1 },
+                CancellationToken.None);
+        }
         var writers = Enumerable.Range(0, 8).Select(async i =>
         {
             await using var db = this.CreateContext()!;
             var change = new PlaylistChange { Id = $"{run}-{i}", Name = $"P{i}", CreatedAt = 1, UpdatedAt = 1 };
-            return await new EfSyncStore(db).ApplyAsync(new ChangeSet { Playlists = [change] }, CancellationToken.None);
+            return await new EfSyncStore(db).ApplyAsync(run, new ChangeSet { Playlists = [change] }, CancellationToken.None);
         });
         Assert.All(await Task.WhenAll(writers), applied => Assert.Equal(1, applied));
 
