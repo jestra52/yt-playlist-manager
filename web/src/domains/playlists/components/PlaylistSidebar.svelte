@@ -6,6 +6,7 @@
     import { videos } from '../../videos/videos.service.svelte.js';
     import { ui } from '../../ui/ui.service.svelte.js';
     import { parsePlaylistId } from '../../videos/youtube.js';
+    import { SOURCE_URL } from '../../../core/config.js';
 
     let creating = $state(false);
     let name = $state('');
@@ -119,6 +120,9 @@
     <div class="mt-auto pt-4">
         <SyncStatus />
         <ThemeSwitch />
+        <a class="source-link mt-2 block px-3 text-xs" href={SOURCE_URL} target="_blank" rel="noopener noreferrer">
+            Source code · AGPL-3.0
+        </a>
     </div>
 </nav>
 
@@ -178,6 +182,16 @@
 
         .of {
             opacity: 0.6;
+        }
+    }
+
+    .source-link {
+        color: tint($neutral-content, 55%);
+
+        &:hover,
+        &:focus-visible {
+            color: $neutral-content;
+            text-decoration: underline;
         }
     }
 

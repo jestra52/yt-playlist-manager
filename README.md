@@ -261,3 +261,13 @@ Only public and unlisted playlists can be imported; private playlists, Watch Lat
 * **Video titles** come from YouTube's public oEmbed endpoint through `/api/oembed` (falling back to noembed.com). No YouTube API key or Google sign-in is needed, and the app can't read or change your playlists on youtube.com.
 * **Render's free plan sleeps** after about 15 minutes without requests, and waking up can take close to a minute. Netlify gives up on a proxied request after 26 seconds, so the first sync after a quiet period may fail; the app retries on its own and the next attempt goes through. A paid Render plan stays awake.
 * **Hosting the API elsewhere** works: point `API_ORIGIN` at it. To call it directly instead of through Netlify, set the API address in the sync dialog and `ALLOWED_ORIGIN` on the API, and add that origin to `connect-src` in `web/public/_headers`.
+
+## License
+
+Copyright (C) 2026 Juan Carlos Estrada Alvarez.
+
+YouTube Playlist Manager is free software, licensed under the **GNU Affero General Public License v3.0 only** (`AGPL-3.0-only`); see [LICENSE](LICENSE). You may use, study, change and share it, including commercially. If you distribute it, or let people use a modified version over a network (for example as a website or a hosted API), you must offer them the complete source code of your version under the same license.
+
+The app links to its source code from the sidebar. If you host a modified version, point that link (`SOURCE_URL` in `web/src/core/config.js`) at your own source code.
+
+Code published before November 2, 2026 was released under the MIT License, and copies of it obtained under MIT keep those terms. Third-party libraries keep their own licenses.
