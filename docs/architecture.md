@@ -12,19 +12,21 @@ The web app runs entirely in the browser. Each domain has the same layers, and c
 flowchart TB
     subgraph playlists["playlists"]
         direction TB
-        pComp["components<br/>PlaylistSidebar<br/>PlaylistHeader<br/>FirstPlaylist"]
-        pSvc["playlists.service<br/>list, selection, create,<br/>import from YouTube"]
+        pComp["components<br/>PlaylistSidebar · PlaylistHeader<br/>FirstPlaylist · CompareReportDialog<br/>SyncYouTubeDialog"]
+        pSvc["playlists.service<br/>list, selection, create,<br/>import, link and sync<br/>from YouTube, reports"]
         pRepo["playlists.repository"]
+        pRules["report.js · report-compare.js<br/>youtube-sync.js"]
         pComp --> pSvc --> pRepo
+        pSvc --> pRules
     end
 
     subgraph videos["videos"]
         direction TB
         vComp["components<br/>AddVideoForm · VideoToolbar<br/>VideoQueue · VideoRow<br/>PlayerPanel · ProgressStrip"]
-        vSvc["videos.service<br/>add, reorder, watched,<br/>notes, filter, player"]
+        vSvc["videos.service<br/>add, reorder, watched,<br/>notes, artists, filter, player"]
         vRepo["videos.repository"]
         vClients["metadata.client<br/>playlist.client"]
-        vRules["youtube.js<br/>link parsing"]
+        vRules["youtube.js · artist.js<br/>link parsing, artist guesses"]
         vComp --> vSvc
         vSvc --> vRepo
         vSvc --> vClients
@@ -60,7 +62,8 @@ flowchart TB
 
     api[".NET API<br/>/api/sync · /api/oembed · /api/playlist"]
 
-    pSvc -- "imports videos" --> vSvc
+    pSvc -- "imports and syncs videos" --> vSvc
+    pSvc -- "reads YouTube playlists" --> vClients
     pRepo & vRepo & sRepo --> db
     pSvc & vSvc -- "dataChanged()" --> events
     events -- "schedules sync" --> sSvc
@@ -105,7 +108,7 @@ flowchart LR
     subgraph infrastructure["YtPlaylist.Infrastructure"]
         direction TB
         store["EfSyncStore"]
-        dbContext["AppDbContext<br/>configurations · migrations"]
+        dbContext["AppDbContext<br/>configurations · migrations<br/>retries dropped connections"]
         clients["OEmbedClient<br/>YouTubePlaylistClient"]
         store --> dbContext
     end
@@ -135,6 +138,7 @@ flowchart LR
 | --- | --- | --- |
 | Presentation | `web/src/domains/*/components`, `web/src/shared/components` | Svelte views styled with daisyUI; read service state, call service methods |
 | Application | `web/src/domains/*/*.service.svelte.js` | Reactive state (`$state`, `$derived`) and use cases such as `videos.addFromText` or `sync.syncNow` |
+| Domain rules | `youtube.js`, `artist.js`, `report.js`, `report-compare.js`, `youtube-sync.js` | Plain functions with no state or I/O: parsing links, guessing artists, writing and reading reports, comparing a playlist with YouTube |
 | Data access | `*.repository.js`, `*.client.js` | Drizzle ORM queries against the local database; HTTP calls to the API |
 | Core | `web/src/core` | SQLite wrapper, Drizzle table definitions and migrations, persistence, the data-changed signal, the API address |
 | API | `api/src/YtPlaylist.*` | Endpoints and auth (Api), use cases and ports (Application), entities and DTOs (Models), ID rules and limits (Domain), EF Core and YouTube clients (Infrastructure) |
@@ -194,7 +198,7 @@ Not shown: the browser also loads Google Fonts, and falls back to noembed.com fo
 | Netlify CDN | `web/dist` with the headers from `web/public/_headers` | Content-Security-Policy limits connections to the app's own API and noembed.com |
 | Netlify proxy | `/api/*` forwarded to the Render service | Written at build time from `API_ORIGIN`; requests time out after 26 seconds |
 | Render | The .NET API in a Docker container (`api/Dockerfile`, `render.yaml`) | Applies EF Core migrations on start; the free plan sleeps when idle |
-| Neon | The shared PostgreSQL database | Last-write-wins sync; each row has a `seq` the clients use as a cursor |
-| YouTube | oEmbed, Data API v3, playlist feed, thumbnails, embedded player | The Data API is only used when `YOUTUBE_API_KEY` is set |
+| Neon | The shared PostgreSQL database | Last-write-wins sync; each row has a `seq` the clients use as a cursor. It pauses when idle and closes its connections, and the API retries on a new one |
+| YouTube | oEmbed, Data API v3, playlist feed, thumbnails, embedded player | The Data API is only used when `YOUTUBE_API_KEY` is set; it reads whole playlists, including their deleted and private videos. The embedded player loads in the browser and doesn't use the key |
 
 For local development the same pieces run on one machine: `npm run dev` (Vite, which proxies `/api`), `dotnet run --project src/YtPlaylist.Api` on port 8787, and PostgreSQL from `docker compose up` in `api/`. See the README.

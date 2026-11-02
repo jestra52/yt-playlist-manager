@@ -1,24 +1,28 @@
 # YouTube Playlist Manager
 
-Save YouTube videos into your own playlists, put them in order, mark what you've watched, keep notes, and play them in place. Everything is stored in a **SQLite database inside your browser**, so the app works offline. An **ASP.NET Core API** with **Entity Framework Core** syncs that database with **PostgreSQL** (Neon) so your phone and laptop stay in step. The web app is hosted on **Netlify**; the API runs as a Docker container on **Render**, and Netlify forwards `/api` to it.
+Save YouTube videos into your own playlists, put them in order, mark what you've watched, keep notes, and play them in place. Each video shows its artist, guessed from YouTube and editable, and a playlist imported from YouTube can be synced with it again later. Everything is stored in a **SQLite database inside your browser**, so the app works offline. An **ASP.NET Core API** with **Entity Framework Core** syncs that database with **PostgreSQL** (Neon) so your phone and laptop stay in step. The web app is hosted on **Netlify**; the API runs as a Docker container on **Render**, and Netlify forwards `/api` to it.
 
 ## Screenshots
 
 | Light | Dark |
 | --- | --- |
-| ![A City Pop playlist in the light theme: sidebar with two playlists, progress strip, and videos with thumbnails, three marked as watched](docs/screenshots/playlist-light.png) | ![The same playlist in the dark theme](docs/screenshots/playlist-dark.png) |
+| ![A City Pop playlist in the light theme: sidebar with two playlists, progress strip, and videos with thumbnails, each showing its artist and the channel that uploaded it, three marked as watched](docs/screenshots/playlist-light.png) | ![The same playlist in the dark theme](docs/screenshots/playlist-dark.png) |
 
 **Compare with an old report.** Load a report you saved earlier to see which videos the playlist no longer has, then add them back in their old place:
 
-![Compare dialog: 12 items in the report, 10 still here, 2 missing, listed by number and title](docs/screenshots/compare-report.png)
+![Compare dialog with a report that has artists: 12 items in the report, 10 still here, 2 missing, listed by number, title and artist](docs/screenshots/compare-report.png)
 
 **Missing items** wait for their YouTube link; paste it and the video gets its title, channel and thumbnail:
 
-![Missing filter showing two placeholder items, each with a box to paste its YouTube link](docs/screenshots/missing-items.png)
+![Missing filter showing a video deleted on YouTube and a placeholder from a report, each with a box to paste a YouTube link](docs/screenshots/missing-items.png)
 
-<img src="docs/screenshots/phone.png" alt="The playlist on a phone in the dark theme, with buttons for compare, report and delete in the header" width="300" align="right" />
+**Artists.** Under each title the app shows the artist, then the channel that uploaded the video: "Anri · uploaded by …". The artist is guessed from YouTube Music's "Artist - Topic" channels and from titles like "Artist - Song" or "Artist「Song」"; a guess has an ⓘ badge, because it may be wrong. Click the artist to correct it: the field suggests artists already in your library and keeps one spelling for each. Search matches artists too.
 
-**On a phone** the sidebar folds away behind the menu button, and the header buttons shrink to icons: compare, download report, delete.
+**Videos deleted on YouTube** keep their place: they show a "Deleted" thumbnail, count under the **Missing** filter, and wait for another link, like Missing items.
+
+<img src="docs/screenshots/phone.png" alt="The playlist on a phone in the dark theme, with buttons for YouTube, compare, report and delete in the header" width="300" align="right" />
+
+**On a phone** the sidebar folds away behind the menu button, and the header buttons shrink to icons: YouTube, compare, download report, delete.
 
 The screenshots use sample data and placeholder thumbnails.
 
@@ -74,12 +78,17 @@ web/
         components/                  presentation (Svelte + daisyUI)
         playlists.service.svelte.js  application: reactive state + use cases
         playlists.repository.js      data access (Drizzle ORM queries)
+        report.js                    writes the .txt report (format with artists)
+        report-compare.js            reads reports (both formats) and finds what's missing
+        youtube-sync.js              compares a playlist with its YouTube playlist
       videos/
         components/
         videos.service.svelte.js
         videos.repository.js
         metadata.client.js           external HTTP (oEmbed through /api)
+        playlist.client.js           external HTTP (YouTube playlists through /api)
         youtube.js                   domain rules: parsing YouTube links
+        artist.js                    domain rules: guessing artists, where an artist came from
       sync/
         components/
         sync.service.svelte.js       two-way sync use case + auto-sync
@@ -117,6 +126,8 @@ Tailwind v4 and daisyUI are loaded from plain CSS (`styles/tailwind.css`), becau
 * `POST /api/sync` sends `{ since, changes }`: every dirty row plus the last server cursor the device has seen.
 * The server applies rows in one transaction with **last-write-wins** (`updated_at` must be newer), stamps each with an increasing `seq`, and answers with every row whose `seq > since` and a new cursor (paged with `hasMore`). Each sync first locks the single `sync_counter` row, so writes are serialized and `seq` values are committed in order; a device never skips a row.
 * The client clears `dirty` only for rows that weren't edited again during the request, then applies the server rows with the same last-write-wins rule.
+* Newer fields are optional on both sides, so devices and servers of different versions keep working together: when a device's app is older and doesn't send a field (e.g. a video's `artist`, a playlist's `source`), the server keeps the stored value, and the web app keeps its local value when an older server doesn't send it.
+* When the database closes a connection (Neon does when it pauses after being idle), the API retries the request on a new connection.
 
 Sync runs after edits (2.5 s debounce), every minute while the tab is visible, when the network comes back, and from the sync button.
 
@@ -141,6 +152,8 @@ cd ../web && npm install && npm run dev    # http://localhost:5173
 ```
 
 In the app, open the sync status at the bottom of the sidebar, enter `dev-token`, and choose **Save and sync**. The app works without steps 1 to 3; it just stays on one device.
+
+**Using a hosted database locally:** if `DATABASE_URL` in `appsettings.Local.json` points at a hosted database instead of the local one, the API applies its pending migrations there when it starts. To try a branch that changes the database without touching production, point the API at a copy instead: on Neon, create a branch of the database and set `DATABASE_URL` to its connection string for that run (an environment variable wins over the settings file). Delete the branch when you're done.
 
 ### Local settings
 
@@ -169,6 +182,8 @@ Database changes: edit the entity configurations in `YtPlaylist.Infrastructure/P
 dotnet tool install --global dotnet-ef
 dotnet ef migrations add <Name> --project src/YtPlaylist.Infrastructure --output-dir Persistence/Migrations
 ```
+
+Without installing the tool, .NET 10 can run it once at the version the project uses: `dotnet tool exec dotnet-ef@<EF Core version> --yes -- migrations add …` (the version is in `api/Directory.Packages.props`). The generated files start with a byte-order mark; remove it so they match the repository's `.editorconfig` (`charset = utf-8`).
 
 A test (`MigrationsMatchTheModel`) fails if the model changes without a migration. The API applies pending migrations when it starts.
 
@@ -254,10 +269,55 @@ The API reads the playlist (`GET /api/playlist?id=…`):
 
 Only public and unlisted playlists can be imported; private playlists, Watch Later and auto-generated mixes can't.
 
+**Deleted and private videos.** YouTube still lists videos that were deleted or made private, as "Deleted video" or "Private video". Tick **Import with deleted videos** (shown when you paste a playlist link) to bring them in as Missing items in their place, so you can paste another link for each later; otherwise they're left out and counted. Only the Data API lists them, so this needs `YOUTUBE_API_KEY`.
+
+### Syncing a playlist from YouTube
+
+An imported playlist remembers which YouTube playlist it came from. The **YouTube** button in the playlist header shows that link (with **Change** and **Unlink**), lets you link a playlist that wasn't imported, and syncs from it:
+
+1. Nothing is read from YouTube until you click **Compare with YouTube**. The dialog warns first that syncing makes the playlist follow YouTube.
+2. The comparison lists what's **new on YouTube** (added in YouTube's order), what was **deleted or made private** there (kept and marked as Missing, with the title it had here), what's **back on YouTube**, and what was **removed from the YouTube playlist**.
+![Sync from YouTube after comparing: 2 new videos, 1 deleted on YouTube and 1 removed from the YouTube playlist, with options to import deleted videos, remove the removed one, and save a report first](docs/screenshots/youtube-sync.png)
+
+3. Nothing changes until you **Apply**. Removed videos stay unless you tick **Remove … from this playlist too**, and then **Apply** asks once more before removing them, since their notes and watched marks go with them. **Save a report before applying** (on by default) downloads the playlist's report first.
+
+Without `YOUTUBE_API_KEY`, YouTube only returns the latest videos, so the dialog can still add new ones but can't tell which were removed.
+
+## Reports and Compare
+
+**Report** in the playlist header downloads the playlist as a `.txt` file (`<playlist>-report-YYYY-MM-DD__HH-mm-ss.txt`), with Windows line endings so it opens cleanly in Notepad:
+
+```
+Total videos: 3
+Format: number: title | artist
+1: Plastic Love | Mariya Takeuchi
+2: Anri - Windy Summer | Anri
+3: Untitled live recording |
+```
+
+The artist follows the last ` | ` and is empty when unknown. Reports saved before artists existed have no `Format:` line and only `number: title`.
+
+**Compare** loads a report (a file, or pasted text) and finds which of its videos the playlist no longer has, so you can add them back in their old place as Missing items. It reads both formats and says which one it found:
+
+* **With artists:** matches by title, using the artist to tell apart two videos with the same title; restored items keep the report's artist.
+* **Older reports:** match by title (ignoring case, spacing, punctuation and full-width characters), and also when the report's title is the video's "artist - title"; restored items get a guessed artist.
+
 ## Notes and limits
 
 * **One library per deployment.** Everyone with the sync token shares the same playlists. For several people, deploy one site each or extend `SYNC_TOKEN` into per-user tokens.
 * **Local data lives in this browser.** Clearing site data removes it; with sync on, it comes back from the cloud on the next sync. The sync dialog can also export the database as a `.sqlite` file.
 * **Video titles** come from YouTube's public oEmbed endpoint through `/api/oembed` (falling back to noembed.com). No YouTube API key or Google sign-in is needed, and the app can't read or change your playlists on youtube.com.
+* **The embedded player** loads in each viewer's browser straight from `youtube-nocookie.com`; it doesn't go through the API or use `YOUTUBE_API_KEY`. The key is only used to read playlists (imports and syncing from YouTube).
+* **Artists are guesses** unless you edit them: YouTube has no artist field, and fan uploads are named freely. A guess never replaces an artist you typed.
 * **Render's free plan sleeps** after about 15 minutes without requests, and waking up can take close to a minute. Netlify gives up on a proxied request after 26 seconds, so the first sync after a quiet period may fail; the app retries on its own and the next attempt goes through. A paid Render plan stays awake.
 * **Hosting the API elsewhere** works: point `API_ORIGIN` at it. To call it directly instead of through Netlify, set the API address in the sync dialog and `ALLOWED_ORIGIN` on the API, and add that origin to `connect-src` in `web/public/_headers`.
+
+## License
+
+Copyright (C) 2026 Juan Carlos Estrada Alvarez.
+
+YouTube Playlist Manager is free software, licensed under the **GNU Affero General Public License v3.0 only** (`AGPL-3.0-only`); see [LICENSE](LICENSE). You may use, study, change and share it, including commercially. If you distribute it, or let people use a modified version over a network (for example as a website or a hosted API), you must offer them the complete source code of your version under the same license.
+
+The app links to its source code from the sidebar. If you host a modified version, point that link (`SOURCE_URL` in `web/src/core/config.js`) at your own source code.
+
+Code published before November 2, 2026 was released under the MIT License, and copies of it obtained under MIT keep those terms. Third-party libraries keep their own licenses.
