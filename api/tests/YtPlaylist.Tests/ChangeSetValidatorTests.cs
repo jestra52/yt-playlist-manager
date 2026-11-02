@@ -60,6 +60,41 @@ public sealed class ChangeSetValidatorTests
     }
 
     [Fact]
+    public void ChecksThePlaylistSource()
+    {
+        ChangeSetValidator.Validate(new ChangeSet { Playlists = [Playlist() with { Source = "youtube", SourceId = "PLrAXtmErZgOeiKm4sgN" }] });
+        ChangeSetValidator.Validate(new ChangeSet { Playlists = [Playlist() with { Source = "", SourceId = "" }] });
+        ChangeSetValidator.Validate(new ChangeSet { Playlists = [Playlist() with { Source = null, SourceId = null }] });
+        Assert.Throws<DomainValidationException>(
+            () => ChangeSetValidator.Validate(new ChangeSet { Playlists = [Playlist() with { Source = "YouTube" }] }));
+        Assert.Throws<DomainValidationException>(
+            () => ChangeSetValidator.Validate(new ChangeSet { Playlists = [Playlist() with { Source = "youtube", SourceId = "PL../etc" }] }));
+        Assert.Throws<DomainValidationException>(
+            () => ChangeSetValidator.Validate(new ChangeSet { Playlists = [Playlist() with { SourceId = new string('a', 65) }] }));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("guess")]
+    [InlineData("spotify")]
+    public void AcceptsKnownAndFutureArtistSources(string? source) =>
+        ChangeSetValidator.Validate(new ChangeSet { Videos = [Video() with { Artist = "Anri", ArtistSource = source }] });
+
+    [Theory]
+    [InlineData("Guess")]
+    [InlineData("not a word")]
+    [InlineData("averyveryverylongsourcenamethatgoesonandon")]
+    public void RejectsInvalidArtistSources(string source) =>
+        Assert.Throws<DomainValidationException>(
+            () => ChangeSetValidator.Validate(new ChangeSet { Videos = [Video() with { ArtistSource = source }] }));
+
+    [Fact]
+    public void LimitsTheArtistLength() =>
+        Assert.Throws<DomainValidationException>(
+            () => ChangeSetValidator.Validate(new ChangeSet { Videos = [Video() with { Artist = new string('a', 201) }] }));
+
+    [Fact]
     public void RejectsMissingTimestampsAndOversizedBatches()
     {
         Assert.Throws<DomainValidationException>(

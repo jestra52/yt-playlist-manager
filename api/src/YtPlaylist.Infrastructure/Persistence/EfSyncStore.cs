@@ -24,6 +24,19 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
             return 0;
         }
 
+        // The retrying execution strategy (see DependencyInjection) runs the whole
+        // transaction again when the connection drops. A replay is safe: rows whose
+        // updatedAt is already stored are skipped (last-write-wins).
+        var strategy = db.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            db.ChangeTracker.Clear();
+            return await this.ApplyOnceAsync(changes, cancellationToken);
+        });
+    }
+
+    private async Task<int> ApplyOnceAsync(ChangeSet changes, CancellationToken cancellationToken)
+    {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var seq = await this.LockCounterAsync(transaction, cancellationToken);
         var applied = 0;
@@ -49,6 +62,11 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
             }
             row.Name = change.Name;
             row.Description = change.Description;
+            if (change.Source is not null)
+            {
+                row.Source = change.Source;
+                row.SourceId = change.SourceId ?? "";
+            }
             row.Position = change.Position;
             row.UpdatedAt = change.UpdatedAt;
             row.Deleted = change.Deleted;
@@ -85,9 +103,18 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
             row.YouTubeId = change.YouTubeId;
             row.Title = change.Title;
             row.Author = change.Author;
+            if (change.Artist is not null)
+            {
+                row.Artist = change.Artist;
+                row.ArtistSource = change.ArtistSource ?? "";
+            }
             row.ThumbnailUrl = change.ThumbnailUrl;
             row.Notes = change.Notes;
             row.Watched = change.Watched;
+            if (change.Unavailable is { } unavailable)
+            {
+                row.Unavailable = unavailable;
+            }
             row.Position = change.Position;
             row.UpdatedAt = change.UpdatedAt;
             row.Deleted = change.Deleted;
@@ -161,6 +188,8 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
         Id = p.Id,
         Name = p.Name,
         Description = p.Description,
+        Source = p.Source,
+        SourceId = p.SourceId,
         Position = p.Position,
         CreatedAt = p.CreatedAt,
         UpdatedAt = p.UpdatedAt,
@@ -174,9 +203,12 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
         YouTubeId = v.YouTubeId,
         Title = v.Title,
         Author = v.Author,
+        Artist = v.Artist,
+        ArtistSource = v.ArtistSource,
         ThumbnailUrl = v.ThumbnailUrl,
         Notes = v.Notes,
         Watched = v.Watched,
+        Unavailable = v.Unavailable,
         Position = v.Position,
         CreatedAt = v.CreatedAt,
         UpdatedAt = v.UpdatedAt,

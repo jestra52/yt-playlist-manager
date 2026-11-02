@@ -23,6 +23,10 @@ export const playlists = sqliteTable(
         id: text('id').primaryKey(),
         name: text('name').notNull(),
         description: text('description').notNull().default(''),
+        // Where it was imported from: '' (made here) or 'youtube' (later 'spotify'),
+        // and its ID there, so it can be synced with it again.
+        source: text('source').notNull().default(''),
+        sourceId: text('source_id').notNull().default(''),
         position: real('position').notNull().default(0),
         createdAt: integer('created_at').notNull(),
         updatedAt: integer('updated_at').notNull(),
@@ -40,10 +44,18 @@ export const videos = sqliteTable(
         // Empty for a placeholder from an old report, until its link is pasted.
         youtubeId: text('youtube_id').notNull(),
         title: text('title').notNull().default(''),
+        // The YouTube channel that uploaded the video, which is often not the artist.
         author: text('author').notNull().default(''),
+        // Empty when unknown. artistSource says where it came from (see videos/artist.js),
+        // so a better source can replace a guess but never a hand edit.
+        artist: text('artist').notNull().default(''),
+        artistSource: text('artist_source').notNull().default(''),
         thumbnailUrl: text('thumbnail_url').notNull().default(''),
         notes: text('notes').notNull().default(''),
         watched: integer('watched', { mode: 'boolean' }).notNull().default(false),
+        // Deleted or made private on YouTube. The row keeps its YouTube ID, so syncing
+        // with the playlist again recognizes it, and waits for another link like a placeholder.
+        unavailable: integer('unavailable', { mode: 'boolean' }).notNull().default(false),
         position: real('position').notNull().default(0),
         createdAt: integer('created_at').notNull(),
         updatedAt: integer('updated_at').notNull(),

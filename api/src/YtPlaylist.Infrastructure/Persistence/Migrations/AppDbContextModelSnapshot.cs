@@ -21,28 +21,6 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("YtPlaylist.Models.Entities.SyncCounter", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    b.Property<long>("Value")
-                        .HasColumnType("bigint")
-                        .HasColumnName("value");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("sync_counter", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Value = 0L
-                        });
-                });
-
             modelBuilder.Entity("YtPlaylist.Models.Entities.Playlist", b =>
                 {
                     b.Property<string>("Id")
@@ -78,6 +56,18 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("seq");
 
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("source");
+
+                    b.Property<string>("SourceId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("source_id");
+
                     b.Property<long>("UpdatedAt")
                         .HasColumnType("bigint")
                         .HasColumnName("updated_at");
@@ -89,12 +79,46 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
                     b.ToTable("playlists", (string)null);
                 });
 
+            modelBuilder.Entity("YtPlaylist.Models.Entities.SyncCounter", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<long>("Value")
+                        .HasColumnType("bigint")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("sync_counter", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Value = 0L
+                        });
+                });
+
             modelBuilder.Entity("YtPlaylist.Models.Entities.Video", b =>
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("id");
+
+                    b.Property<string>("Artist")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("artist");
+
+                    b.Property<string>("ArtistSource")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("artist_source");
 
                     b.Property<string>("Author")
                         .IsRequired()
@@ -141,6 +165,10 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
                         .HasMaxLength(400)
                         .HasColumnType("character varying(400)")
                         .HasColumnName("title");
+
+                    b.Property<bool>("Unavailable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("unavailable");
 
                     b.Property<long>("UpdatedAt")
                         .HasColumnType("bigint")

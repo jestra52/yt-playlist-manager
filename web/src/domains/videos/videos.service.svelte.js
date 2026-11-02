@@ -3,6 +3,7 @@ import { getApiBase } from '../../core/config.js';
 import { dataChanged } from '../../core/events.js';
 import { notify } from '../ui/ui.service.svelte.js';
 import { extractYouTubeIds, parseYouTubeId, thumbnailFor } from './youtube.js';
+import { cleanArtist, guessedArtistPatch, knownArtists, matchKnownArtist } from './artist.js';
 import { fetchVideoMetadata } from './metadata.client.js';
 import { fetchYouTubePlaylist } from './playlist.client.js';
 import * as repo from './videos.repository.js';
@@ -37,6 +38,9 @@ class VideosService {
         return counts;
     });
 
+    /** Every artist in the library, most used first: suggestions when editing one. */
+    artists = $derived(knownArtists(this.items));
+
     playing = $derived(this.playingId ? (this.items.find((v) => v.id === this.playingId) ?? null) : null);
 
     // ---- queries -------------------------------------------------------
@@ -60,6 +64,7 @@ class VideosService {
                 (v) =>
                     !q ||
                     v.title.toLowerCase().includes(q) ||
+                    v.artist.toLowerCase().includes(q) ||
                     v.author.toLowerCase().includes(q) ||
                     v.notes.toLowerCase().includes(q),
             );
@@ -70,6 +75,7 @@ class VideosService {
     load() {
         this.items = repo.listVideos(getDatabase());
         if (this.playingId && !this.items.some((v) => v.id === this.playingId)) this.playingId = null;
+        this.#guessMissingArtists();
     }
 
     /**
@@ -132,7 +138,10 @@ class VideosService {
      * to a playlist and fetches titles for the ones that came without one.
      */
     addEntries(playlistId, entries) {
-        const result = repo.addVideos(getDatabase(), playlistId, entries);
+        const withArtists = entries.map((entry) =>
+            typeof entry === 'string' ? entry : { ...entry, ...guessedArtistPatch(entry) },
+        );
+        const result = repo.addVideos(getDatabase(), playlistId, withArtists);
         if (result.added.length) {
             this.items = [...this.items, ...result.added];
             dataChanged();
@@ -144,15 +153,19 @@ class VideosService {
     /**
      * Puts back entries missing since an old report (see playlists/report-compare.js)
      * near their old place. Entries with a YouTube link become videos; the rest
-     * become placeholders that wait for a link. Returns the inserted videos.
+     * become placeholders that wait for a link. An entry's `artist` comes from
+     * a report with artists; for older reports it's guessed from the title.
+     * Returns the inserted videos.
      */
     addFromReport(playlistId, missing) {
-        const entries = missing.map((entry) => ({
-            youtubeId: entry.youtubeId ?? '',
+        const entries = missing.map((entry) => {
             // A link stands in for an unknown title; YouTube's title replaces it below.
-            title: entry.youtubeId ? '' : entry.title,
-            afterId: entry.afterId,
-        }));
+            const title = entry.youtubeId ? '' : entry.title;
+            const artist = entry.artist
+                ? { artist: cleanArtist(entry.artist), artistSource: 'user' }
+                : guessedArtistPatch({ title, author: '', artist: '', artistSource: '' });
+            return { youtubeId: entry.youtubeId ?? '', title, afterId: entry.afterId, ...artist };
+        });
         const added = repo.insertVideosAfter(getDatabase(), playlistId, entries);
         if (added.length) {
             this.items = [...this.items, ...added];
@@ -163,8 +176,9 @@ class VideosService {
     }
 
     /**
-     * Completes a placeholder with the YouTube video at `link`: its ID, then the
-     * title, channel and thumbnail from YouTube. Resolves to true when saved.
+     * Completes a placeholder, or a video deleted on YouTube, with the YouTube
+     * video at `link`: its ID, then the title, channel and thumbnail from YouTube.
+     * Resolves to true when saved.
      */
     async complete(id, link) {
         const video = repo.getVideo(getDatabase(), id);
@@ -181,10 +195,11 @@ class VideosService {
             notify(`That video is already in this playlist: “${duplicate.title || youtubeId}”`, { tone: 'error' });
             return false;
         }
-        this.#update(id, { youtubeId, thumbnailUrl: thumbnailFor(youtubeId) });
+        this.#update(id, { youtubeId, thumbnailUrl: thumbnailFor(youtubeId), unavailable: false });
         const meta = await fetchVideoMetadata(youtubeId, getApiBase());
-        if (meta && !meta.unavailable && repo.getVideo(getDatabase(), id)?.youtubeId === youtubeId) {
-            this.#update(id, meta);
+        const current = repo.getVideo(getDatabase(), id);
+        if (meta && !meta.unavailable && current?.youtubeId === youtubeId) {
+            this.#update(id, { ...meta, ...guessedArtistPatch(current, meta) });
         }
         return true;
     }
@@ -199,7 +214,7 @@ class VideosService {
                 if (!meta || meta.unavailable) continue;
                 const current = repo.getVideo(getDatabase(), video.id);
                 if (!current || current.title) continue;
-                this.#update(video.id, meta);
+                this.#update(video.id, { ...meta, ...guessedArtistPatch(current, meta) });
             }
         };
         await Promise.all([worker(), worker(), worker()]);
@@ -211,6 +226,17 @@ class VideosService {
 
     saveNotes(id, notes) {
         return this.#update(id, { notes: notes.slice(0, 5000) });
+    }
+
+    /**
+     * A hand edit wins over any guess or lookup, even when it clears the artist.
+     * An artist other videos already have keeps their spelling ("tomoko aran"
+     * becomes "Tomoko Aran"); the edited video itself doesn't count, so fixing
+     * its own spelling works.
+     */
+    saveArtist(id, artist) {
+        const known = knownArtists(this.items.filter((v) => v.id !== id));
+        return this.#update(id, { artist: matchKnownArtist(artist, known), artistSource: 'user' });
     }
 
     /** Moves a video to a new index in its playlist's full order. */
@@ -246,6 +272,39 @@ class VideosService {
     restore(id) {
         const video = repo.restoreVideo(getDatabase(), id);
         if (video) this.#replace(video);
+    }
+
+    /**
+     * Applies a comparison with the playlist's YouTube playlist (see
+     * playlists/youtube-sync.js) in one transaction: adds the new videos in
+     * YouTube's order, marks or unmarks videos deleted on YouTube, and, with
+     * `removeMissing`, removes the videos no longer in the YouTube playlist.
+     * Returns how many of each changed.
+     */
+    applyYouTubeSync(playlistId, diff, { removeMissing = false } = {}) {
+        const db = getDatabase();
+        const removed = removeMissing ? diff.removed : [];
+        const added = db.transaction(() => {
+            const inserted = repo.insertVideosAfter(
+                db,
+                playlistId,
+                diff.added.map((entry) => ({ ...entry, ...guessedArtistPatch(entry) })),
+            );
+            for (const video of diff.nowUnavailable) repo.updateVideo(db, video.id, { unavailable: true });
+            for (const video of diff.availableAgain) repo.updateVideo(db, video.id, { unavailable: false });
+            for (const video of removed) repo.deleteVideo(db, video.id);
+            return inserted;
+        });
+        // Reloading also stops the player when the video playing was removed.
+        this.load();
+        dataChanged();
+        return {
+            added: added.filter((v) => !v.unavailable).length,
+            addedMissing: added.filter((v) => v.unavailable).length,
+            nowUnavailable: diff.nowUnavailable.length,
+            availableAgain: diff.availableAgain.length,
+            removed: removed.length,
+        };
     }
 
     /** Forgets a deleted playlist's videos (the repository already removed them). */
@@ -287,6 +346,24 @@ class VideosService {
     }
 
     // ---- helpers -------------------------------------------------------
+
+    /**
+     * Guesses the artist of videos that have never had one, such as videos
+     * saved before artists existed. A video keeps its source once it has an
+     * artist, so each one is only guessed once.
+     */
+    #guessMissingArtists() {
+        const guesses = this.items
+            .filter((v) => !v.artistSource)
+            .map((v) => ({ id: v.id, ...guessedArtistPatch(v) }))
+            .filter((g) => g.artist);
+        if (!guesses.length) return;
+        const db = getDatabase();
+        const updated = db.transaction(() => guesses.map(({ id, ...patch }) => repo.updateVideo(db, id, patch)));
+        const byId = new Map(updated.filter(Boolean).map((v) => [v.id, v]));
+        this.items = this.items.map((v) => byId.get(v.id) ?? v);
+        dataChanged();
+    }
 
     #update(id, patch) {
         const video = repo.updateVideo(getDatabase(), id, patch);

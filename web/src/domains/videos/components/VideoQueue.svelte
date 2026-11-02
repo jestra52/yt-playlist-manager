@@ -48,4 +48,10 @@
             />
         {/each}
     </ol>
+    <!-- Suggestions for the artist field in every row (see VideoRow). -->
+    <datalist id="known-artists">
+        {#each videos.artists as artist (artist)}
+            <option value={artist}></option>
+        {/each}
+    </datalist>
 {/if}

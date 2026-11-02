@@ -13,6 +13,40 @@
 
     const displayTitle = $derived(video.title || (video.missing ? 'Untitled' : `YouTube video ${video.youtubeId}`));
 
+    // "Anri - Topic" adds nothing next to the artist "Anri".
+    const channelName = (author) =>
+        author
+            .replace(/\s+-\s+Topic$/u, '')
+            .trim()
+            .toLowerCase();
+    const showChannel = $derived(
+        Boolean(video.author) && (!video.artist || channelName(video.author) !== video.artist.toLowerCase()),
+    );
+
+    let editingArtist = $state(false);
+    let artistDraft = $state('');
+    let artistField = $state();
+
+    const openArtist = () => {
+        artistDraft = video.artist;
+        editingArtist = true;
+        queueMicrotask(() => artistField?.focus());
+    };
+
+    const closeArtist = () => {
+        if (!editingArtist) return;
+        editingArtist = false;
+        if (artistDraft.trim() !== video.artist) videos.saveArtist(video.id, artistDraft);
+    };
+
+    const onArtistKey = (event) => {
+        if (event.key === 'Escape') editingArtist = false;
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            closeArtist();
+        }
+    };
+
     let link = $state('');
     let saving = $state(false);
 
@@ -68,7 +102,12 @@
         {/if}
     </button>
 
-    {#if video.missing}
+    {#if video.unavailable}
+        <div class="thumb missing-thumb" title="Deleted or made private on YouTube: paste another link">
+            <Icon name="link" size={22} />
+            <span>Deleted</span>
+        </div>
+    {:else if video.missing}
         <div class="thumb missing-thumb" title="Not on YouTube yet: paste its link">
             <Icon name="link" size={22} />
             <span>Missing</span>
@@ -100,7 +139,9 @@
                     id="link-{video.id}"
                     class="input input-sm join-item min-w-0 flex-1"
                     bind:value={link}
-                    placeholder="Paste the YouTube link to complete it"
+                    placeholder={video.unavailable
+                        ? 'Deleted on YouTube: paste another link to replace it'
+                        : 'Paste the YouTube link to complete it'}
                     autocomplete="off"
                     spellcheck="false"
                     inputmode="url"
@@ -115,8 +156,39 @@
             <a class="title link link-hover" href={watchUrl(video.youtubeId)} target="_blank" rel="noopener noreferrer"
                 >{displayTitle}</a
             >
-            {#if video.author}<p class="mt-0.5 text-sm text-base-content/65">{video.author}</p>{/if}
         {/if}
+
+        <p class="byline mt-0.5 text-sm text-base-content/65">
+            {#if editingArtist}
+                <label class="sr-only" for="artist-{video.id}">Artist of {displayTitle}</label>
+                <input
+                    id="artist-{video.id}"
+                    class="input input-xs w-full max-w-xs text-sm"
+                    bind:this={artistField}
+                    bind:value={artistDraft}
+                    list="known-artists"
+                    onblur={closeArtist}
+                    onkeydown={onArtistKey}
+                    maxlength="200"
+                    placeholder="Artist"
+                    autocomplete="off"
+                    spellcheck="false"
+                />
+            {:else if video.artist}
+                <button type="button" class="artist" title="Edit the artist" onclick={openArtist}>{video.artist}</button
+                >{#if video.artistSource === 'guess'}<button
+                        type="button"
+                        class="guessed tooltip tooltip-bottom"
+                        data-tip="Guessed from the YouTube title or channel, so it may be wrong. Click to correct it."
+                        aria-label="Artist guessed from YouTube, may be wrong. Correct it"
+                        onclick={openArtist}><Icon name="info" size={13} /></button
+                    >{/if}
+                {#if showChannel}<span class="sep" aria-hidden="true">·</span> uploaded by {video.author}{/if}
+            {:else}
+                {#if video.author}{video.author}<span class="sep" aria-hidden="true">·</span>{/if}
+                <button type="button" class="add-artist" onclick={openArtist}>Add artist</button>
+            {/if}
+        </p>
 
         {#if editingNotes}
             <textarea
@@ -332,6 +404,67 @@
 
         @include until(md) {
             font-size: 1rem;
+        }
+    }
+
+    .byline {
+        overflow-wrap: anywhere;
+    }
+
+    .sep {
+        margin-inline: 0.35em;
+    }
+
+    .artist {
+        color: tint($base-content, 85%);
+        font-weight: 600;
+        text-align: left;
+        cursor: text;
+
+        &:hover {
+            text-decoration: underline dotted;
+        }
+    }
+
+    .guessed {
+        display: inline-grid;
+        place-items: center;
+        margin-left: 0.25em;
+        vertical-align: -0.1em;
+        color: tint($base-content, 45%);
+        cursor: pointer;
+        // daisyUI's tooltip uses the neutral color, which is the page's own shade in
+        // the dark theme; the text color stands out in both themes.
+        --tt-bg: var(--color-base-content);
+
+        &::before {
+            width: 16rem;
+            max-width: 70vw;
+            color: var(--color-base-100);
+            font-weight: 500;
+            text-align: left;
+        }
+
+        &:hover,
+        &:focus-visible {
+            color: $base-content;
+        }
+    }
+
+    .add-artist {
+        text-decoration: underline dotted;
+        cursor: text;
+        opacity: 0;
+        transition: opacity $duration-fast ease;
+
+        .row:hover &,
+        &:focus-visible {
+            opacity: 1;
+        }
+
+        // No hover on phones, so it always shows there.
+        @include until(md) {
+            opacity: 1;
         }
     }
 

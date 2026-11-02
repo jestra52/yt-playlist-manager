@@ -69,17 +69,24 @@ public sealed class YouTubeClientTests
         using var http = new HttpClient(handler);
         var client = new YouTubePlaylistClient(http, Microsoft.Extensions.Options.Options.Create(Options("k")));
 
-        var playlist = await client.GetPlaylistAsync(ListId, CancellationToken.None);
+        var playlist = await client.GetPlaylistAsync(ListId, false, CancellationToken.None);
         Assert.Equal(("Road trip", "Juan", "api", false, 1), (playlist.Title, playlist.Author, playlist.Source, playlist.Partial, playlist.Skipped));
         Assert.Equal(["dQw4w9WgXcQ", "9bZkp7q19f0"], playlist.Videos.Select(v => v.YouTubeId));
         Assert.Equal("https://i.ytimg.com/vi/9bZkp7q19f0/mqdefault.jpg", playlist.Videos[1].ThumbnailUrl);
 
+        // Asked for, the deleted video comes back in its place, flagged, with nothing to show.
+        var withDeleted = await client.GetPlaylistAsync(ListId, true, CancellationToken.None);
+        Assert.Equal(0, withDeleted.Skipped);
+        Assert.Equal(["dQw4w9WgXcQ", "aaaaaaaaaaa", "9bZkp7q19f0"], withDeleted.Videos.Select(v => v.YouTubeId));
+        Assert.Equal(new VideoMetadata("aaaaaaaaaaa", "Deleted video", "", "", Unavailable: true), withDeleted.Videos[1]);
+        Assert.All([withDeleted.Videos[0], withDeleted.Videos[2]], v => Assert.False(v.Unavailable));
+
         var limited = new YouTubePlaylistClient(http, Microsoft.Extensions.Options.Options.Create(Options("k", maxVideos: 1)));
-        var partial = await limited.GetPlaylistAsync(ListId, CancellationToken.None);
+        var partial = await limited.GetPlaylistAsync(ListId, false, CancellationToken.None);
         Assert.True(partial.Partial);
         Assert.Single(partial.Videos);
 
-        await Assert.ThrowsAsync<YouTubeNotFoundException>(() => client.GetPlaylistAsync("PLzzzzzzzzzzzzzzzzzz", CancellationToken.None));
+        await Assert.ThrowsAsync<YouTubeNotFoundException>(() => client.GetPlaylistAsync("PLzzzzzzzzzzzzzzzzzz", false, CancellationToken.None));
     }
 
     [Theory]
@@ -109,7 +116,7 @@ public sealed class YouTubeClientTests
         using var http = new HttpClient(handler);
         var client = new YouTubePlaylistClient(http, Microsoft.Extensions.Options.Options.Create(Options("k")));
 
-        var playlist = await client.GetPlaylistAsync(ListId, CancellationToken.None);
+        var playlist = await client.GetPlaylistAsync(ListId, false, CancellationToken.None);
 
         Assert.False(playlist.Partial);
         Assert.Equal("dQw4w9WgXcQ", playlist.Videos[0].YouTubeId);
@@ -135,7 +142,7 @@ public sealed class YouTubeClientTests
         using var http = new HttpClient(handler);
         var client = new YouTubePlaylistClient(http, Microsoft.Extensions.Options.Options.Create(Options("k")));
 
-        var playlist = await client.GetPlaylistAsync(ListId, CancellationToken.None);
+        var playlist = await client.GetPlaylistAsync(ListId, false, CancellationToken.None);
 
         Assert.True(playlist.Partial);
         Assert.Empty(playlist.Videos);
@@ -151,8 +158,8 @@ public sealed class YouTubeClientTests
         using var http = new HttpClient(handler);
         var client = new YouTubePlaylistClient(http, Microsoft.Extensions.Options.Options.Create(Options("k")));
 
-        await Assert.ThrowsAsync<YouTubeNotFoundException>(() => client.GetPlaylistAsync("PLprivateprivate", CancellationToken.None));
-        await Assert.ThrowsAsync<YouTubeUnavailableException>(() => client.GetPlaylistAsync(ListId, CancellationToken.None));
+        await Assert.ThrowsAsync<YouTubeNotFoundException>(() => client.GetPlaylistAsync("PLprivateprivate", false, CancellationToken.None));
+        await Assert.ThrowsAsync<YouTubeUnavailableException>(() => client.GetPlaylistAsync(ListId, false, CancellationToken.None));
     }
 
     [Fact]
@@ -172,11 +179,11 @@ public sealed class YouTubeClientTests
         using var http = new HttpClient(handler);
         var client = new YouTubePlaylistClient(http, Microsoft.Extensions.Options.Options.Create(Options()));
 
-        var playlist = await client.GetPlaylistAsync(ListId, CancellationToken.None);
+        var playlist = await client.GetPlaylistAsync(ListId, false, CancellationToken.None);
         Assert.Equal(("Road trip", "Juan", "feed", false), (playlist.Title, playlist.Author, playlist.Source, playlist.Partial));
         Assert.Equal("One & only", playlist.Videos[0].Title);
         Assert.Equal(2, playlist.Videos.Count);
-        await Assert.ThrowsAsync<YouTubeNotFoundException>(() => client.GetPlaylistAsync("PLzzzzzzzzzzzzzzzzzz", CancellationToken.None));
+        await Assert.ThrowsAsync<YouTubeNotFoundException>(() => client.GetPlaylistAsync("PLzzzzzzzzzzzzzzzzzz", false, CancellationToken.None));
     }
 
     [Theory]
@@ -188,7 +195,7 @@ public sealed class YouTubeClientTests
     {
         using var http = new HttpClient(new StubHandler(_ => throw new InvalidOperationException("no request expected")));
         var client = new YouTubePlaylistClient(http, Microsoft.Extensions.Options.Options.Create(Options()));
-        await Assert.ThrowsAsync<DomainValidationException>(() => client.GetPlaylistAsync(id, CancellationToken.None));
+        await Assert.ThrowsAsync<DomainValidationException>(() => client.GetPlaylistAsync(id, false, CancellationToken.None));
     }
 
     [Fact]
@@ -196,6 +203,6 @@ public sealed class YouTubeClientTests
     {
         using var http = new HttpClient(new StubHandler(_ => throw new InvalidOperationException("no request expected")));
         var client = new YouTubePlaylistClient(http, Microsoft.Extensions.Options.Options.Create(Options()));
-        await Assert.ThrowsAsync<PlaylistNotSupportedException>(() => client.GetPlaylistAsync("RDdQw4w9WgXcQ", CancellationToken.None));
+        await Assert.ThrowsAsync<PlaylistNotSupportedException>(() => client.GetPlaylistAsync("RDdQw4w9WgXcQ", false, CancellationToken.None));
     }
 }

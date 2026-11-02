@@ -16,8 +16,10 @@ public sealed class PostgresSyncStoreTests : SyncStoreTests
         {
             return null;
         }
+        // Retries on, as the API sets it up, so the store's own transaction runs inside
+        // the retrying execution strategy (which refuses a transaction opened outside it).
         var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(PostgresConnectionString.From(DatabaseUrl))
+            .UseNpgsql(PostgresConnectionString.From(DatabaseUrl), npgsql => npgsql.EnableRetryOnFailure())
             .Options);
         lock (MigrateLock)
         {

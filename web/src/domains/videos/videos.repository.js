@@ -9,9 +9,12 @@ const fields = {
     youtubeId: videos.youtubeId,
     title: videos.title,
     author: videos.author,
+    artist: videos.artist,
+    artistSource: videos.artistSource,
     thumbnailUrl: videos.thumbnailUrl,
     notes: videos.notes,
     watched: videos.watched,
+    unavailable: videos.unavailable,
     position: videos.position,
     createdAt: videos.createdAt,
     updatedAt: videos.updatedAt,
@@ -21,8 +24,9 @@ const fields = {
 const toVideo = (row) => {
     return {
         ...row,
-        // A placeholder from an old report: known by its title until its link is pasted.
-        missing: row.youtubeId === '',
+        // Waits for a link: a placeholder from an old report (known by its title), or a
+        // video deleted or made private on YouTube (it keeps its old ID).
+        missing: row.youtubeId === '' || row.unavailable,
         thumbnailUrl: row.thumbnailUrl || (row.youtubeId ? thumbnailFor(row.youtubeId) : ''),
     };
 };
@@ -57,7 +61,12 @@ const nextPosition = (db, playlistId) => {
     return (top ?? 0) + 1;
 };
 
-const insertVideo = (db, playlistId, { youtubeId, title = '', author = '', thumbnailUrl }, position) => {
+const insertVideo = (
+    db,
+    playlistId,
+    { youtubeId, title = '', author = '', artist = '', artistSource = '', thumbnailUrl, unavailable = false },
+    position,
+) => {
     const t = now();
     const id = newId();
     db.write(
@@ -67,9 +76,12 @@ const insertVideo = (db, playlistId, { youtubeId, title = '', author = '', thumb
             youtubeId,
             title: title.slice(0, 400),
             author: author.slice(0, 200),
+            artist: artist.slice(0, 200),
+            artistSource: artist ? artistSource : '',
             thumbnailUrl: thumbnailUrl || (youtubeId ? thumbnailFor(youtubeId) : ''),
             notes: '',
             watched: false,
+            unavailable: Boolean(unavailable && youtubeId),
             position,
             createdAt: t,
             updatedAt: t,
@@ -92,8 +104,8 @@ const playlistRows = (db, playlistId) => {
 
 /**
  * Appends videos to a playlist, skipping YouTube IDs already in it. Each entry
- * is a YouTube ID or an object with `youtubeId` and optional `title`, `author`
- * and `thumbnailUrl` (e.g. from a playlist import).
+ * is a YouTube ID or an object with `youtubeId` and optional `title`, `author`,
+ * `artist`, `artistSource`, `thumbnailUrl` and `unavailable` (e.g. from a playlist import).
  * Returns { added, skipped } where skipped lists the duplicate YouTube IDs.
  */
 export const addVideos = (db, playlistId, entries) => {
@@ -103,28 +115,24 @@ export const addVideos = (db, playlistId, entries) => {
         const added = [];
         const skipped = [];
         for (const entry of entries) {
-            const {
-                youtubeId,
-                title = '',
-                author = '',
-                thumbnailUrl,
-            } = typeof entry === 'string' ? { youtubeId: entry } : entry;
-            if (existing.has(youtubeId)) {
-                skipped.push(youtubeId);
+            const fields = typeof entry === 'string' ? { youtubeId: entry } : entry;
+            if (existing.has(fields.youtubeId)) {
+                skipped.push(fields.youtubeId);
                 continue;
             }
-            existing.add(youtubeId);
-            added.push(insertVideo(db, playlistId, { youtubeId, title, author, thumbnailUrl }, position++));
+            existing.add(fields.youtubeId);
+            added.push(insertVideo(db, playlistId, fields, position++));
         }
         return { added, skipped };
     });
 };
 
 /**
- * Inserts `{ title, youtubeId, afterId }` entries into a playlist. Entries that
- * share an `afterId` go right after that video (at the start when it is null,
- * at the end when the video is gone), in their given order. An empty
- * `youtubeId` makes a placeholder. Returns the inserted videos.
+ * Inserts `{ title, youtubeId, afterId }` entries (optionally with `author`,
+ * `artist`, `artistSource`, `thumbnailUrl` and `unavailable`) into a playlist.
+ * Entries that share an `afterId` go right after that video (at the start when
+ * it is null, at the end when the video is gone), in their given order. An
+ * empty `youtubeId` makes a placeholder. Returns the inserted videos.
  */
 export const insertVideosAfter = (db, playlistId, entries) => {
     return db.transaction(() => {
@@ -161,7 +169,15 @@ export const insertVideosAfter = (db, playlistId, entries) => {
                     insertVideo(
                         db,
                         playlistId,
-                        { youtubeId: entry.youtubeId ?? '', title: entry.title ?? '' },
+                        {
+                            youtubeId: entry.youtubeId ?? '',
+                            title: entry.title ?? '',
+                            author: entry.author ?? '',
+                            artist: entry.artist ?? '',
+                            artistSource: entry.artistSource ?? '',
+                            thumbnailUrl: entry.thumbnailUrl,
+                            unavailable: entry.unavailable ?? false,
+                        },
                         position,
                     ),
                 );
@@ -172,13 +188,27 @@ export const insertVideosAfter = (db, playlistId, entries) => {
 };
 
 /** Fields a caller may change with updateVideo. */
-const EDITABLE = ['youtubeId', 'title', 'author', 'thumbnailUrl', 'notes', 'watched', 'position', 'playlistId'];
+const EDITABLE = [
+    'youtubeId',
+    'title',
+    'author',
+    'artist',
+    'artistSource',
+    'thumbnailUrl',
+    'notes',
+    'watched',
+    'unavailable',
+    'position',
+    'playlistId',
+];
+
+const FLAGS = new Set(['watched', 'unavailable']);
 
 /** Updates the given fields and marks the row for sync. */
 export const updateVideo = (db, id, patch) => {
     const changes = {};
     for (const key of EDITABLE) {
-        if (patch[key] !== undefined) changes[key] = key === 'watched' ? Boolean(patch[key]) : patch[key];
+        if (patch[key] !== undefined) changes[key] = FLAGS.has(key) ? Boolean(patch[key]) : patch[key];
     }
     if (!Object.keys(changes).length) return getVideo(db, id);
     db.write(

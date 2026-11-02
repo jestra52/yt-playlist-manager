@@ -30,7 +30,8 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
     /// </summary>
     internal const int MaxDataApiPages = 100;
 
-    public async Task<YouTubePlaylist> GetPlaylistAsync(string playlistId, CancellationToken cancellationToken)
+    public async Task<YouTubePlaylist> GetPlaylistAsync(
+        string playlistId, bool includeUnavailable, CancellationToken cancellationToken)
     {
         if (!YouTubeIds.IsPlaylistId(playlistId))
         {
@@ -47,7 +48,7 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
         {
             return string.IsNullOrEmpty(options.Value.ApiKey)
                 ? await this.FromFeedAsync(playlistId, deadline.Token)
-                : await this.FromDataApiAsync(playlistId, deadline.Token);
+                : await this.FromDataApiAsync(playlistId, includeUnavailable, deadline.Token);
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
@@ -55,7 +56,7 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
         }
     }
 
-    private async Task<YouTubePlaylist> FromDataApiAsync(string id, CancellationToken cancellationToken)
+    private async Task<YouTubePlaylist> FromDataApiAsync(string id, bool includeUnavailable, CancellationToken cancellationToken)
     {
         var info = await this.DataApiGetAsync<PlaylistListResponse>(
             $"playlists?part=snippet&id={Uri.EscapeDataString(id)}", cancellationToken);
@@ -81,7 +82,9 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
             {
                 var s = item.Snippet;
                 var videoId = s?.ResourceId?.VideoId;
-                if (s is null || string.IsNullOrEmpty(s.VideoOwnerChannelTitle) || !YouTubeIds.IsVideoId(videoId))
+                // Deleted and private videos keep their ID but lose their channel.
+                var unavailable = s is not null && string.IsNullOrEmpty(s.VideoOwnerChannelTitle);
+                if (s is null || !YouTubeIds.IsVideoId(videoId) || (unavailable && !includeUnavailable))
                 {
                     skipped++;
                     continue;
@@ -90,10 +93,15 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
                 {
                     return new YouTubePlaylist(id, snippet.Title ?? "", snippet.ChannelTitle ?? "", videos, skipped, true, "api");
                 }
+                if (unavailable)
+                {
+                    videos.Add(new VideoMetadata(videoId!, s.Title ?? "", "", "", Unavailable: true));
+                    continue;
+                }
                 var thumbnail = s.Thumbnails is not null && s.Thumbnails.TryGetValue("medium", out var medium)
                     ? medium.Url
                     : null;
-                videos.Add(new VideoMetadata(videoId, s.Title ?? "", s.VideoOwnerChannelTitle, Thumbnail(videoId, thumbnail)));
+                videos.Add(new VideoMetadata(videoId!, s.Title ?? "", s.VideoOwnerChannelTitle!, Thumbnail(videoId!, thumbnail)));
             }
 
             var next = page.NextPageToken;

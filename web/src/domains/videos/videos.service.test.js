@@ -6,6 +6,7 @@ import { onDataChanged } from '../../core/events.js';
 import { playlists } from '../playlists/playlists.service.svelte.js';
 import { ui } from '../ui/ui.service.svelte.js';
 import { videos } from './videos.service.svelte.js';
+import * as repo from './videos.repository.js';
 
 let SQL;
 beforeAll(async () => {
@@ -14,6 +15,10 @@ beforeAll(async () => {
     globalThis.fetch = async (url) => {
         const match = String(url).match(/\/api\/playlist\?id=([^&]+)/);
         const playlist = match && PLAYLISTS[decodeURIComponent(match[1])];
+        // Like the API: deleted videos come back in their place only when asked for.
+        if (playlist && /[?&]includeUnavailable=true/.test(String(url)) && playlist.withDeleted) {
+            return { ok: true, status: 200, json: async () => playlist.withDeleted };
+        }
         if (playlist) return { ok: true, status: 200, json: async () => playlist };
         if (match)
             return { ok: false, status: 404, json: async () => ({ error: 'playlist not found, or it is private' }) };
@@ -33,6 +38,33 @@ const PLAYLISTS = {
         videos: [
             { youtubeId: 'dQw4w9WgXcQ', title: 'Never Gonna Give You Up', author: 'Rick Astley', thumbnailUrl: '' },
             { youtubeId: 'kJQP7kiw5Fk', title: 'Despacito', author: 'Luis Fonsi', thumbnailUrl: '' },
+        ],
+        withDeleted: {
+            id: LIST,
+            title: 'Road trip',
+            author: 'Juan',
+            skipped: 0,
+            partial: false,
+            source: 'api',
+            videos: [
+                { youtubeId: 'dQw4w9WgXcQ', title: 'Never Gonna Give You Up', author: 'Rick Astley', thumbnailUrl: '' },
+                { youtubeId: 'aaaaaaaaaaa', title: 'Deleted video', author: '', thumbnailUrl: '', unavailable: true },
+                { youtubeId: 'kJQP7kiw5Fk', title: 'Despacito', author: 'Luis Fonsi', thumbnailUrl: '' },
+            ],
+        },
+    },
+    // The same playlist some time later, as /api/playlist returns it with deleted videos.
+    PLlaterlaterlaterlater: {
+        id: 'PLlaterlaterlaterlater',
+        title: 'Road trip',
+        author: 'Juan',
+        skipped: 0,
+        partial: false,
+        source: 'api',
+        videos: [
+            { youtubeId: 'dQw4w9WgXcQ', title: 'Deleted video', author: '', thumbnailUrl: '', unavailable: true },
+            { youtubeId: '9bZkp7q19f0', title: 'Gangnam Style', author: 'PSY', thumbnailUrl: '' },
+            { youtubeId: 'fJ9rUzIMcZQ', title: 'Queen - Bohemian Rhapsody', author: 'Queen', thumbnailUrl: '' },
         ],
     },
     PLpartialpartialpartial: {
@@ -128,11 +160,97 @@ describe('playlists and videos services', () => {
             'Imported “Road trip” with 2 videos. 1 private or deleted video left out',
         );
         expect(playlists.importing).toBe(false);
+        expect(created).toMatchObject({ source: 'youtube', sourceId: LIST });
 
         // A plain name still creates an empty playlist.
         const named = await playlists.createFromInput('Cooking');
         expect(named.name).toBe('Cooking');
         expect(videos.forPlaylist(named.id)).toEqual([]);
+    });
+
+    it('imports deleted videos as Missing items in their place when asked, and completes them with a new link', async () => {
+        const created = await playlists.createFromInput(`https://www.youtube.com/playlist?list=${LIST}`, {
+            includeUnavailable: true,
+        });
+        const list = videos.forPlaylist(created.id);
+        expect(list.map((v) => [v.youtubeId, v.title, v.unavailable, v.missing])).toEqual([
+            ['dQw4w9WgXcQ', 'Never Gonna Give You Up', false, false],
+            ['aaaaaaaaaaa', 'Deleted video', true, true],
+            ['kJQP7kiw5Fk', 'Despacito', false, false],
+        ]);
+        expect(ui.notices.at(-1).message).toBe(
+            'Imported “Road trip” with 2 videos. 1 deleted or private video added as Missing',
+        );
+
+        // It can't be played, shows under Missing, and keeps its ID until a new link replaces it.
+        const deleted = list[1];
+        videos.play(deleted.id);
+        expect(videos.playingId).toBeNull();
+        videos.setFilter('missing');
+        expect(videos.visibleFor(created.id).map((v) => v.id)).toEqual([deleted.id]);
+        expect(await videos.complete(deleted.id, 'https://youtu.be/9bZkp7q19f0')).toBe(true);
+        expect(videos.forPlaylist(created.id)[1]).toMatchObject({
+            youtubeId: '9bZkp7q19f0',
+            unavailable: false,
+            missing: false,
+        });
+    });
+
+    it('links a playlist to its YouTube playlist, and unlinks it', () => {
+        const p = playlists.create('Imported long ago');
+        expect(p).toMatchObject({ source: '', sourceId: '' });
+
+        expect(playlists.linkToYouTube(p.id, 'not a link')).toBe(false);
+        expect(ui.notices.at(-1).tone).toBe('error');
+        expect(playlists.linkToYouTube(p.id, `https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=${LIST}`)).toBe(true);
+        expect(playlists.selected).toMatchObject({ source: 'youtube', sourceId: LIST });
+
+        expect(playlists.linkToYouTube(p.id, '  ')).toBe(true);
+        expect(playlists.selected).toMatchObject({ source: '', sourceId: '' });
+    });
+
+    it('syncs a playlist from YouTube: adds new videos, marks deleted ones, and removes only when asked', async () => {
+        const p = playlists.create('Road trip');
+        videos.addEntries(p.id, [
+            { youtubeId: 'dQw4w9WgXcQ', title: 'Never Gonna Give You Up', author: 'Rick Astley' },
+            { youtubeId: 'kJQP7kiw5Fk', title: 'Despacito', author: 'Luis Fonsi' },
+            { youtubeId: '9bZkp7q19f0', title: 'Gangnam Style', author: 'PSY' },
+        ]);
+        expect(await playlists.readLinkedYouTubePlaylist(p.id)).toBeNull();
+        playlists.linkToYouTube(p.id, 'PLlaterlaterlaterlater');
+
+        const source = await playlists.readLinkedYouTubePlaylist(p.id);
+        const diff = playlists.compareWithYouTube(p.id, source);
+        expect(diff.added.map((a) => [a.youtubeId, a.afterId])).toEqual([
+            ['fJ9rUzIMcZQ', videos.forPlaylist(p.id)[2].id],
+        ]);
+        expect(diff.nowUnavailable.map((v) => v.youtubeId)).toEqual(['dQw4w9WgXcQ']);
+        expect(diff.removed.map((v) => v.youtubeId)).toEqual(['kJQP7kiw5Fk']);
+
+        playlists.applyYouTubeSync(p.id, diff);
+        expect(videos.forPlaylist(p.id).map((v) => [v.youtubeId, v.title, v.unavailable])).toEqual([
+            // A deleted video keeps the title it had here, not YouTube's "Deleted video".
+            ['dQw4w9WgXcQ', 'Never Gonna Give You Up', true],
+            ['kJQP7kiw5Fk', 'Despacito', false],
+            ['9bZkp7q19f0', 'Gangnam Style', false],
+            ['fJ9rUzIMcZQ', 'Queen - Bohemian Rhapsody', false],
+        ]);
+        expect(videos.forPlaylist(p.id)[3]).toMatchObject({ artist: 'Queen', artistSource: 'guess' });
+        expect(ui.notices.at(-1).message).toBe(
+            'Synced with YouTube: 1 new video added, 1 marked as deleted on YouTube',
+        );
+
+        // Syncing again finds only the removal, and removes it when asked; nothing is added twice.
+        const again = playlists.compareWithYouTube(p.id, source);
+        expect(again).toMatchObject({ added: [], nowUnavailable: [] });
+        playlists.applyYouTubeSync(p.id, again, { removeMissing: true });
+        expect(videos.forPlaylist(p.id).map((v) => v.youtubeId)).toEqual(['dQw4w9WgXcQ', '9bZkp7q19f0', 'fJ9rUzIMcZQ']);
+        expect(ui.notices.at(-1).message).toBe('Synced with YouTube: 1 removed');
+    });
+
+    it('says when deleted videos can’t be read without an API key', async () => {
+        await playlists.createFromInput('PLpartialpartialpartial', { includeUnavailable: true });
+        expect(ui.notices.at(-1).message).toContain('YOUTUBE_API_KEY');
     });
 
     it('reports a private playlist without creating anything', async () => {
@@ -218,5 +336,66 @@ describe('playlists and videos services', () => {
             title: 'Plastic Love',
         });
         expect(done.thumbnailUrl).toContain('9bZkp7q19f0');
+    });
+
+    it('guesses artists when adding, keeps hand edits and searches by artist', () => {
+        const p = playlists.create('City Pop');
+        videos.addEntries(p.id, [
+            { youtubeId: 'dQw4w9WgXcQ', title: 'Meiko Nakahara - Dance in the memories', author: 'Jim Gutierrez' },
+            { youtubeId: '9bZkp7q19f0', title: 'Windy Summer', author: 'Anri - Topic' },
+            { youtubeId: 'kJQP7kiw5Fk', title: 'Untitled live recording', author: 'Raven Almazan' },
+        ]);
+        const [meiko, anri, untitled] = videos.forPlaylist(p.id);
+        expect([meiko, anri, untitled].map((v) => [v.artist, v.artistSource])).toEqual([
+            ['Meiko Nakahara', 'guess'],
+            ['Anri', 'guess'],
+            ['', ''],
+        ]);
+
+        videos.saveArtist(untitled.id, '  Tatsuro | Yamashita ');
+        videos.saveArtist(meiko.id, '');
+        videos.load();
+        expect(videos.forPlaylist(p.id).map((v) => [v.artist, v.artistSource])).toEqual([
+            ['', 'user'],
+            ['Anri', 'guess'],
+            ['Tatsuro / Yamashita', 'user'],
+        ]);
+
+        videos.setQuery('tatsuro');
+        expect(videos.visibleFor(p.id).map((v) => v.id)).toEqual([untitled.id]);
+
+        // An artist another video has keeps its spelling; a video can still fix its own.
+        expect(videos.saveArtist(meiko.id, 'ANRI').artist).toBe('Anri');
+        expect(videos.saveArtist(untitled.id, 'tatsuro / yamashita').artist).toBe('tatsuro / yamashita');
+        expect(videos.artists).toEqual(['Anri', 'tatsuro / yamashita']);
+    });
+
+    it('guesses the artist once for videos saved before artists existed', () => {
+        const db = new Database(new SQL.Database());
+        setDatabase(db);
+        const p = playlists.create('Old');
+        videos.addEntries(p.id, [{ youtubeId: 'dQw4w9WgXcQ', title: 'Anri - Windy Summer' }]);
+        const [video] = videos.forPlaylist(p.id);
+        repo.updateVideo(db, video.id, { artist: '', artistSource: '' });
+
+        videos.load();
+        expect(videos.forPlaylist(p.id)[0]).toMatchObject({ artist: 'Anri', artistSource: 'guess' });
+    });
+
+    it('restores missing items with the report’s artist, or a guess for legacy reports', () => {
+        const p = playlists.create('City Pop');
+        videos.addEntries(p.id, [{ youtubeId: 'dQw4w9WgXcQ', title: 'Kept' }]);
+        const withArtists = 'Format: number: title | artist\n1: Kept |\n2: Plastic Love | Mariya Takeuchi';
+        playlists.addMissingFromReport(p.id, playlists.compareWithReport(p.id, withArtists).missing);
+        playlists.addMissingFromReport(
+            p.id,
+            playlists.compareWithReport(p.id, '1: Kept\n2: Plastic Love\n3: Anri - Windy Summer').missing,
+        );
+
+        expect(videos.forPlaylist(p.id).map((v) => [v.title, v.artist, v.artistSource])).toEqual([
+            ['Kept', '', ''],
+            ['Plastic Love', 'Mariya Takeuchi', 'user'],
+            ['Anri - Windy Summer', 'Anri', 'guess'],
+        ]);
     });
 });

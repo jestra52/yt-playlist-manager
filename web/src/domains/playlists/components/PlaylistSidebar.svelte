@@ -10,6 +10,7 @@
     let creating = $state(false);
     let name = $state('');
     let input = $state();
+    let withDeleted = $state(false);
 
     const isLink = $derived(Boolean(parsePlaylistId(name)));
 
@@ -20,7 +21,7 @@
 
     const submit = async (event) => {
         event.preventDefault();
-        if (await playlists.createFromInput(name)) {
+        if (await playlists.createFromInput(name, { includeUnavailable: withDeleted })) {
             ui.toggleSidebar(false);
             name = '';
             creating = false;
@@ -61,7 +62,7 @@
                         ui.toggleSidebar(false);
                     }}
                 >
-                    <span class="name grow">{playlist.name}</span>
+                    <span class="name grow" title={playlist.name}>{playlist.name}</span>
                     <span class="count" title="{count.total - count.watched} left to watch">
                         {count.total - count.watched}<span class="of">/{count.total}</span>
                     </span>
@@ -98,6 +99,17 @@
                 {/if}
             </button>
         </form>
+        {#if isLink}
+            <label class="with-deleted mt-2 flex items-center gap-2 px-1 text-sm">
+                <input
+                    type="checkbox"
+                    class="checkbox checkbox-xs"
+                    bind:checked={withDeleted}
+                    disabled={playlists.importing}
+                />
+                Import with deleted videos
+            </label>
+        {/if}
     {:else}
         <button type="button" class="new-btn btn btn-ghost btn-sm mt-2 justify-start" onclick={startCreating}>
             <Icon name="plus" size={16} /> New playlist
@@ -123,6 +135,15 @@
     // daisyUI's menu-active uses the neutral color, which is this panel's
     // background, so the sidebar gets its own active and hover look.
     .playlist-menu {
+        // daisyUI's menu and its rows wrap, so a long name would widen its
+        // row (and the longest one every row) and push the counts past the
+        // panel edge.
+        flex-wrap: nowrap;
+
+        li {
+            flex-wrap: nowrap;
+        }
+
         .item {
             display: flex;
             align-items: baseline;
@@ -146,6 +167,7 @@
 
         .name {
             @include truncate;
+            min-width: 0;
         }
 
         .count {
@@ -157,6 +179,11 @@
         .of {
             opacity: 0.6;
         }
+    }
+
+    .with-deleted {
+        color: tint($neutral-content, 70%);
+        cursor: pointer;
     }
 
     .new-btn {

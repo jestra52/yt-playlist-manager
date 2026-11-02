@@ -23,7 +23,11 @@ public static class DependencyInjection
         if (!string.IsNullOrWhiteSpace(databaseUrl))
         {
             var connectionString = PostgresConnectionString.From(databaseUrl);
-            services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+            // Neon closes idle connections when the database pauses or restarts
+            // (57P01 "terminating connection due to administrator command"), so a
+            // pooled connection can be dead by the next request: retry on a fresh one.
+            services.AddDbContext<AppDbContext>(
+                options => options.UseNpgsql(connectionString, npgsql => npgsql.EnableRetryOnFailure()));
             services.AddScoped<ISyncStore, EfSyncStore>();
         }
 

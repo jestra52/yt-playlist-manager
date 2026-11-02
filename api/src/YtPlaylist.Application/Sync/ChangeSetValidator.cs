@@ -35,6 +35,11 @@ public static partial class ChangeSetValidator
         }
         MaxLength("playlist name", p.Name, SyncLimits.MaxNameLength);
         MaxLength("playlist description", p.Description, SyncLimits.MaxTextLength);
+        RequireSource("playlist", p.Id, "source", p.Source);
+        if (p.SourceId is { Length: > 0 } sourceId && (sourceId.Length > SyncLimits.MaxIdLength || !RowId().IsMatch(sourceId)))
+        {
+            throw new DomainValidationException($"playlist {p.Id} has an invalid sourceId");
+        }
         RequireTimestamps("playlist", p.Id, p.CreatedAt, p.UpdatedAt);
     }
 
@@ -55,6 +60,8 @@ public static partial class ChangeSetValidator
         }
         MaxLength("video title", v.Title, SyncLimits.MaxTitleLength);
         MaxLength("video author", v.Author, SyncLimits.MaxNameLength);
+        MaxLength("video artist", v.Artist, SyncLimits.MaxNameLength);
+        RequireSource("video", v.Id, "artistSource", v.ArtistSource);
         MaxLength("video thumbnailUrl", v.ThumbnailUrl, SyncLimits.MaxUrlLength);
         MaxLength("video notes", v.Notes, SyncLimits.MaxTextLength);
         RequireTimestamps("video", v.Id, v.CreatedAt, v.UpdatedAt);
@@ -65,6 +72,18 @@ public static partial class ChangeSetValidator
         if (string.IsNullOrEmpty(id) || id.Length > SyncLimits.MaxIdLength || !RowId().IsMatch(id))
         {
             throw new DomainValidationException($"{field} \"{id}\" is not a valid id");
+        }
+    }
+
+    /// <summary>
+    /// Any short lowercase word (or empty), so devices that know newer sources (e.g. Spotify)
+    /// can still sync with this API.
+    /// </summary>
+    private static void RequireSource(string kind, string id, string field, string? value)
+    {
+        if (value is not null && (value.Length > SyncLimits.MaxSourceLength || !Source().IsMatch(value)))
+        {
+            throw new DomainValidationException($"{kind} {id} has an invalid {field}");
         }
     }
 
@@ -86,4 +105,7 @@ public static partial class ChangeSetValidator
 
     [GeneratedRegex("^[A-Za-z0-9_-]+$")]
     private static partial Regex RowId();
+
+    [GeneratedRegex("^[a-z]*$")]
+    private static partial Regex Source();
 }
