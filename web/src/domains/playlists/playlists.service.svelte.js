@@ -8,6 +8,7 @@ import { fetchYouTubePlaylist } from '../videos/playlist.client.js';
 import { downloadTextFile } from '../../shared/download.js';
 import { buildPlaylistReport, reportFileName } from './report.js';
 import { compareReport, parseReport } from './report-compare.js';
+import { diffWithYouTube } from './youtube-sync.js';
 import * as repo from './playlists.repository.js';
 
 const LAST_SELECTED_KEY = 'ytpm:selectedPlaylist';
@@ -36,6 +37,7 @@ class PlaylistsService {
     items = $state([]);
     selectedId = $state(null);
     importing = $state(false);
+    syncing = $state(false);
 
     selected = $derived(this.items.find((p) => p.id === this.selectedId) ?? null);
 
@@ -136,6 +138,51 @@ class PlaylistsService {
         if (!this.#update(id, { source: 'youtube', sourceId: listId })) return false;
         notify('Linked to the YouTube playlist');
         return true;
+    }
+
+    /**
+     * Reads the playlist's linked YouTube playlist, with its deleted and private
+     * videos so they aren't mistaken for removed ones, without changing anything.
+     * Resolves to the YouTube playlist (see playlist.client.js), or null after
+     * telling the person what went wrong.
+     */
+    async readLinkedYouTubePlaylist(id) {
+        const playlist = this.items.find((p) => p.id === id);
+        if (playlist?.source !== 'youtube' || !playlist.sourceId) return null;
+        this.syncing = true;
+        try {
+            return await fetchYouTubePlaylist(playlist.sourceId, getApiBase(), { includeUnavailable: true });
+        } catch (err) {
+            notify(err.message, { tone: 'error', timeout: 6000 });
+            return null;
+        } finally {
+            this.syncing = false;
+        }
+    }
+
+    /** Compares the playlist with a YouTube playlist read by readLinkedYouTubePlaylist. */
+    compareWithYouTube(id, source, { includeUnavailable = false } = {}) {
+        return diffWithYouTube(videos.forPlaylist(id), source, { includeUnavailable });
+    }
+
+    /**
+     * Applies a comparison with YouTube. With `saveReport`, the playlist's report
+     * is downloaded first, as it was before the sync (see #40 for automatic backups).
+     */
+    applyYouTubeSync(id, diff, { removeMissing = false, saveReport = false } = {}) {
+        if (saveReport) this.downloadReport(id);
+        const counts = videos.applyYouTubeSync(id, diff, { removeMissing });
+        const parts = [];
+        if (counts.added) parts.push(`${counts.added} new video${counts.added === 1 ? '' : 's'} added`);
+        if (counts.addedMissing)
+            parts.push(`${counts.addedMissing} deleted video${counts.addedMissing === 1 ? '' : 's'} added as Missing`);
+        if (counts.nowUnavailable) parts.push(`${counts.nowUnavailable} marked as deleted on YouTube`);
+        if (counts.availableAgain) parts.push(`${counts.availableAgain} back on YouTube`);
+        if (counts.removed) parts.push(`${counts.removed} removed`);
+        notify(parts.length ? `Synced with YouTube: ${parts.join(', ')}` : 'Already in step with YouTube', {
+            timeout: 6000,
+        });
+        return counts;
     }
 
     /** Downloads a numbered list of the playlist's videos as a .txt file. */

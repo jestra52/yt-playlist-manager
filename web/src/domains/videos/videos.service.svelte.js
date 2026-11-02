@@ -274,6 +274,39 @@ class VideosService {
         if (video) this.#replace(video);
     }
 
+    /**
+     * Applies a comparison with the playlist's YouTube playlist (see
+     * playlists/youtube-sync.js) in one transaction: adds the new videos in
+     * YouTube's order, marks or unmarks videos deleted on YouTube, and, with
+     * `removeMissing`, removes the videos no longer in the YouTube playlist.
+     * Returns how many of each changed.
+     */
+    applyYouTubeSync(playlistId, diff, { removeMissing = false } = {}) {
+        const db = getDatabase();
+        const removed = removeMissing ? diff.removed : [];
+        const added = db.transaction(() => {
+            const inserted = repo.insertVideosAfter(
+                db,
+                playlistId,
+                diff.added.map((entry) => ({ ...entry, ...guessedArtistPatch(entry) })),
+            );
+            for (const video of diff.nowUnavailable) repo.updateVideo(db, video.id, { unavailable: true });
+            for (const video of diff.availableAgain) repo.updateVideo(db, video.id, { unavailable: false });
+            for (const video of removed) repo.deleteVideo(db, video.id);
+            return inserted;
+        });
+        // Reloading also stops the player when the video playing was removed.
+        this.load();
+        dataChanged();
+        return {
+            added: added.filter((v) => !v.unavailable).length,
+            addedMissing: added.filter((v) => v.unavailable).length,
+            nowUnavailable: diff.nowUnavailable.length,
+            availableAgain: diff.availableAgain.length,
+            removed: removed.length,
+        };
+    }
+
     /** Forgets a deleted playlist's videos (the repository already removed them). */
     dropPlaylist(playlistId) {
         this.items = this.items.filter((v) => v.playlistId !== playlistId);

@@ -3,6 +3,7 @@
     import ProgressStrip from '../../videos/components/ProgressStrip.svelte';
     import CompareReportDialog from './CompareReportDialog.svelte';
     import LinkYouTubeDialog from './LinkYouTubeDialog.svelte';
+    import SyncYouTubeDialog from './SyncYouTubeDialog.svelte';
     import { playlists } from '../playlists.service.svelte.js';
     import { videos as videoService } from '../../videos/videos.service.svelte.js';
     import { ui } from '../../ui/ui.service.svelte.js';
@@ -16,6 +17,7 @@
     let confirming = $state(false);
     let comparing = $state(false);
     let linking = $state(false);
+    let syncing = $state(false);
 
     const linked = $derived(playlist.source === 'youtube' && Boolean(playlist.sourceId));
 
@@ -90,6 +92,16 @@
         <button
             class="btn btn-ghost btn-sm"
             type="button"
+            onclick={() => (syncing = true)}
+            aria-label="Sync from YouTube: add new videos and find deleted or removed ones"
+            title="Compare with the YouTube playlist and bring this one in step"
+        >
+            <Icon name="sync" size={16} />
+            <span class="max-md:hidden">Sync</span>
+        </button>
+        <button
+            class="btn btn-ghost btn-sm"
+            type="button"
             onclick={() => (comparing = true)}
             aria-label="Compare with an old report and add back missing videos"
             title="Find videos missing since an old report"
@@ -150,6 +162,7 @@
 
 <CompareReportDialog {playlist} open={comparing} onclose={() => (comparing = false)} />
 <LinkYouTubeDialog {playlist} open={linking} onclose={() => (linking = false)} />
+<SyncYouTubeDialog {playlist} open={syncing} onclose={() => (syncing = false)} />
 
 <style lang="scss">
     @use 'mixins' as *;

@@ -128,10 +128,11 @@ export const addVideos = (db, playlistId, entries) => {
 };
 
 /**
- * Inserts `{ title, youtubeId, afterId }` entries into a playlist. Entries that
- * share an `afterId` go right after that video (at the start when it is null,
- * at the end when the video is gone), in their given order. An empty
- * `youtubeId` makes a placeholder. Returns the inserted videos.
+ * Inserts `{ title, youtubeId, afterId }` entries (optionally with `author`,
+ * `artist`, `artistSource`, `thumbnailUrl` and `unavailable`) into a playlist.
+ * Entries that share an `afterId` go right after that video (at the start when
+ * it is null, at the end when the video is gone), in their given order. An
+ * empty `youtubeId` makes a placeholder. Returns the inserted videos.
  */
 export const insertVideosAfter = (db, playlistId, entries) => {
     return db.transaction(() => {
@@ -171,8 +172,11 @@ export const insertVideosAfter = (db, playlistId, entries) => {
                         {
                             youtubeId: entry.youtubeId ?? '',
                             title: entry.title ?? '',
+                            author: entry.author ?? '',
                             artist: entry.artist ?? '',
                             artistSource: entry.artistSource ?? '',
+                            thumbnailUrl: entry.thumbnailUrl,
+                            unavailable: entry.unavailable ?? false,
                         },
                         position,
                     ),
