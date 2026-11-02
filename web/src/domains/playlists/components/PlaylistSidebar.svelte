@@ -10,6 +10,7 @@
     let creating = $state(false);
     let name = $state('');
     let input = $state();
+    let withDeleted = $state(false);
 
     const isLink = $derived(Boolean(parsePlaylistId(name)));
 
@@ -20,7 +21,7 @@
 
     const submit = async (event) => {
         event.preventDefault();
-        if (await playlists.createFromInput(name)) {
+        if (await playlists.createFromInput(name, { includeUnavailable: withDeleted })) {
             ui.toggleSidebar(false);
             name = '';
             creating = false;
@@ -98,6 +99,17 @@
                 {/if}
             </button>
         </form>
+        {#if isLink}
+            <label class="with-deleted mt-2 flex items-center gap-2 px-1 text-sm">
+                <input
+                    type="checkbox"
+                    class="checkbox checkbox-xs"
+                    bind:checked={withDeleted}
+                    disabled={playlists.importing}
+                />
+                Import with deleted videos
+            </label>
+        {/if}
     {:else}
         <button type="button" class="new-btn btn btn-ghost btn-sm mt-2 justify-start" onclick={startCreating}>
             <Icon name="plus" size={16} /> New playlist
@@ -167,6 +179,11 @@
         .of {
             opacity: 0.6;
         }
+    }
+
+    .with-deleted {
+        color: tint($neutral-content, 70%);
+        cursor: pointer;
     }
 
     .new-btn {

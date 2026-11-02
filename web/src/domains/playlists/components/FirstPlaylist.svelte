@@ -5,12 +5,13 @@
     import { parsePlaylistId } from '../../videos/youtube.js';
 
     let name = $state('Watch later');
+    let withDeleted = $state(false);
 
     const isLink = $derived(Boolean(parsePlaylistId(name)));
 
     const submit = (event) => {
         event.preventDefault();
-        playlists.createFromInput(name);
+        playlists.createFromInput(name, { includeUnavailable: withDeleted });
     };
 </script>
 
@@ -50,6 +51,18 @@
             {/if}
         </button>
     </form>
+    {#if isLink}
+        <label class="mb-2 flex cursor-pointer items-center gap-2 text-sm">
+            <input
+                type="checkbox"
+                class="checkbox checkbox-sm"
+                bind:checked={withDeleted}
+                disabled={playlists.importing}
+            />
+            Import with deleted videos
+            <span class="text-base-content/65">(added as Missing items, so you can paste another link later)</span>
+        </label>
+    {/if}
     <p class="mb-8 text-sm text-base-content/65">
         Type a name, or paste a link to a YouTube playlist to bring in its videos.
     </p>

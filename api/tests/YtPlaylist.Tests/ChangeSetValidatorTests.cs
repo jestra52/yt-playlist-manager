@@ -59,6 +59,20 @@ public sealed class ChangeSetValidatorTests
             () => ChangeSetValidator.Validate(new ChangeSet { Videos = [Video(notes: new string('a', 5001))] }));
     }
 
+    [Fact]
+    public void ChecksThePlaylistSource()
+    {
+        ChangeSetValidator.Validate(new ChangeSet { Playlists = [Playlist() with { Source = "youtube", SourceId = "PLrAXtmErZgOeiKm4sgN" }] });
+        ChangeSetValidator.Validate(new ChangeSet { Playlists = [Playlist() with { Source = "", SourceId = "" }] });
+        ChangeSetValidator.Validate(new ChangeSet { Playlists = [Playlist() with { Source = null, SourceId = null }] });
+        Assert.Throws<DomainValidationException>(
+            () => ChangeSetValidator.Validate(new ChangeSet { Playlists = [Playlist() with { Source = "YouTube" }] }));
+        Assert.Throws<DomainValidationException>(
+            () => ChangeSetValidator.Validate(new ChangeSet { Playlists = [Playlist() with { Source = "youtube", SourceId = "PL../etc" }] }));
+        Assert.Throws<DomainValidationException>(
+            () => ChangeSetValidator.Validate(new ChangeSet { Playlists = [Playlist() with { SourceId = new string('a', 65) }] }));
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

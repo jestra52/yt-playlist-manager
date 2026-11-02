@@ -56,6 +56,18 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("seq");
 
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("source");
+
+                    b.Property<string>("SourceId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("source_id");
+
                     b.Property<long>("UpdatedAt")
                         .HasColumnType("bigint")
                         .HasColumnName("updated_at");
@@ -153,6 +165,10 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
                         .HasMaxLength(400)
                         .HasColumnType("character varying(400)")
                         .HasColumnName("title");
+
+                    b.Property<bool>("Unavailable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("unavailable");
 
                     b.Property<long>("UpdatedAt")
                         .HasColumnType("bigint")

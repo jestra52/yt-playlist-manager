@@ -176,8 +176,9 @@ class VideosService {
     }
 
     /**
-     * Completes a placeholder with the YouTube video at `link`: its ID, then the
-     * title, channel and thumbnail from YouTube. Resolves to true when saved.
+     * Completes a placeholder, or a video deleted on YouTube, with the YouTube
+     * video at `link`: its ID, then the title, channel and thumbnail from YouTube.
+     * Resolves to true when saved.
      */
     async complete(id, link) {
         const video = repo.getVideo(getDatabase(), id);
@@ -194,7 +195,7 @@ class VideosService {
             notify(`That video is already in this playlist: “${duplicate.title || youtubeId}”`, { tone: 'error' });
             return false;
         }
-        this.#update(id, { youtubeId, thumbnailUrl: thumbnailFor(youtubeId) });
+        this.#update(id, { youtubeId, thumbnailUrl: thumbnailFor(youtubeId), unavailable: false });
         const meta = await fetchVideoMetadata(youtubeId, getApiBase());
         const current = repo.getVideo(getDatabase(), id);
         if (meta && !meta.unavailable && current?.youtubeId === youtubeId) {

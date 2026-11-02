@@ -15,6 +15,8 @@ public sealed class Video
     public string ThumbnailUrl { get; set; } = "";
     public string Notes { get; set; } = "";
     public bool Watched { get; set; }
+    /// <summary>Deleted or made private on YouTube. The row keeps its YouTube ID so a later sync recognizes it.</summary>
+    public bool Unavailable { get; set; }
     public double Position { get; set; }
     public long CreatedAt { get; set; }
     public long UpdatedAt { get; set; }

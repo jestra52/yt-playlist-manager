@@ -15,6 +15,10 @@ beforeAll(async () => {
     globalThis.fetch = async (url) => {
         const match = String(url).match(/\/api\/playlist\?id=([^&]+)/);
         const playlist = match && PLAYLISTS[decodeURIComponent(match[1])];
+        // Like the API: deleted videos come back in their place only when asked for.
+        if (playlist && /[?&]includeUnavailable=true/.test(String(url)) && playlist.withDeleted) {
+            return { ok: true, status: 200, json: async () => playlist.withDeleted };
+        }
         if (playlist) return { ok: true, status: 200, json: async () => playlist };
         if (match)
             return { ok: false, status: 404, json: async () => ({ error: 'playlist not found, or it is private' }) };
@@ -35,6 +39,19 @@ const PLAYLISTS = {
             { youtubeId: 'dQw4w9WgXcQ', title: 'Never Gonna Give You Up', author: 'Rick Astley', thumbnailUrl: '' },
             { youtubeId: 'kJQP7kiw5Fk', title: 'Despacito', author: 'Luis Fonsi', thumbnailUrl: '' },
         ],
+        withDeleted: {
+            id: LIST,
+            title: 'Road trip',
+            author: 'Juan',
+            skipped: 0,
+            partial: false,
+            source: 'api',
+            videos: [
+                { youtubeId: 'dQw4w9WgXcQ', title: 'Never Gonna Give You Up', author: 'Rick Astley', thumbnailUrl: '' },
+                { youtubeId: 'aaaaaaaaaaa', title: 'Deleted video', author: '', thumbnailUrl: '', unavailable: true },
+                { youtubeId: 'kJQP7kiw5Fk', title: 'Despacito', author: 'Luis Fonsi', thumbnailUrl: '' },
+            ],
+        },
     },
     PLpartialpartialpartial: {
         id: 'PLpartialpartialpartial',
@@ -129,11 +146,58 @@ describe('playlists and videos services', () => {
             'Imported “Road trip” with 2 videos. 1 private or deleted video left out',
         );
         expect(playlists.importing).toBe(false);
+        expect(created).toMatchObject({ source: 'youtube', sourceId: LIST });
 
         // A plain name still creates an empty playlist.
         const named = await playlists.createFromInput('Cooking');
         expect(named.name).toBe('Cooking');
         expect(videos.forPlaylist(named.id)).toEqual([]);
+    });
+
+    it('imports deleted videos as Missing items in their place when asked, and completes them with a new link', async () => {
+        const created = await playlists.createFromInput(`https://www.youtube.com/playlist?list=${LIST}`, {
+            includeUnavailable: true,
+        });
+        const list = videos.forPlaylist(created.id);
+        expect(list.map((v) => [v.youtubeId, v.title, v.unavailable, v.missing])).toEqual([
+            ['dQw4w9WgXcQ', 'Never Gonna Give You Up', false, false],
+            ['aaaaaaaaaaa', 'Deleted video', true, true],
+            ['kJQP7kiw5Fk', 'Despacito', false, false],
+        ]);
+        expect(ui.notices.at(-1).message).toBe(
+            'Imported “Road trip” with 2 videos. 1 deleted or private video added as Missing',
+        );
+
+        // It can't be played, shows under Missing, and keeps its ID until a new link replaces it.
+        const deleted = list[1];
+        videos.play(deleted.id);
+        expect(videos.playingId).toBeNull();
+        videos.setFilter('missing');
+        expect(videos.visibleFor(created.id).map((v) => v.id)).toEqual([deleted.id]);
+        expect(await videos.complete(deleted.id, 'https://youtu.be/9bZkp7q19f0')).toBe(true);
+        expect(videos.forPlaylist(created.id)[1]).toMatchObject({
+            youtubeId: '9bZkp7q19f0',
+            unavailable: false,
+            missing: false,
+        });
+    });
+
+    it('links a playlist to its YouTube playlist, and unlinks it', () => {
+        const p = playlists.create('Imported long ago');
+        expect(p).toMatchObject({ source: '', sourceId: '' });
+
+        expect(playlists.linkToYouTube(p.id, 'not a link')).toBe(false);
+        expect(ui.notices.at(-1).tone).toBe('error');
+        expect(playlists.linkToYouTube(p.id, `https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=${LIST}`)).toBe(true);
+        expect(playlists.selected).toMatchObject({ source: 'youtube', sourceId: LIST });
+
+        expect(playlists.linkToYouTube(p.id, '  ')).toBe(true);
+        expect(playlists.selected).toMatchObject({ source: '', sourceId: '' });
+    });
+
+    it('says when deleted videos can’t be read without an API key', async () => {
+        await playlists.createFromInput('PLpartialpartialpartial', { includeUnavailable: true });
+        expect(ui.notices.at(-1).message).toContain('YOUTUBE_API_KEY');
     });
 
     it('reports a private playlist without creating anything', async () => {

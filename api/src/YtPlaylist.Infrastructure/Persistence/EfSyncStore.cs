@@ -62,6 +62,11 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
             }
             row.Name = change.Name;
             row.Description = change.Description;
+            if (change.Source is not null)
+            {
+                row.Source = change.Source;
+                row.SourceId = change.SourceId ?? "";
+            }
             row.Position = change.Position;
             row.UpdatedAt = change.UpdatedAt;
             row.Deleted = change.Deleted;
@@ -106,6 +111,10 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
             row.ThumbnailUrl = change.ThumbnailUrl;
             row.Notes = change.Notes;
             row.Watched = change.Watched;
+            if (change.Unavailable is { } unavailable)
+            {
+                row.Unavailable = unavailable;
+            }
             row.Position = change.Position;
             row.UpdatedAt = change.UpdatedAt;
             row.Deleted = change.Deleted;
@@ -179,6 +188,8 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
         Id = p.Id,
         Name = p.Name,
         Description = p.Description,
+        Source = p.Source,
+        SourceId = p.SourceId,
         Position = p.Position,
         CreatedAt = p.CreatedAt,
         UpdatedAt = p.UpdatedAt,
@@ -197,6 +208,7 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
         ThumbnailUrl = v.ThumbnailUrl,
         Notes = v.Notes,
         Watched = v.Watched,
+        Unavailable = v.Unavailable,
         Position = v.Position,
         CreatedAt = v.CreatedAt,
         UpdatedAt = v.UpdatedAt,

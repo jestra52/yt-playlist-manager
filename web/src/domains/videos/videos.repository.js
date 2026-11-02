@@ -14,6 +14,7 @@ const fields = {
     thumbnailUrl: videos.thumbnailUrl,
     notes: videos.notes,
     watched: videos.watched,
+    unavailable: videos.unavailable,
     position: videos.position,
     createdAt: videos.createdAt,
     updatedAt: videos.updatedAt,
@@ -23,8 +24,9 @@ const fields = {
 const toVideo = (row) => {
     return {
         ...row,
-        // A placeholder from an old report: known by its title until its link is pasted.
-        missing: row.youtubeId === '',
+        // Waits for a link: a placeholder from an old report (known by its title), or a
+        // video deleted or made private on YouTube (it keeps its old ID).
+        missing: row.youtubeId === '' || row.unavailable,
         thumbnailUrl: row.thumbnailUrl || (row.youtubeId ? thumbnailFor(row.youtubeId) : ''),
     };
 };
@@ -62,7 +64,7 @@ const nextPosition = (db, playlistId) => {
 const insertVideo = (
     db,
     playlistId,
-    { youtubeId, title = '', author = '', artist = '', artistSource = '', thumbnailUrl },
+    { youtubeId, title = '', author = '', artist = '', artistSource = '', thumbnailUrl, unavailable = false },
     position,
 ) => {
     const t = now();
@@ -79,6 +81,7 @@ const insertVideo = (
             thumbnailUrl: thumbnailUrl || (youtubeId ? thumbnailFor(youtubeId) : ''),
             notes: '',
             watched: false,
+            unavailable: Boolean(unavailable && youtubeId),
             position,
             createdAt: t,
             updatedAt: t,
@@ -102,7 +105,7 @@ const playlistRows = (db, playlistId) => {
 /**
  * Appends videos to a playlist, skipping YouTube IDs already in it. Each entry
  * is a YouTube ID or an object with `youtubeId` and optional `title`, `author`,
- * `artist`, `artistSource` and `thumbnailUrl` (e.g. from a playlist import).
+ * `artist`, `artistSource`, `thumbnailUrl` and `unavailable` (e.g. from a playlist import).
  * Returns { added, skipped } where skipped lists the duplicate YouTube IDs.
  */
 export const addVideos = (db, playlistId, entries) => {
@@ -190,15 +193,18 @@ const EDITABLE = [
     'thumbnailUrl',
     'notes',
     'watched',
+    'unavailable',
     'position',
     'playlistId',
 ];
+
+const FLAGS = new Set(['watched', 'unavailable']);
 
 /** Updates the given fields and marks the row for sync. */
 export const updateVideo = (db, id, patch) => {
     const changes = {};
     for (const key of EDITABLE) {
-        if (patch[key] !== undefined) changes[key] = key === 'watched' ? Boolean(patch[key]) : patch[key];
+        if (patch[key] !== undefined) changes[key] = FLAGS.has(key) ? Boolean(patch[key]) : patch[key];
     }
     if (!Object.keys(changes).length) return getVideo(db, id);
     db.write(
