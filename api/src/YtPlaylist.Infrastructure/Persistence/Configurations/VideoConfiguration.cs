@@ -20,6 +20,11 @@ public sealed class VideoConfiguration : IEntityTypeConfiguration<Video>
         builder.Property(v => v.YouTubeId).HasColumnName("youtube_id").HasMaxLength(11).IsRequired();
         builder.Property(v => v.Title).HasColumnName("title").HasMaxLength(SyncLimits.MaxTitleLength).IsRequired();
         builder.Property(v => v.Author).HasColumnName("author").HasMaxLength(SyncLimits.MaxNameLength).IsRequired();
+        builder.Property(v => v.Artist).HasColumnName("artist").HasMaxLength(SyncLimits.MaxNameLength).IsRequired();
+        builder.Property(v => v.ArtistSource)
+            .HasColumnName("artist_source")
+            .HasMaxLength(SyncLimits.MaxSourceLength)
+            .IsRequired();
         builder.Property(v => v.ThumbnailUrl)
             .HasColumnName("thumbnail_url")
             .HasMaxLength(SyncLimits.MaxUrlLength)

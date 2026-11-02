@@ -76,10 +76,17 @@ describe('schema and migrations', () => {
           VALUES ('v1', 'p1', 'dQw4w9WgXcQ', 'Old video', 1, 1, 1, 1, 0);
         `);
         const db = new Database(sqlDb);
-        expect(userVersion(sqlDb)).toBe(1);
+        // 0000_initial matches the hand-written schema, so only the later migrations run.
+        expect(userVersion(sqlDb)).toBe(migrations.length);
 
         expect(playlists.listPlaylists(db).map((p) => p.name)).toEqual(['Old']);
-        expect(videos.getVideo(db, 'v1')).toMatchObject({ title: 'Old video', watched: true, missing: false });
+        expect(videos.getVideo(db, 'v1')).toMatchObject({
+            title: 'Old video',
+            watched: true,
+            missing: false,
+            artist: '',
+            artistSource: '',
+        });
         expect(sync.countPending(db)).toBe(0);
 
         videos.addVideos(db, 'p1', ['9bZkp7q19f0']);
@@ -99,12 +106,17 @@ describe('values are never part of the SQL text', () => {
         const db = new Database(sqlDb);
         const p = playlists.createPlaylist(db, { name: attack, description: attack });
         const [v] = videos.addVideos(db, p.id, [{ youtubeId: 'dQw4w9WgXcQ', title: attack, author: attack }]).added;
-        videos.updateVideo(db, v.id, { notes: attack });
+        videos.updateVideo(db, v.id, { notes: attack, artist: attack });
         videos.insertVideosAfter(db, p.id, [{ title: attack, youtubeId: '', afterId: v.id }]);
         sync.saveSettings(db, { apiUrl: attack, token: attack, autoSync: true });
 
         expect(playlists.getPlaylist(db, p.id)).toMatchObject({ name: attack, description: attack });
-        expect(videos.getVideo(db, v.id)).toMatchObject({ title: attack, author: attack, notes: attack });
+        expect(videos.getVideo(db, v.id)).toMatchObject({
+            title: attack,
+            author: attack,
+            notes: attack,
+            artist: attack,
+        });
         expect(videos.listVideos(db).map((video) => video.title)).toEqual([attack, attack]);
         expect(sync.getSettings(db)).toMatchObject({ apiUrl: attack, token: attack });
         expect(

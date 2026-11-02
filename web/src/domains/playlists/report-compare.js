@@ -1,21 +1,47 @@
 import { parseYouTubeId } from '../videos/youtube.js';
 
 /**
- * Reads an old report (see report.js): every `number: title` line, in order.
- * The "Total videos" line and anything else that isn't numbered is ignored.
- * A title that is a YouTube link (reports use one for videos without a title)
+ * Report formats (see report.js). Reports without a `Format:` line are legacy
+ * ones: the whole text after `number:` is the title, even when it contains
+ * ` | `. With it, the artist follows the last ` | `.
+ */
+export const FORMATS = {
+    legacy: 'legacy',
+    artists: 'artists',
+};
+
+const NUMBERED = /^\s*(\d+)\s*[:.)]\s*(.*\S)\s*$/u;
+const FORMAT = /^\s*Format\s*:/iu;
+// Greedy, so the split is at the last " |"; the artist may be empty.
+const WITH_ARTIST = /^(.*)\s\|(?:\s+(.*))?$/u;
+
+/**
+ * Reads a report: its format and every `number: title` line, in order. The
+ * "Total videos" line and anything else that isn't numbered is ignored. A
+ * title that is a YouTube link (reports use one for videos without a title)
  * comes back with its `youtubeId`.
+ *
+ * Returns { format, entries: [{ number, title, artist, youtubeId }] }; `artist`
+ * is '' in legacy reports and when the report doesn't know it.
  */
 export const parseReport = (text) => {
+    const lines = (text ?? '').replace(/^\uFEFF/, '').split(/\r?\n/);
+    const format = lines.some((line) => FORMAT.test(line)) ? FORMATS.artists : FORMATS.legacy;
     const entries = [];
-    for (const line of (text ?? '').replace(/^\uFEFF/, '').split(/\r?\n/)) {
-        const match = line.match(/^\s*(\d+)\s*[:.)]\s*(.*\S)\s*$/u);
+    for (const line of lines) {
+        const match = line.match(NUMBERED);
         if (!match) continue;
-        const title = match[2];
+        let title = match[2];
+        let artist = '';
+        const split = format === FORMATS.artists ? title.match(WITH_ARTIST) : null;
+        if (split && split[1].trim()) {
+            title = split[1].trim();
+            artist = (split[2] ?? '').trim();
+        }
         const youtubeId = /^https?:\/\//i.test(title) ? parseYouTubeId(title) : null;
-        entries.push({ number: Number(match[1]), title, youtubeId });
+        entries.push({ number: Number(match[1]), title, artist, youtubeId });
     }
-    return entries;
+    return { format, entries };
 };
 
 /**
@@ -28,35 +54,65 @@ export const titleKey = (title) =>
         .toLowerCase()
         .replace(/[^\p{L}\p{N}]+/gu, '');
 
+const push = (map, key, id) => {
+    if (key) map.set(key, [...(map.get(key) ?? []), id]);
+};
+
 /**
  * Finds which report entries the playlist no longer has. Each video can match
- * one entry only, so a title listed twice needs two videos. Missing entries
- * carry `afterId`: the playlist video matched by the closest earlier entry
- * (null when none), so they can go back near their old place.
+ * one entry only, so a title listed twice needs two videos.
  *
- * Returns { total, found, missing: [{ number, title, youtubeId, afterId }] }.
+ * - Legacy reports match by title. A title that is the video's
+ *   "artist - title" or "title - artist" matches too, so reports saved before
+ *   a title was cleaned up still match.
+ * - Reports with artists match by title, and prefer the video with the same
+ *   artist when several share a title.
+ *
+ * Missing entries carry `afterId`: the playlist video matched by the closest
+ * earlier entry (null when none), so they can go back near their old place.
+ *
+ * Returns { format, total, found, missing: [{ number, title, artist, youtubeId, afterId }] }.
  */
-export const compareReport = (entries, videos) => {
+export const compareReport = ({ format, entries }, videos) => {
     const byTitle = new Map();
+    const byArtistAndTitle = new Map();
     const byYouTubeId = new Map();
+    const artistOf = new Map();
     for (const video of videos) {
-        const key = titleKey(video.title);
-        if (key) byTitle.set(key, [...(byTitle.get(key) ?? []), video.id]);
-        if (video.youtubeId) byYouTubeId.set(video.youtubeId, [...(byYouTubeId.get(video.youtubeId) ?? []), video.id]);
+        push(byTitle, titleKey(video.title), video.id);
+        push(byYouTubeId, video.youtubeId, video.id);
+        const artist = titleKey(video.artist);
+        artistOf.set(video.id, artist);
+        if (artist && titleKey(video.title)) {
+            push(byArtistAndTitle, artist + titleKey(video.title), video.id);
+            push(byArtistAndTitle, titleKey(video.title) + artist, video.id);
+        }
     }
+
     const used = new Set();
-    const take = (map, key) => {
-        const id = (key ? map.get(key) : undefined)?.find((candidate) => !used.has(candidate)) ?? null;
+    const take = (map, key, prefer = () => false) => {
+        const free = (key ? map.get(key) : undefined)?.filter((id) => !used.has(id)) ?? [];
+        const id = free.find(prefer) ?? free[0] ?? null;
         if (id) used.add(id);
         return id;
+    };
+
+    const match = (entry) => {
+        if (entry.youtubeId) return take(byYouTubeId, entry.youtubeId);
+        const key = titleKey(entry.title);
+        if (format === FORMATS.artists) {
+            const artist = titleKey(entry.artist);
+            return take(byTitle, key, (id) => artist !== '' && artistOf.get(id) === artist);
+        }
+        return take(byTitle, key) ?? take(byArtistAndTitle, key);
     };
 
     const missing = [];
     let afterId = null;
     for (const entry of entries) {
-        const matchId = entry.youtubeId ? take(byYouTubeId, entry.youtubeId) : take(byTitle, titleKey(entry.title));
+        const matchId = match(entry);
         if (matchId) afterId = matchId;
         else missing.push({ ...entry, afterId });
     }
-    return { total: entries.length, found: entries.length - missing.length, missing };
+    return { format, total: entries.length, found: entries.length - missing.length, missing };
 };

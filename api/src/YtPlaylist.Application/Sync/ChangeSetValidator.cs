@@ -55,6 +55,12 @@ public static partial class ChangeSetValidator
         }
         MaxLength("video title", v.Title, SyncLimits.MaxTitleLength);
         MaxLength("video author", v.Author, SyncLimits.MaxNameLength);
+        MaxLength("video artist", v.Artist, SyncLimits.MaxNameLength);
+        // Any short lowercase word, so devices with newer sources (e.g. a lookup service) can still sync.
+        if (v.ArtistSource is not null && (v.ArtistSource.Length > SyncLimits.MaxSourceLength || !Source().IsMatch(v.ArtistSource)))
+        {
+            throw new DomainValidationException($"video {v.Id} has an invalid artistSource");
+        }
         MaxLength("video thumbnailUrl", v.ThumbnailUrl, SyncLimits.MaxUrlLength);
         MaxLength("video notes", v.Notes, SyncLimits.MaxTextLength);
         RequireTimestamps("video", v.Id, v.CreatedAt, v.UpdatedAt);
@@ -86,4 +92,7 @@ public static partial class ChangeSetValidator
 
     [GeneratedRegex("^[A-Za-z0-9_-]+$")]
     private static partial Regex RowId();
+
+    [GeneratedRegex("^[a-z]*$")]
+    private static partial Regex Source();
 }

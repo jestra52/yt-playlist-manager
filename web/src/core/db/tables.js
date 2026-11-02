@@ -40,7 +40,12 @@ export const videos = sqliteTable(
         // Empty for a placeholder from an old report, until its link is pasted.
         youtubeId: text('youtube_id').notNull(),
         title: text('title').notNull().default(''),
+        // The YouTube channel that uploaded the video, which is often not the artist.
         author: text('author').notNull().default(''),
+        // Empty when unknown. artistSource says where it came from (see videos/artist.js),
+        // so a better source can replace a guess but never a hand edit.
+        artist: text('artist').notNull().default(''),
+        artistSource: text('artist_source').notNull().default(''),
         thumbnailUrl: text('thumbnail_url').notNull().default(''),
         notes: text('notes').notNull().default(''),
         watched: integer('watched', { mode: 'boolean' }).notNull().default(false),

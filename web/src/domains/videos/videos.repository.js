@@ -9,6 +9,8 @@ const fields = {
     youtubeId: videos.youtubeId,
     title: videos.title,
     author: videos.author,
+    artist: videos.artist,
+    artistSource: videos.artistSource,
     thumbnailUrl: videos.thumbnailUrl,
     notes: videos.notes,
     watched: videos.watched,
@@ -57,7 +59,12 @@ const nextPosition = (db, playlistId) => {
     return (top ?? 0) + 1;
 };
 
-const insertVideo = (db, playlistId, { youtubeId, title = '', author = '', thumbnailUrl }, position) => {
+const insertVideo = (
+    db,
+    playlistId,
+    { youtubeId, title = '', author = '', artist = '', artistSource = '', thumbnailUrl },
+    position,
+) => {
     const t = now();
     const id = newId();
     db.write(
@@ -67,6 +74,8 @@ const insertVideo = (db, playlistId, { youtubeId, title = '', author = '', thumb
             youtubeId,
             title: title.slice(0, 400),
             author: author.slice(0, 200),
+            artist: artist.slice(0, 200),
+            artistSource: artist ? artistSource : '',
             thumbnailUrl: thumbnailUrl || (youtubeId ? thumbnailFor(youtubeId) : ''),
             notes: '',
             watched: false,
@@ -92,8 +101,8 @@ const playlistRows = (db, playlistId) => {
 
 /**
  * Appends videos to a playlist, skipping YouTube IDs already in it. Each entry
- * is a YouTube ID or an object with `youtubeId` and optional `title`, `author`
- * and `thumbnailUrl` (e.g. from a playlist import).
+ * is a YouTube ID or an object with `youtubeId` and optional `title`, `author`,
+ * `artist`, `artistSource` and `thumbnailUrl` (e.g. from a playlist import).
  * Returns { added, skipped } where skipped lists the duplicate YouTube IDs.
  */
 export const addVideos = (db, playlistId, entries) => {
@@ -103,18 +112,13 @@ export const addVideos = (db, playlistId, entries) => {
         const added = [];
         const skipped = [];
         for (const entry of entries) {
-            const {
-                youtubeId,
-                title = '',
-                author = '',
-                thumbnailUrl,
-            } = typeof entry === 'string' ? { youtubeId: entry } : entry;
-            if (existing.has(youtubeId)) {
-                skipped.push(youtubeId);
+            const fields = typeof entry === 'string' ? { youtubeId: entry } : entry;
+            if (existing.has(fields.youtubeId)) {
+                skipped.push(fields.youtubeId);
                 continue;
             }
-            existing.add(youtubeId);
-            added.push(insertVideo(db, playlistId, { youtubeId, title, author, thumbnailUrl }, position++));
+            existing.add(fields.youtubeId);
+            added.push(insertVideo(db, playlistId, fields, position++));
         }
         return { added, skipped };
     });
@@ -161,7 +165,12 @@ export const insertVideosAfter = (db, playlistId, entries) => {
                     insertVideo(
                         db,
                         playlistId,
-                        { youtubeId: entry.youtubeId ?? '', title: entry.title ?? '' },
+                        {
+                            youtubeId: entry.youtubeId ?? '',
+                            title: entry.title ?? '',
+                            artist: entry.artist ?? '',
+                            artistSource: entry.artistSource ?? '',
+                        },
                         position,
                     ),
                 );
@@ -172,7 +181,18 @@ export const insertVideosAfter = (db, playlistId, entries) => {
 };
 
 /** Fields a caller may change with updateVideo. */
-const EDITABLE = ['youtubeId', 'title', 'author', 'thumbnailUrl', 'notes', 'watched', 'position', 'playlistId'];
+const EDITABLE = [
+    'youtubeId',
+    'title',
+    'author',
+    'artist',
+    'artistSource',
+    'thumbnailUrl',
+    'notes',
+    'watched',
+    'position',
+    'playlistId',
+];
 
 /** Updates the given fields and marks the row for sync. */
 export const updateVideo = (db, id, patch) => {

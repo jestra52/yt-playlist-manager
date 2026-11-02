@@ -6,6 +6,7 @@ import { onDataChanged } from '../../core/events.js';
 import { playlists } from '../playlists/playlists.service.svelte.js';
 import { ui } from '../ui/ui.service.svelte.js';
 import { videos } from './videos.service.svelte.js';
+import * as repo from './videos.repository.js';
 
 let SQL;
 beforeAll(async () => {
@@ -218,5 +219,66 @@ describe('playlists and videos services', () => {
             title: 'Plastic Love',
         });
         expect(done.thumbnailUrl).toContain('9bZkp7q19f0');
+    });
+
+    it('guesses artists when adding, keeps hand edits and searches by artist', () => {
+        const p = playlists.create('City Pop');
+        videos.addEntries(p.id, [
+            { youtubeId: 'dQw4w9WgXcQ', title: 'Meiko Nakahara - Dance in the memories', author: 'Jim Gutierrez' },
+            { youtubeId: '9bZkp7q19f0', title: 'Windy Summer', author: 'Anri - Topic' },
+            { youtubeId: 'kJQP7kiw5Fk', title: 'Untitled live recording', author: 'Raven Almazan' },
+        ]);
+        const [meiko, anri, untitled] = videos.forPlaylist(p.id);
+        expect([meiko, anri, untitled].map((v) => [v.artist, v.artistSource])).toEqual([
+            ['Meiko Nakahara', 'guess'],
+            ['Anri', 'guess'],
+            ['', ''],
+        ]);
+
+        videos.saveArtist(untitled.id, '  Tatsuro | Yamashita ');
+        videos.saveArtist(meiko.id, '');
+        videos.load();
+        expect(videos.forPlaylist(p.id).map((v) => [v.artist, v.artistSource])).toEqual([
+            ['', 'user'],
+            ['Anri', 'guess'],
+            ['Tatsuro / Yamashita', 'user'],
+        ]);
+
+        videos.setQuery('tatsuro');
+        expect(videos.visibleFor(p.id).map((v) => v.id)).toEqual([untitled.id]);
+
+        // An artist another video has keeps its spelling; a video can still fix its own.
+        expect(videos.saveArtist(meiko.id, 'ANRI').artist).toBe('Anri');
+        expect(videos.saveArtist(untitled.id, 'tatsuro / yamashita').artist).toBe('tatsuro / yamashita');
+        expect(videos.artists).toEqual(['Anri', 'tatsuro / yamashita']);
+    });
+
+    it('guesses the artist once for videos saved before artists existed', () => {
+        const db = new Database(new SQL.Database());
+        setDatabase(db);
+        const p = playlists.create('Old');
+        videos.addEntries(p.id, [{ youtubeId: 'dQw4w9WgXcQ', title: 'Anri - Windy Summer' }]);
+        const [video] = videos.forPlaylist(p.id);
+        repo.updateVideo(db, video.id, { artist: '', artistSource: '' });
+
+        videos.load();
+        expect(videos.forPlaylist(p.id)[0]).toMatchObject({ artist: 'Anri', artistSource: 'guess' });
+    });
+
+    it('restores missing items with the report’s artist, or a guess for legacy reports', () => {
+        const p = playlists.create('City Pop');
+        videos.addEntries(p.id, [{ youtubeId: 'dQw4w9WgXcQ', title: 'Kept' }]);
+        const withArtists = 'Format: number: title | artist\n1: Kept |\n2: Plastic Love | Mariya Takeuchi';
+        playlists.addMissingFromReport(p.id, playlists.compareWithReport(p.id, withArtists).missing);
+        playlists.addMissingFromReport(
+            p.id,
+            playlists.compareWithReport(p.id, '1: Kept\n2: Plastic Love\n3: Anri - Windy Summer').missing,
+        );
+
+        expect(videos.forPlaylist(p.id).map((v) => [v.title, v.artist, v.artistSource])).toEqual([
+            ['Kept', '', ''],
+            ['Plastic Love', 'Mariya Takeuchi', 'user'],
+            ['Anri - Windy Summer', 'Anri', 'guess'],
+        ]);
     });
 });
