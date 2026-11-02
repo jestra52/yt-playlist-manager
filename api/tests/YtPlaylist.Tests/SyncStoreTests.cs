@@ -79,6 +79,39 @@ public abstract class SyncStoreTests
     }
 
     [Fact]
+    public async Task StoresTheArtistAndKeepsItWhenAnOlderAppLeavesItOut()
+    {
+        await using var db = this.CreateContext();
+        if (db is null)
+        {
+            return;
+        }
+        var store = new EfSyncStore(db);
+        var head = await HeadAsync(store);
+        var run = $"a{Guid.NewGuid():N}"[..20];
+
+        var video = new VideoChange
+        {
+            Id = $"{run}-v",
+            PlaylistId = $"{run}-p",
+            YouTubeId = "dQw4w9WgXcQ",
+            Title = "Windy Summer",
+            Artist = "杏里",
+            ArtistSource = "user",
+            CreatedAt = 1,
+            UpdatedAt = 1,
+        };
+        await store.ApplyAsync(new ChangeSet { Videos = [video] }, CancellationToken.None);
+        var fromOlderApp = video with { Artist = null, ArtistSource = null, Watched = true, UpdatedAt = 2 };
+        await store.ApplyAsync(new ChangeSet { Videos = [fromOlderApp] }, CancellationToken.None);
+
+        var stored = Assert.Single((await store.GetChangesAsync(head, 1000, CancellationToken.None)).Changes.Videos);
+        Assert.True(stored.Watched);
+        Assert.Equal("杏里", stored.Artist);
+        Assert.Equal("user", stored.ArtistSource);
+    }
+
+    [Fact]
     public async Task SyncsDeletionsAsTombstones()
     {
         await using var db = this.CreateContext();

@@ -85,7 +85,7 @@ public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFix
         const string body = /*lang=json,strict*/ """
             {"since":7,"changes":{
               "playlists":[{"id":"p2","name":"Mine","createdAt":1,"updatedAt":5}],
-              "videos":[{"id":"v1","playlistId":"p2","youtubeId":"dQw4w9WgXcQ","createdAt":1,"updatedAt":5}]}}
+              "videos":[{"id":"v1","playlistId":"p2","youtubeId":"dQw4w9WgXcQ","artist":"Anri","artistSource":"guess","createdAt":1,"updatedAt":5}]}}
             """;
         using var response = await client.SendAsync(SyncRequest(body, "secret"));
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -99,7 +99,9 @@ public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFix
 
         Assert.Equal(7, store.LastSince);
         var applied = Assert.Single(store.Applied);
-        Assert.Equal("dQw4w9WgXcQ", Assert.Single(applied.Videos).YouTubeId);
+        var video = Assert.Single(applied.Videos);
+        Assert.Equal("dQw4w9WgXcQ", video.YouTubeId);
+        Assert.Equal(("Anri", "guess"), (video.Artist, video.ArtistSource));
     }
 
     [Theory]

@@ -6,7 +6,8 @@
     /** Compares an old .txt report with the playlist and adds back what's missing. */
     let { playlist, open = false, onclose } = $props();
 
-    const example = 'Total videos: 153\n1: Mariya Takeuchi - Plastic Love\n2: Anri - Windy Summer';
+    const example =
+        'Total videos: 153\nFormat: number: title | artist\n1: Plastic Love | Mariya Takeuchi\n2: Windy Summer | Anri';
 
     let text = $state('');
     let fileName = $state('');
@@ -41,8 +42,9 @@
 
 <Dialog {open} title="Compare with a report" {onclose}>
     <p class="text-sm text-base-content/65">
-        Load a report saved from this app (<code>1: title</code> per line) to find the videos this playlist no longer has.
-        Missing items come back in their old place, and you can paste each one’s YouTube link later.
+        Load a report saved from this app (<code>1: title | artist</code> per line, or <code>1: title</code> in older reports)
+        to find the videos this playlist no longer has. Missing items come back in their old place, and you can paste each
+        one’s YouTube link later.
     </p>
 
     <div class="mt-4 flex flex-wrap items-center gap-3">
@@ -68,7 +70,12 @@
             No numbered lines found. Each video needs a line like “12: title”.
         </p>
     {:else if result}
-        <div class="stats stats-horizontal mt-3 w-full bg-base-200">
+        <p class="mt-3 text-sm text-base-content/65">
+            <span class="badge badge-sm badge-soft" class:badge-primary={result.format === 'artists'}>
+                {result.format === 'artists' ? 'Report with artists' : 'Legacy report, no artists'}
+            </span>
+        </p>
+        <div class="stats stats-horizontal mt-2 w-full bg-base-200">
             <div class="stat px-4 py-2">
                 <div class="stat-title">In the report</div>
                 <div class="stat-value text-2xl">{result.total}</div>
@@ -90,7 +97,10 @@
                 {#each result.missing as entry, i (i)}
                     <li class="flex gap-2 px-3 py-1.5">
                         <span class="w-10 flex-none text-right tabular-nums text-base-content/50">{entry.number}:</span>
-                        <span class="min-w-0 break-words">{entry.title}</span>
+                        <span class="min-w-0 break-words">
+                            {entry.title}
+                            {#if entry.artist}<span class="text-base-content/65">· {entry.artist}</span>{/if}
+                        </span>
                     </li>
                 {/each}
             </ol>

@@ -10,4 +10,5 @@ public static class SyncLimits
     public const int MaxTitleLength = 400;
     public const int MaxTextLength = 5000;
     public const int MaxUrlLength = 2048;
+    public const int MaxSourceLength = 32;
 }

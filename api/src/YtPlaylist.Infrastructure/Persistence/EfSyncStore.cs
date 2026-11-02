@@ -98,6 +98,11 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
             row.YouTubeId = change.YouTubeId;
             row.Title = change.Title;
             row.Author = change.Author;
+            if (change.Artist is not null)
+            {
+                row.Artist = change.Artist;
+                row.ArtistSource = change.ArtistSource ?? "";
+            }
             row.ThumbnailUrl = change.ThumbnailUrl;
             row.Notes = change.Notes;
             row.Watched = change.Watched;
@@ -187,6 +192,8 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
         YouTubeId = v.YouTubeId,
         Title = v.Title,
         Author = v.Author,
+        Artist = v.Artist,
+        ArtistSource = v.ArtistSource,
         ThumbnailUrl = v.ThumbnailUrl,
         Notes = v.Notes,
         Watched = v.Watched,

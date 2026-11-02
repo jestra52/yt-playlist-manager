@@ -113,13 +113,13 @@ class PlaylistsService {
 
     /**
      * Compares an old report's text with the playlist as it is now.
-     * Returns { total, found, missing } (see report-compare.js), or null when the
-     * text has no numbered lines.
+     * Returns { format, total, found, missing } (see report-compare.js), or null
+     * when the text has no numbered lines.
      */
     compareWithReport(id, text) {
-        const entries = parseReport(text);
-        if (!entries.length) return null;
-        return compareReport(entries, videos.forPlaylist(id));
+        const report = parseReport(text);
+        if (!report.entries.length) return null;
+        return compareReport(report, videos.forPlaylist(id));
     }
 
     /** Adds the entries a comparison found missing back to the playlist. */
