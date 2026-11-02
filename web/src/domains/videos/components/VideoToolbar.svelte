@@ -31,6 +31,11 @@
     <label class="input input-sm w-full sm:w-72">
         <Icon name="search" size={16} />
         <span class="sr-only">Search this playlist</span>
-        <input type="search" class="grow" placeholder="Search titles, channels, notes" bind:value={videos.query} />
+        <input
+            type="search"
+            class="grow"
+            placeholder="Search titles, artists, channels, notes"
+            bind:value={videos.query}
+        />
     </label>
 </div>

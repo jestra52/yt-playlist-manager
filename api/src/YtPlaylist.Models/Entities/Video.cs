@@ -7,7 +7,11 @@ public sealed class Video
     public required string PlaylistId { get; set; }
     public required string YouTubeId { get; set; }
     public string Title { get; set; } = "";
+    /// <summary>The YouTube channel that uploaded the video, which is often not the artist.</summary>
     public string Author { get; set; } = "";
+    public string Artist { get; set; } = "";
+    /// <summary>Where <see cref="Artist"/> came from: "" (unknown), "guess", "user", or a lookup service.</summary>
+    public string ArtistSource { get; set; } = "";
     public string ThumbnailUrl { get; set; } = "";
     public string Notes { get; set; } = "";
     public bool Watched { get; set; }

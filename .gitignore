@@ -16,3 +16,6 @@ appsettings.Local.json
 .env.*
 !.env.example
 .DS_Store
+
+# Claude Code settings and launch config for this machine.
+.claude/

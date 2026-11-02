@@ -71,6 +71,34 @@ describe('sync bookkeeping', () => {
         expect(videos.getVideo(phone, v.id).watched).toBe(true);
     });
 
+    it('syncs the artist and where it came from', () => {
+        const phone = freshDb();
+        const laptop = freshDb();
+        const p = playlists.createPlaylist(phone, { name: 'Shared' });
+        const [v] = videos.addVideos(phone, p.id, [
+            { youtubeId: 'dQw4w9WgXcQ', title: 'Windy Summer', artist: 'Anri', artistSource: 'guess' },
+        ]).added;
+        sync.applyRemote(laptop, sync.collectChanges(phone));
+        expect(videos.getVideo(laptop, v.id)).toMatchObject({ artist: 'Anri', artistSource: 'guess' });
+
+        videos.updateVideo(laptop, v.id, { artist: '杏里', artistSource: 'user' });
+        sync.applyRemote(phone, sync.collectChanges(laptop));
+        expect(videos.getVideo(phone, v.id)).toMatchObject({ artist: '杏里', artistSource: 'user' });
+    });
+
+    it('keeps local artists when the server sends rows without them', () => {
+        const db = freshDb();
+        const p = playlists.createPlaylist(db, { name: 'A' });
+        const [v] = videos.addVideos(db, p.id, [
+            { youtubeId: 'dQw4w9WgXcQ', artist: 'Anri', artistSource: 'user' },
+        ]).added;
+        const { artist, artistSource, ...fromOldServer } = sync.collectChanges(db).videos[0];
+        expect([artist, artistSource]).toEqual(['Anri', 'user']);
+
+        sync.applyRemote(db, { videos: [{ ...fromOldServer, watched: true, updatedAt: v.updatedAt + 1 }] });
+        expect(videos.getVideo(db, v.id)).toMatchObject({ watched: true, artist: 'Anri', artistSource: 'user' });
+    });
+
     it('keeps rows dirty when they were edited while a push was in flight', () => {
         const db = freshDb();
         const p = playlists.createPlaylist(db, { name: 'A' });

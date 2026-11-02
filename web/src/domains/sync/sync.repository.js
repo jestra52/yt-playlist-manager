@@ -101,6 +101,8 @@ export const collectChanges = (db, limit = 2000) => {
             youtubeId: videos.youtubeId,
             title: videos.title,
             author: videos.author,
+            artist: videos.artist,
+            artistSource: videos.artistSource,
             thumbnailUrl: videos.thumbnailUrl,
             notes: videos.notes,
             watched: videos.watched,
@@ -175,6 +177,8 @@ export const applyRemote = (db, changes) => {
         );
     }
     for (const v of changes.videos ?? []) {
+        // A server from before artists existed leaves them out: keep the local ones.
+        const hasArtist = v.artist !== undefined;
         applied += db.write(
             db.orm
                 .insert(videos)
@@ -184,6 +188,8 @@ export const applyRemote = (db, changes) => {
                     youtubeId: v.youtubeId,
                     title: v.title ?? '',
                     author: v.author ?? '',
+                    artist: v.artist ?? '',
+                    artistSource: v.artistSource ?? '',
                     thumbnailUrl: v.thumbnailUrl ?? '',
                     notes: v.notes ?? '',
                     watched: Boolean(v.watched),
@@ -200,6 +206,10 @@ export const applyRemote = (db, changes) => {
                         youtubeId: excluded(videos.youtubeId),
                         title: excluded(videos.title),
                         author: excluded(videos.author),
+                        ...(hasArtist && {
+                            artist: excluded(videos.artist),
+                            artistSource: excluded(videos.artistSource),
+                        }),
                         thumbnailUrl: excluded(videos.thumbnailUrl),
                         notes: excluded(videos.notes),
                         watched: excluded(videos.watched),

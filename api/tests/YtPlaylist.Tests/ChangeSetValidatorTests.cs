@@ -59,6 +59,27 @@ public sealed class ChangeSetValidatorTests
             () => ChangeSetValidator.Validate(new ChangeSet { Videos = [Video(notes: new string('a', 5001))] }));
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("guess")]
+    [InlineData("spotify")]
+    public void AcceptsKnownAndFutureArtistSources(string? source) =>
+        ChangeSetValidator.Validate(new ChangeSet { Videos = [Video() with { Artist = "Anri", ArtistSource = source }] });
+
+    [Theory]
+    [InlineData("Guess")]
+    [InlineData("not a word")]
+    [InlineData("averyveryverylongsourcenamethatgoesonandon")]
+    public void RejectsInvalidArtistSources(string source) =>
+        Assert.Throws<DomainValidationException>(
+            () => ChangeSetValidator.Validate(new ChangeSet { Videos = [Video() with { ArtistSource = source }] }));
+
+    [Fact]
+    public void LimitsTheArtistLength() =>
+        Assert.Throws<DomainValidationException>(
+            () => ChangeSetValidator.Validate(new ChangeSet { Videos = [Video() with { Artist = new string('a', 201) }] }));
+
     [Fact]
     public void RejectsMissingTimestampsAndOversizedBatches()
     {
