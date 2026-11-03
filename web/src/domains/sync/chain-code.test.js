@@ -24,7 +24,19 @@ describe('chain code words', () => {
         const words = secretToWords(SECRET);
         const saved = words.map((w, i) => `${i + 1}. ${w.toUpperCase()}`).join('\r\n');
         expect(wordsToSecret(saved)).toBe(SECRET);
-        expect(wordsToSecret(chainCodeFileText(words))).toBe(SECRET);
+        expect(wordsToSecret(chainCodeFileText({ words }))).toBe(SECRET);
+    });
+
+    it('saves the recovery codes in the same file, and the whole file still joins', () => {
+        const words = secretToWords(SECRET);
+        const recoveryCodes = ['ABCDE-FGHJK-MNPQR-STVWX', '12345-ABCDE-00000-11111'];
+        const text = chainCodeFileText({ words, recoveryCodes });
+        expect(text).toContain('    ABCDE-FGHJK-MNPQR-STVWX');
+        expect(wordsToSecret(text)).toBe(SECRET);
+
+        const codesOnly = chainCodeFileText({ recoveryCodes });
+        expect(codesOnly).toMatch(/^YouTube Playlist Manager: recovery codes/);
+        expect(codesOnly).not.toContain('24 words');
     });
 
     it('explains what is wrong with a code', () => {

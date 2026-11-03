@@ -1,3 +1,4 @@
+using YtPlaylist.Application.Chains;
 using YtPlaylist.Domain.Common;
 using YtPlaylist.Models.Sync;
 
@@ -14,10 +15,11 @@ public sealed class SyncService(ISyncStore? store = null)
 
     /// <exception cref="DomainValidationException">When the request is invalid.</exception>
     /// <exception cref="InvalidOperationException">When no database is configured.</exception>
+    /// <exception cref="DeviceRemovedException">When the device was removed while its request was in progress.</exception>
     public async Task<SyncResponse> SyncAsync(
-        string chainId, SyncRequest request, int? limit, CancellationToken cancellationToken)
+        DeviceContext caller, SyncRequest request, int? limit, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(chainId);
+        ArgumentNullException.ThrowIfNull(caller);
         ArgumentNullException.ThrowIfNull(request);
         if (store is null)
         {
@@ -31,10 +33,10 @@ public sealed class SyncService(ISyncStore? store = null)
 
         var applied = request.Changes.Count == 0
             ? 0
-            : await store.ApplyAsync(chainId, request.Changes, cancellationToken).ConfigureAwait(false);
+            : await store.ApplyAsync(caller.ChainId, request.Changes, caller.DeviceId, cancellationToken).ConfigureAwait(false);
 
         var pageSize = limit is > 0 and <= SyncLimits.MaxPullPageSize ? limit.Value : SyncLimits.MaxPullPageSize;
-        var page = await store.GetChangesAsync(chainId, request.Since, pageSize, cancellationToken).ConfigureAwait(false);
+        var page = await store.GetChangesAsync(caller.ChainId, request.Since, pageSize, cancellationToken).ConfigureAwait(false);
         return new SyncResponse(page.Cursor, page.HasMore, applied, page.Changes);
     }
 }

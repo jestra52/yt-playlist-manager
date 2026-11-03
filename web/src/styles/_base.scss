@@ -36,4 +36,35 @@
             transition-duration: 0.01ms !important;
         }
     }
+
+    // Printing while sync chain codes are shown (ChainCodeStep) prints only the codes.
+    @media print {
+        body:has(.chain-code-step) {
+            visibility: hidden;
+
+            .modal:has(.chain-code-step),
+            .modal:has(.chain-code-step) .modal-box {
+                position: static;
+                display: block;
+                max-width: none;
+                max-height: none;
+                overflow: visible;
+                transform: none;
+                box-shadow: none;
+                background: none;
+            }
+
+            .chain-code-step {
+                position: absolute;
+                inset: 0 auto auto 0;
+                width: 100%;
+                visibility: visible;
+                color: black;
+            }
+
+            .chain-code-step .no-print {
+                display: none;
+            }
+        }
+    }
 }

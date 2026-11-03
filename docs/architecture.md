@@ -35,10 +35,10 @@ flowchart TB
 
     subgraph sync["sync"]
         direction TB
-        sComp["components<br/>SyncStatus · SyncSettingsDialog<br/>ChainCodeStep · ChainDevices"]
-        sSvc["sync.service<br/>sync chain, two-way sync,<br/>auto-sync"]
-        sRepo["sync.repository<br/>settings, device credential,<br/>cursor, dirty rows"]
-        sClient["sync.client · chain-code.js<br/>API calls, 24-word codes"]
+        sComp["components<br/>SyncStatus · SyncSettingsDialog<br/>ChainCodeStep · ChainDevices · ChainActivity"]
+        sSvc["sync.service<br/>sync chain, recovery, reminders,<br/>two-way sync, auto-sync"]
+        sRepo["sync.repository<br/>settings, device credential,<br/>cursor, dirty rows, check-in time"]
+        sClient["sync.client · chain-code.js<br/>recovery-code.js · chain-reminders.js<br/>chain-events.js<br/>API calls, codes, reminders"]
         sComp --> sSvc
         sSvc --> sRepo
         sSvc --> sClient
@@ -82,7 +82,7 @@ flowchart LR
         direction TB
         program["Program.cs<br/>DI · CORS · migrations on start"]
         syncEp["SyncEndpoints<br/>POST /api/sync · device credential"]
-        chainEp["ChainEndpoints<br/>/api/chains · /api/chain<br/>rate limited"]
+        chainEp["ChainEndpoints<br/>/api/chains · /api/chain<br/>rate limited, recovery stricter"]
         ytEp["YouTubeEndpoints<br/>GET /api/oembed · /api/playlist"]
         healthEp["HealthEndpoints<br/>GET /api/health"]
     end
@@ -90,7 +90,7 @@ flowchart LR
     subgraph application["YtPlaylist.Application"]
         direction TB
         syncSvc["SyncService<br/>validate · apply · pull<br/>(one chain)"]
-        chainSvc["ChainService<br/>create · join · claim<br/>devices · new code"]
+        chainSvc["ChainService<br/>create · join · claim · recover<br/>devices · audit log<br/>recovery hook: new code, codes"]
         validator["ChangeSetValidator"]
         ports["Ports<br/>ISyncStore · IChainStore · ISecretHasher<br/>IVideoMetadataSource<br/>IYouTubePlaylistSource"]
     end
@@ -102,7 +102,7 @@ flowchart LR
 
     subgraph models["YtPlaylist.Models"]
         direction TB
-        entities["Entities<br/>Playlist · Video · SyncCounter<br/>SyncChain · SyncDevice"]
+        entities["Entities<br/>Playlist · Video · SyncCounter<br/>SyncChain · SyncDevice<br/>SyncRecoveryCode · SyncChainEvent"]
         contracts["Contracts<br/>ChangeSet · SyncRequest · SyncResponse …<br/>VideoMetadata · YouTubePlaylist<br/>ApiError · HealthStatus"]
         youtubeDtos["YouTube responses<br/>DataApi · OEmbed"]
     end
@@ -147,6 +147,16 @@ flowchart LR
 | Core | `web/src/core` | SQLite wrapper, Drizzle table definitions and migrations, persistence, the data-changed signal, the API address |
 | API | `api/src/YtPlaylist.*` | Endpoints and auth (Api), use cases and ports (Application), entities and DTOs (Models), ID rules and limits (Domain), EF Core and YouTube clients (Infrastructure) |
 
+**The recovery hook.** Every way of replacing a chain's code goes through one step, `ChainService.RunRecoveryHookAsync`: recovering with a recovery code, **Generate a new code**, and later the cleanup of abandoned chains. It makes a new secret and new recovery codes, and `IChainStore.ResetAccessAsync` writes everything in one transaction:
+
+1. Locks `sync_counter`, like every sync write, so the hook waits for a sync in progress.
+2. Uses the recovery code, if there is one. Two recoveries with the same code can't both win.
+3. Sets the new secret hash.
+4. Removes every device except the caller, or adds the device that recovered.
+5. Replaces the recovery codes and writes the audit entry.
+
+A sync checks its device again after taking the same lock, so a device removed by the hook can't write afterwards, even if its request was authenticated just before. #53 will extend the hook: it will delete the connected accounts' tokens in the transaction, and revoke their grants at Google and Spotify after it's committed.
+
 ## Deployment
 
 Netlify serves the static web app and forwards `/api` to the .NET API, which runs as a Docker container on Render. Data lives in two places: each browser's local SQLite database, and the PostgreSQL database on Neon that keeps devices in sync.
@@ -172,7 +182,7 @@ flowchart LR
     end
 
     subgraph neon["Neon"]
-        postgres[("PostgreSQL<br/>sync_chains · sync_devices<br/>playlists · videos<br/>sync_counter")]
+        postgres[("PostgreSQL<br/>sync_chains · sync_devices<br/>sync_recovery_codes · sync_chain_events<br/>playlists · videos<br/>sync_counter")]
     end
 
     subgraph youtube["YouTube"]
@@ -202,7 +212,7 @@ Not shown: the browser also loads Google Fonts, and falls back to noembed.com fo
 | Netlify CDN | `web/dist` with the headers from `web/public/_headers` | Content-Security-Policy limits connections to the app's own API and noembed.com |
 | Netlify proxy | `/api/*` forwarded to the Render service | Written at build time from `API_ORIGIN`; requests time out after 26 seconds |
 | Render | The .NET API in a Docker container (`api/Dockerfile`, `render.yaml`) | Applies EF Core migrations on start; the free plan sleeps when idle |
-| Neon | The shared PostgreSQL database | One library per sync chain: every row has a `chain_id`, and a device only reads and writes its own chain's rows. Chain codes and device credentials are stored only as HMACs keyed with `SYNC_PEPPER`. Last-write-wins sync; each row has a `seq` the clients use as a cursor. It pauses when idle and closes its connections, and the API retries on a new one |
+| Neon | The shared PostgreSQL database | One library per sync chain: every row has a `chain_id`, and a device only reads and writes its own chain's rows. Chain codes, recovery codes and device credentials are stored only as HMACs keyed with `SYNC_PEPPER`; each chain has an audit log without secrets. Last-write-wins sync; each row has a `seq` the clients use as a cursor. It pauses when idle and closes its connections, and the API retries on a new one |
 | YouTube | oEmbed, Data API v3, playlist feed, thumbnails, embedded player | The Data API is only used when `YOUTUBE_API_KEY` is set; it reads whole playlists, including their deleted and private videos. The embedded player loads in the browser and doesn't use the key |
 
 For local development the same pieces run on one machine: `npm run dev` (Vite, which proxies `/api`), `dotnet run --project src/YtPlaylist.Api` on port 8787, and PostgreSQL from `docker compose up` in `api/`. See the README.

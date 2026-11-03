@@ -56,6 +56,18 @@ builder.Services.AddRateLimiter(limiter =>
     limiter.AddPolicy(ChainEndpoints.SecretsRateLimit, http => RateLimitPartition.GetFixedWindowLimiter(
         http.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+
+    // Recovering is rare, so a few attempts per IP in a quarter of an hour are enough; this is
+    // also the lockout after repeated failures (the codes can't be guessed anyway).
+    limiter.AddPolicy(ChainEndpoints.RecoveryRateLimit, http => RateLimitPartition.GetSlidingWindowLimiter(
+        http.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new SlidingWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(15),
+            SegmentsPerWindow = 3,
+            QueueLimit = 0,
+        }));
     limiter.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(http =>
         http.Request.Path.StartsWithSegments("/api/chains", StringComparison.OrdinalIgnoreCase)
             ? RateLimitPartition.GetFixedWindowLimiter(

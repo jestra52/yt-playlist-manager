@@ -10,7 +10,14 @@ public interface ISyncStore
     /// only replaces the stored one when its UpdatedAt is newer. A row whose ID belongs to another
     /// chain is never touched. Returns how many rows were written.
     /// </summary>
-    public Task<int> ApplyAsync(string chainId, ChangeSet changes, CancellationToken cancellationToken);
+    /// <param name="chainId"></param>
+    /// <param name="changes"></param>
+    /// <param name="deviceId">
+    /// The device sending them. It is checked again inside the transaction, so a device removed
+    /// after its request was authenticated writes nothing (<see cref="Chains.DeviceRemovedException"/>).
+    /// </param>
+    /// <param name="cancellationToken"></param>
+    public Task<int> ApplyAsync(string chainId, ChangeSet changes, string? deviceId, CancellationToken cancellationToken);
 
     /// <summary>
     /// The chain's rows changed after <paramref name="since"/>, oldest first, at most <paramref name="limit"/>.

@@ -6,17 +6,21 @@
     import { sync } from '../sync.service.svelte.js';
     import { ui } from '../../ui/ui.service.svelte.js';
     import { ChainCodeError, WORD_COUNT, defaultDeviceName, splitWords, wordsToSecret } from '../chain-code.js';
+    import { RECOVERY_CODE_LENGTH, isRecoveryCode, recoveryCodeProblem } from '../recovery-code.js';
+    import ChainActivity from './ChainActivity.svelte';
     import ChainCodeStep from './ChainCodeStep.svelte';
     import ChainDevices from './ChainDevices.svelte';
 
     let apiUrl = $state('/api');
     let autoSync = $state(true);
     let deviceName = $state('');
-    let mode = $state('choose'); // 'choose' | 'join'
+    let mode = $state('choose'); // 'choose' | 'join' | 'recover'
     let codeText = $state('');
+    let recoveryText = $state('');
     let testing = $state(false);
     let result = $state(null);
-    let confirming = $state(null); // 'replace' | 'leave' | 'delete'
+    let confirming = $state(null); // 'replace' | 'codes' | 'leave' | 'delete'
+    let lostCodes = $state(false);
 
     // Load the saved values each time the dialog opens.
     $effect(() => {
@@ -28,11 +32,16 @@
             deviceName = defaultDeviceName();
             mode = 'choose';
             codeText = '';
+            recoveryText = '';
             result = null;
             confirming = null;
+            lostCodes = false;
             sync.loadChain();
+            sync.loadEvents();
         });
     });
+
+    const recoveryProblem = $derived(recoveryCodeProblem(recoveryText));
 
     const typedWords = $derived(splitWords(codeText).length);
     const codeProblem = $derived.by(() => {
@@ -60,6 +69,11 @@
     const join = async (event) => {
         event.preventDefault();
         if (await sync.joinChain(codeText, deviceName)) codeText = '';
+    };
+
+    const recover = async (event) => {
+        event.preventDefault();
+        if (await sync.recoverChain(recoveryText, deviceName)) recoveryText = '';
     };
 
     const confirmThen = async (action, work) => {
@@ -90,6 +104,71 @@
         <p class="mb-4 text-sm text-base-content/65">
             This device is in a sync chain: your playlists sync with the other devices in it.
         </p>
+
+        {#if sync.recoveryNotice}
+            <div class="alert alert-warning alert-soft mb-4 items-start text-sm" role="status">
+                <Icon name="info" size={18} />
+                <div>
+                    <p class="font-semibold">Add another device or recovery codes so you don’t lose access</p>
+                    <p class="mt-1">
+                        This is the only device in the chain, and the chain has no recovery codes. If you lose this
+                        device and the code, nobody can get the chain back.
+                    </p>
+                    <button
+                        class="btn btn-sm mt-2"
+                        type="button"
+                        disabled={sync.busy}
+                        onclick={() => sync.renewRecoveryCodes()}
+                    >
+                        Create recovery codes
+                    </button>
+                </div>
+            </div>
+        {:else if sync.checkInDue}
+            <div class="alert alert-info alert-soft mb-4 items-start text-sm" role="status">
+                <Icon name="info" size={18} />
+                <div>
+                    <p class="font-semibold">Do you still have your sync chain code and recovery codes?</p>
+                    {#if lostCodes}
+                        <p class="mt-1">
+                            Make new ones now, while this device is still in the chain. New recovery codes are enough to
+                            get back in; a new code is needed to add another device.
+                        </p>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <button
+                                class="btn btn-sm"
+                                type="button"
+                                disabled={sync.busy}
+                                onclick={async () => (await sync.renewRecoveryCodes()) && sync.confirmCodeCheckIn()}
+                            >
+                                New recovery codes
+                            </button>
+                            <button
+                                class="btn btn-sm btn-ghost"
+                                type="button"
+                                onclick={() => {
+                                    lostCodes = false;
+                                    confirming = 'replace';
+                                }}
+                            >
+                                A new code…
+                            </button>
+                        </div>
+                    {:else}
+                        <p class="mt-1">Without them, a lost device can’t get back into the chain.</p>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <button class="btn btn-sm" type="button" onclick={() => sync.confirmCodeCheckIn()}>
+                                Yes, I have them
+                            </button>
+                            <button class="btn btn-sm btn-ghost" type="button" onclick={() => (lostCodes = true)}>
+                                No
+                            </button>
+                        </div>
+                    {/if}
+                </div>
+            </div>
+        {/if}
+
         <ChainDevices />
 
         <div class="mt-4 flex flex-wrap gap-2">
@@ -101,6 +180,15 @@
                 onclick={() => confirmThen('replace', () => sync.replaceCode())}
             >
                 {confirming === 'replace' ? 'Yes, new code and remove other devices' : 'Generate a new code'}
+            </button>
+            <button
+                class="btn btn-sm"
+                class:btn-warning={confirming === 'codes'}
+                type="button"
+                disabled={sync.busy}
+                onclick={() => confirmThen('codes', () => sync.renewRecoveryCodes())}
+            >
+                {confirming === 'codes' ? 'Yes, new recovery codes' : 'Generate new recovery codes'}
             </button>
             <button
                 class="btn btn-sm btn-ghost"
@@ -123,8 +211,12 @@
         </div>
         {#if confirming === 'replace'}
             <p class="mt-2 text-sm text-warning" role="alert">
-                The current code stops working and every other device is removed; add them again with the new code. Use
-                this if the code leaked or a device was lost.
+                The current code and recovery codes stop working and every other device is removed; add them again with
+                the new code. Use this if the code leaked or a device was lost.
+            </p>
+        {:else if confirming === 'codes'}
+            <p class="mt-2 text-sm text-warning" role="alert">
+                The current recovery codes stop working. The chain code and the devices stay as they are.
             </p>
         {:else if confirming === 'leave'}
             <p class="mt-2 text-sm text-warning" role="alert">
@@ -136,6 +228,8 @@
                 device stay on that device.
             </p>
         {/if}
+
+        <ChainActivity />
     {:else}
         <p class="mb-4 text-sm text-base-content/65">
             Your playlists are saved in a SQLite database in this browser. A <strong>sync chain</strong> keeps your devices
@@ -183,6 +277,41 @@
                     Join with a code
                 </button>
             </div>
+            <p class="mt-3 text-center text-sm text-base-content/65">
+                Lost every device and the code?
+                <button class="link" type="button" disabled={sync.busy} onclick={() => (mode = 'recover')}>
+                    Recover with a recovery code
+                </button>
+            </p>
+        {:else if mode === 'recover'}
+            <form onsubmit={recover}>
+                <label class="fieldset">
+                    <span class="fieldset-legend">Recovery code</span>
+                    <input
+                        class="input w-full font-mono uppercase"
+                        bind:value={recoveryText}
+                        placeholder="XXXXX-XXXXX-XXXXX-XXXXX"
+                        autocomplete="off"
+                        autocapitalize="characters"
+                        spellcheck="false"
+                    />
+                    <span class="label whitespace-normal" class:text-error={recoveryProblem}>
+                        {recoveryProblem ||
+                            `One of the ${RECOVERY_CODE_LENGTH}-character codes you saved with the chain code.`}
+                    </span>
+                </label>
+                <p class="mt-2 text-sm text-warning">
+                    The chain gets a new code and new recovery codes, every other device is removed, and this device
+                    joins. Your playlists stay. The code you use stops working.
+                </p>
+                <div class="mt-3 flex justify-end gap-2">
+                    <button class="btn btn-ghost" type="button" onclick={() => (mode = 'choose')}>Back</button>
+                    <button class="btn btn-primary" type="submit" disabled={sync.busy || !isRecoveryCode(recoveryText)}>
+                        {#if sync.busy}<span class="loading loading-spinner loading-xs"></span>{/if}
+                        Recover
+                    </button>
+                </div>
+            </form>
         {:else}
             <form onsubmit={join}>
                 <label class="fieldset">

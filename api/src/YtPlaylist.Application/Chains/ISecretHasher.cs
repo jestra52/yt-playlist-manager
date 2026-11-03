@@ -10,6 +10,12 @@ public interface ISecretHasher
     public string NewSecret();
 
     /// <summary>
+    /// A new recovery code in its canonical form: <see cref="RecoveryCode.Length"/> characters
+    /// of <see cref="RecoveryCode.Alphabet"/> from a cryptographically secure generator.
+    /// </summary>
+    public string NewRecoveryCode();
+
+    /// <summary>
     /// HMAC-SHA256 of <paramref name="secret"/>, keyed with the server's pepper, as base64url.
     /// The same secret always gives the same hash, so it can be looked up.
     /// </summary>

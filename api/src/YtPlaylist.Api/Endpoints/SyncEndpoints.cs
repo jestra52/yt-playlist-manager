@@ -48,7 +48,11 @@ public static class SyncEndpoints
             : null;
         try
         {
-            return Results.Json(await sync.SyncAsync(device!.ChainId, request!, limit, cancellationToken));
+            return Results.Json(await sync.SyncAsync(device!, request!, limit, cancellationToken));
+        }
+        catch (DeviceRemovedException)
+        {
+            return DeviceAuth.NotInAChain();
         }
         catch (DomainValidationException ex)
         {

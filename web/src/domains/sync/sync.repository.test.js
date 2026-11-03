@@ -188,4 +188,18 @@ describe('sync bookkeeping', () => {
         sync.clearChainAccess(db);
         expect(sync.getSettings(db)).toMatchObject({ credential: '', chainId: '', deviceId: '' });
     });
+
+    it('remembers when the codes were last checked, until the device leaves the chain', () => {
+        const db = freshDb();
+        expect(sync.getCodeCheckedAt(db)).toBeNull();
+
+        const before = Date.now();
+        sync.setChainAccess(db, access);
+        expect(sync.getCodeCheckedAt(db)).toBeGreaterThanOrEqual(before);
+
+        sync.setCodeCheckedAt(db, 1234);
+        expect(sync.getCodeCheckedAt(db)).toBe(1234);
+        sync.clearChainAccess(db);
+        expect(sync.getCodeCheckedAt(db)).toBeNull();
+    });
 });

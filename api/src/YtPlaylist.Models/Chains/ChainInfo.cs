@@ -4,4 +4,5 @@ namespace YtPlaylist.Models.Chains;
 /// <param name="ChainId"></param>
 /// <param name="DeviceId">The device making the request.</param>
 /// <param name="Devices">Every device in the chain, oldest first.</param>
-public sealed record ChainInfo(string ChainId, string DeviceId, IReadOnlyList<DeviceInfo> Devices);
+/// <param name="RecoveryCodesLeft">How many unused recovery codes the chain has (a full set or none).</param>
+public sealed record ChainInfo(string ChainId, string DeviceId, IReadOnlyList<DeviceInfo> Devices, int RecoveryCodesLeft);

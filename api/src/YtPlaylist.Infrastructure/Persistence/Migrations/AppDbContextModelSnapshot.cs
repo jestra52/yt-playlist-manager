@@ -118,6 +118,50 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("YtPlaylist.Models.Entities.SyncChainEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("At")
+                        .HasColumnType("bigint")
+                        .HasColumnName("at");
+
+                    b.Property<string>("ChainId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("chain_id");
+
+                    b.Property<string>("Detail")
+                        .IsRequired()
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)")
+                        .HasColumnName("detail");
+
+                    b.Property<string>("DeviceName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("device_name");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("kind");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChainId", "At");
+
+                    b.ToTable("sync_chain_events", (string)null);
+                });
+
             modelBuilder.Entity("YtPlaylist.Models.Entities.SyncCounter", b =>
                 {
                     b.Property<int>("Id")
@@ -181,6 +225,39 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("sync_devices", (string)null);
+                });
+
+            modelBuilder.Entity("YtPlaylist.Models.Entities.SyncRecoveryCode", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChainId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("chain_id");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(43)
+                        .HasColumnType("character varying(43)")
+                        .HasColumnName("code_hash");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChainId");
+
+                    b.HasIndex("CodeHash")
+                        .IsUnique();
+
+                    b.ToTable("sync_recovery_codes", (string)null);
                 });
 
             modelBuilder.Entity("YtPlaylist.Models.Entities.Video", b =>
@@ -292,7 +369,25 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("YtPlaylist.Models.Entities.SyncChainEvent", b =>
+                {
+                    b.HasOne("YtPlaylist.Models.Entities.SyncChain", null)
+                        .WithMany()
+                        .HasForeignKey("ChainId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("YtPlaylist.Models.Entities.SyncDevice", b =>
+                {
+                    b.HasOne("YtPlaylist.Models.Entities.SyncChain", null)
+                        .WithMany()
+                        .HasForeignKey("ChainId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("YtPlaylist.Models.Entities.SyncRecoveryCode", b =>
                 {
                     b.HasOne("YtPlaylist.Models.Entities.SyncChain", null)
                         .WithMany()
