@@ -7,7 +7,8 @@ namespace YtPlaylist.Application.Chains;
 
 /// <summary>
 /// Sync chain use cases: create, join, claim and recover a chain, authenticate devices, and
-/// manage a chain's devices, code, recovery codes and audit log. Secrets are generated here
+/// manage a chain's devices, code, recovery codes and audit log; adding a device with a
+/// pairing code is in ChainService.Pairing.cs. Secrets are generated here
 /// and only their peppered hashes are stored; the secrets are returned once and never logged.
 /// </summary>
 /// <param name="hasher">Creates secrets and the hashes stored instead of them.</param>
@@ -134,11 +135,13 @@ public sealed partial class ChainService(ISecretHasher hasher, TimeProvider time
         var chainStore = this.RequireStore();
         var devices = await chainStore.ListDevicesAsync(caller.ChainId, cancellationToken).ConfigureAwait(false);
         var codesLeft = await chainStore.CountRecoveryCodesAsync(caller.ChainId, cancellationToken).ConfigureAwait(false);
+        var chain = await chainStore.FindChainAsync(caller.ChainId, cancellationToken).ConfigureAwait(false);
         return new ChainInfo(
             caller.ChainId,
             caller.DeviceId,
             [.. devices.Select(d => new DeviceInfo(d.Id, d.Name, d.CreatedAt, d.LastSeenAt))],
-            codesLeft);
+            codesLeft,
+            chain?.PairingLockedUntil > this.Now() ? chain.PairingLockedUntil : null);
     }
 
     /// <summary>Removes a device of the caller's chain (the caller itself to leave); false when there's no such device.</summary>
@@ -232,14 +235,22 @@ public sealed partial class ChainService(ISecretHasher hasher, TimeProvider time
         return done ? new ChainSecret(secret, codes) : null;
     }
 
+    /// <summary>The device name as stored: trimmed, or "Unnamed device" when empty.</summary>
     /// <exception cref="DomainValidationException">When the device name is too long.</exception>
-    private (SyncDevice Device, string Credential) NewDevice(string chainId, string deviceName)
+    private static string CleanDeviceName(string? deviceName)
     {
         var name = (deviceName ?? "").Trim();
         if (name.EnumerateRunes().Count() > SyncLimits.MaxDeviceNameLength)
         {
             throw new DomainValidationException($"device name is longer than {SyncLimits.MaxDeviceNameLength} characters");
         }
+        return name.Length > 0 ? name : "Unnamed device";
+    }
+
+    /// <exception cref="DomainValidationException">When the device name is too long.</exception>
+    private (SyncDevice Device, string Credential) NewDevice(string chainId, string deviceName)
+    {
+        var name = CleanDeviceName(deviceName);
         var credential = hasher.NewSecret();
         var now = this.Now();
         var device = new SyncDevice
@@ -247,7 +258,7 @@ public sealed partial class ChainService(ISecretHasher hasher, TimeProvider time
             Id = NewId(),
             ChainId = chainId,
             CredentialHash = hasher.Hash(credential),
-            Name = name.Length > 0 ? name : "Unnamed device",
+            Name = name,
             CreatedAt = now,
             LastSeenAt = now,
         };

@@ -18,6 +18,7 @@ public sealed class SyncChainConfiguration : IEntityTypeConfiguration<SyncChain>
         builder.Property(c => c.Id).HasColumnName("id").HasMaxLength(SyncLimits.MaxIdLength).ValueGeneratedNever();
         builder.Property(c => c.SecretHash).HasColumnName("secret_hash").HasMaxLength(HashLength);
         builder.Property(c => c.CreatedAt).HasColumnName("created_at");
+        builder.Property(c => c.PairingLockedUntil).HasColumnName("pairing_locked_until");
         builder.HasIndex(c => c.SecretHash).IsUnique();
 
         // Every row synced with SYNC_TOKEN before sync chains belongs here until it's claimed.

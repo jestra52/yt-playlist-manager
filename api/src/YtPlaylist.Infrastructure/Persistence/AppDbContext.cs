@@ -13,6 +13,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<SyncDevice> SyncDevices => this.Set<SyncDevice>();
     public DbSet<SyncRecoveryCode> SyncRecoveryCodes => this.Set<SyncRecoveryCode>();
     public DbSet<SyncChainEvent> SyncChainEvents => this.Set<SyncChainEvent>();
+    public DbSet<SyncPairing> SyncPairings => this.Set<SyncPairing>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

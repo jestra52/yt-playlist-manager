@@ -68,6 +68,23 @@ builder.Services.AddRateLimiter(limiter =>
             SegmentsPerWindow = 3,
             QueueLimit = 0,
         }));
+
+    // Entering a pairing code: a few tries per IP. Wrong codes also lock the IP out
+    // (IAttemptLockout), and a used code entered again counts against its chain.
+    limiter.AddPolicy(ChainEndpoints.PairingRateLimit, http => RateLimitPartition.GetSlidingWindowLimiter(
+        http.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new SlidingWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(15),
+            SegmentsPerWindow = 3,
+            QueueLimit = 0,
+        }));
+
+    // A new device asks every few seconds whether it was approved, for a few minutes at most.
+    limiter.AddPolicy(ChainEndpoints.PairingStatusRateLimit, http => RateLimitPartition.GetFixedWindowLimiter(
+        http.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     limiter.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(http =>
         http.Request.Path.StartsWithSegments("/api/chains", StringComparison.OrdinalIgnoreCase)
             ? RateLimitPartition.GetFixedWindowLimiter(

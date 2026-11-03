@@ -21,6 +21,8 @@ public sealed class HmacSecretHasher(IOptions<ChainSecurityOptions> options) : I
 
     public string NewRecoveryCode() => RandomNumberGenerator.GetString(RecoveryCode.Alphabet, RecoveryCode.Length);
 
+    public string NewPairingCode() => RandomNumberGenerator.GetString(Base32Code.Alphabet, PairingCode.Length);
+
     public string Hash(string secret)
     {
         ArgumentNullException.ThrowIfNull(secret);

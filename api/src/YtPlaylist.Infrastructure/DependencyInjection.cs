@@ -5,6 +5,7 @@ using YtPlaylist.Application.Chains;
 using YtPlaylist.Application.Sync;
 using YtPlaylist.Application.YouTube;
 using YtPlaylist.Infrastructure.Persistence;
+using YtPlaylist.Infrastructure.Security;
 using YtPlaylist.Infrastructure.YouTube;
 
 namespace YtPlaylist.Infrastructure;
@@ -36,6 +37,7 @@ public static class DependencyInjection
         services.AddOptions<ChainSecurityOptions>()
             .Configure<IConfiguration>((options, config) => options.Pepper = config["SYNC_PEPPER"] ?? "");
         services.AddSingleton<ISecretHasher, HmacSecretHasher>();
+        services.AddSingleton<IAttemptLockout, InMemoryAttemptLockout>();
 
         services.AddOptions<YouTubeOptions>()
             .Configure<IConfiguration>((options, config) => options.ApiKey = config["YOUTUBE_API_KEY"] ?? "");

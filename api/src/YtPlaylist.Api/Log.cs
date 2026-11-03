@@ -10,6 +10,14 @@ internal static partial class Log
     [LoggerMessage(Level = LogLevel.Warning, Message = "A sync chain recovery attempt failed")]
     public static partial void RecoveryFailed(this ILogger logger);
 
+    /// <summary>Never logs the code that was tried.</summary>
+    [LoggerMessage(Level = LogLevel.Warning, Message = "A sync chain pairing attempt failed")]
+    public static partial void PairingFailed(this ILogger logger);
+
+    /// <summary>Never logs the client's address or the codes that were tried.</summary>
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Too many failed attempts to join a sync chain; the client is locked out for a while")]
+    public static partial void JoinLockedOut(this ILogger logger);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "oEmbed lookup for {VideoId} failed")]
     public static partial void OEmbedLookupFailed(this ILogger logger, Exception exception, string? videoId);
 

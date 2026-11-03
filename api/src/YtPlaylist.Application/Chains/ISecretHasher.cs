@@ -16,6 +16,12 @@ public interface ISecretHasher
     public string NewRecoveryCode();
 
     /// <summary>
+    /// A new pairing code in its canonical form: <see cref="PairingCode.Length"/> characters
+    /// of <see cref="Base32Code.Alphabet"/> from a cryptographically secure generator.
+    /// </summary>
+    public string NewPairingCode();
+
+    /// <summary>
     /// HMAC-SHA256 of <paramref name="secret"/>, keyed with the server's pepper, as base64url.
     /// The same secret always gives the same hash, so it can be looked up.
     /// </summary>

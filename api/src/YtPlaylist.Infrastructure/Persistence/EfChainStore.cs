@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using YtPlaylist.Application.Chains;
+using YtPlaylist.Models.Chains;
 using YtPlaylist.Models.Entities;
 
 namespace YtPlaylist.Infrastructure.Persistence;
@@ -62,6 +63,7 @@ public sealed class EfChainStore(AppDbContext db) : IChainStore
         this.InTransactionAsync(
             async () =>
             {
+                await db.SyncPairings.Where(p => p.CreatedByDeviceId == deviceId).ExecuteDeleteAsync(cancellationToken);
                 var removed = await db.SyncDevices
                     .Where(d => d.ChainId == chainId && d.Id == deviceId)
                     .ExecuteDeleteAsync(cancellationToken);
@@ -100,6 +102,9 @@ public sealed class EfChainStore(AppDbContext db) : IChainStore
                 await db.SyncChains
                     .Where(c => c.Id == reset.ChainId)
                     .ExecuteUpdateAsync(s => s.SetProperty(c => c.SecretHash, reset.SecretHash), cancellationToken);
+
+                // A pairing approved before the reset can't add a device after it.
+                await db.SyncPairings.Where(p => p.ChainId == reset.ChainId).ExecuteDeleteAsync(cancellationToken);
 
                 var removed = db.SyncDevices.Where(d => d.ChainId == reset.ChainId && d.Id != reset.KeepDeviceId);
                 var removedNames = await removed.OrderBy(d => d.CreatedAt).Select(d => d.Name).ToListAsync(cancellationToken);
@@ -155,6 +160,7 @@ public sealed class EfChainStore(AppDbContext db) : IChainStore
                 // Children first, so it doesn't depend on the database enforcing cascades.
                 await db.Videos.Where(v => v.ChainId == chainId).ExecuteDeleteAsync(cancellationToken);
                 await db.Playlists.Where(p => p.ChainId == chainId).ExecuteDeleteAsync(cancellationToken);
+                await db.SyncPairings.Where(p => p.ChainId == chainId).ExecuteDeleteAsync(cancellationToken);
                 await db.SyncDevices.Where(d => d.ChainId == chainId).ExecuteDeleteAsync(cancellationToken);
                 await db.SyncRecoveryCodes.Where(r => r.ChainId == chainId).ExecuteDeleteAsync(cancellationToken);
                 await db.SyncChainEvents.Where(e => e.ChainId == chainId).ExecuteDeleteAsync(cancellationToken);
@@ -192,6 +198,138 @@ public sealed class EfChainStore(AppDbContext db) : IChainStore
         db.SyncDevices
             .Where(d => d.Id == deviceId)
             .ExecuteUpdateAsync(s => s.SetProperty(d => d.LastSeenAt, now), cancellationToken);
+
+    public Task<SyncChain?> FindChainAsync(string chainId, CancellationToken cancellationToken) =>
+        db.SyncChains.AsNoTracking().FirstOrDefaultAsync(c => c.Id == chainId, cancellationToken);
+
+    public Task CreatePairingAsync(SyncPairing pairing, SyncChainEvent auditEvent, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(pairing);
+        return this.InTransactionAsync(
+            async () =>
+            {
+                var now = pairing.CreatedAt;
+                await db.SyncPairings
+                    .Where(p => p.ExpiresAt <= now || p.CreatedByDeviceId == pairing.CreatedByDeviceId)
+                    .ExecuteDeleteAsync(cancellationToken);
+                db.SyncPairings.Add(pairing);
+                db.SyncChainEvents.Add(auditEvent);
+                await db.SaveChangesAsync(cancellationToken);
+                return true;
+            },
+            cancellationToken);
+    }
+
+    public Task<SyncPairing?> FindPairingByCreatorAsync(string deviceId, CancellationToken cancellationToken) =>
+        db.SyncPairings.AsNoTracking().FirstOrDefaultAsync(p => p.CreatedByDeviceId == deviceId, cancellationToken);
+
+    public Task<SyncPairing?> FindPairingByCodeHashAsync(string codeHash, CancellationToken cancellationToken) =>
+        db.SyncPairings.AsNoTracking().FirstOrDefaultAsync(p => p.CodeHash == codeHash, cancellationToken);
+
+    public Task<SyncPairing?> FindPairingByRequestTokenHashAsync(string tokenHash, CancellationToken cancellationToken) =>
+        db.SyncPairings.AsNoTracking().FirstOrDefaultAsync(p => p.RequestTokenHash == tokenHash, cancellationToken);
+
+    public async Task<bool> RequestPairingAsync(
+        string pairingId,
+        string requesterName,
+        string requestTokenHash,
+        long now,
+        long expiresAt,
+        CancellationToken cancellationToken) =>
+        await db.SyncPairings
+            .Where(p => p.Id == pairingId && p.Status == PairingStatus.Waiting && p.ExpiresAt > now)
+            .ExecuteUpdateAsync(
+                s => s
+                    .SetProperty(p => p.Status, PairingStatus.Requested)
+                    .SetProperty(p => p.RequesterName, requesterName)
+                    .SetProperty(p => p.RequestTokenHash, requestTokenHash)
+                    .SetProperty(p => p.ExpiresAt, expiresAt),
+                cancellationToken) == 1;
+
+    public Task<bool> ApprovePairingAsync(
+        string pairingId, string creatorDeviceId, long now, SyncChainEvent auditEvent, CancellationToken cancellationToken) =>
+        this.InTransactionAsync(
+            async () =>
+            {
+                if (!await this.DecideAsync(pairingId, creatorDeviceId, now, PairingStatus.Approved, cancellationToken))
+                {
+                    return false;
+                }
+                db.SyncChainEvents.Add(auditEvent);
+                await db.SaveChangesAsync(cancellationToken);
+                return true;
+            },
+            cancellationToken);
+
+    public Task<bool> DenyPairingAsync(
+        string pairingId, string creatorDeviceId, long now, PairingStrike strike, CancellationToken cancellationToken) =>
+        this.InTransactionAsync(
+            async () =>
+            {
+                if (!await this.DecideAsync(pairingId, creatorDeviceId, now, PairingStatus.Denied, cancellationToken))
+                {
+                    return false;
+                }
+                await this.StrikeAsync(strike, cancellationToken);
+                return true;
+            },
+            cancellationToken);
+
+    public Task<bool> AddPairingStrikeAsync(PairingStrike strike, CancellationToken cancellationToken) =>
+        this.InTransactionAsync(() => this.StrikeAsync(strike, cancellationToken), cancellationToken);
+
+    public Task<bool> CompletePairingAsync(
+        string pairingId, long now, SyncDevice device, SyncChainEvent auditEvent, CancellationToken cancellationToken) =>
+        this.InTransactionAsync(
+            async () =>
+            {
+                // Collecting is the first write, so of two requests with the same token only one adds the device.
+                var collected = await db.SyncPairings
+                    .Where(p => p.Id == pairingId && p.Status == PairingStatus.Approved && p.ExpiresAt > now)
+                    .ExecuteUpdateAsync(s => s.SetProperty(p => p.Status, PairingStatus.Joined), cancellationToken);
+                if (collected == 0)
+                {
+                    return false;
+                }
+                db.SyncDevices.Add(device);
+                db.SyncChainEvents.Add(auditEvent);
+                await db.SaveChangesAsync(cancellationToken);
+                return true;
+            },
+            cancellationToken);
+
+    public Task CancelPairingAsync(string creatorDeviceId, CancellationToken cancellationToken) =>
+        db.SyncPairings.Where(p => p.CreatedByDeviceId == creatorDeviceId).ExecuteDeleteAsync(cancellationToken);
+
+    private async Task<bool> DecideAsync(
+        string pairingId, string creatorDeviceId, long now, string status, CancellationToken cancellationToken) =>
+        await db.SyncPairings
+            .Where(p => p.Id == pairingId
+                && p.CreatedByDeviceId == creatorDeviceId
+                && p.Status == PairingStatus.Requested
+                && p.ExpiresAt > now)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.Status, status), cancellationToken) == 1;
+
+    /// <summary>Logs the strike and, when the chain has enough of them, pauses its pairing. Runs inside a transaction.</summary>
+    private async Task<bool> StrikeAsync(PairingStrike strike, CancellationToken cancellationToken)
+    {
+        db.SyncChainEvents.Add(strike.Event);
+        await db.SaveChangesAsync(cancellationToken);
+        var strikes = await db.SyncChainEvents.CountAsync(
+            e => e.ChainId == strike.ChainId && PairingStrike.Kinds.Contains(e.Kind) && e.At >= strike.Since,
+            cancellationToken);
+        if (strikes < strike.Limit)
+        {
+            return false;
+        }
+        await db.SyncChains
+            .Where(c => c.Id == strike.ChainId)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.PairingLockedUntil, strike.LockedUntil), cancellationToken);
+        await db.SyncPairings.Where(p => p.ChainId == strike.ChainId).ExecuteDeleteAsync(cancellationToken);
+        db.SyncChainEvents.Add(strike.LockEvent);
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
 
     /// <summary>
     /// Runs <paramref name="work"/> in a transaction through the execution strategy, so a dropped

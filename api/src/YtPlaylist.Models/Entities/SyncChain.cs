@@ -20,4 +20,10 @@ public sealed class SyncChain
 
     /// <summary>Milliseconds since the Unix epoch.</summary>
     public long CreatedAt { get; set; }
+
+    /// <summary>
+    /// Milliseconds since the Unix epoch until which no pairing code can be created, after
+    /// repeated refused attempts to join with one; null when pairing isn't paused.
+    /// </summary>
+    public long? PairingLockedUntil { get; set; }
 }

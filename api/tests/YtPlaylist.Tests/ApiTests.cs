@@ -23,7 +23,11 @@ public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFix
     /// sync store and an in-memory chain store (<paramref name="chains"/>, or a new one).
     /// </summary>
     private HttpClient Client(
-        ISyncStore? store = null, string syncToken = "secret", FakeChainStore? chains = null, ListLoggerProvider? logs = null) =>
+        ISyncStore? store = null,
+        string syncToken = "secret",
+        FakeChainStore? chains = null,
+        ListLoggerProvider? logs = null,
+        FakeClock? clock = null) =>
         factory.WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Testing");
@@ -42,6 +46,10 @@ public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFix
                 {
                     services.AddSingleton(store);
                     services.AddSingleton<IChainStore>(chains ?? new FakeChainStore());
+                }
+                if (clock is not null)
+                {
+                    services.AddSingleton<TimeProvider>(clock);
                 }
                 var youTube = new FakeYouTube();
                 services.AddSingleton<IVideoMetadataSource>(youTube);
@@ -78,6 +86,44 @@ public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFix
 
     private static List<string> RecoveryCodes(JsonElement body, string property = "recoveryCodes") =>
         [.. body.GetProperty(property).EnumerateArray().Select(c => c.GetString()!)];
+
+    /// <summary>Creates a pairing code on the device with this credential and returns it.</summary>
+    private static async Task<string> StartPairingAsync(HttpClient client, string credential)
+    {
+        using var response = await client.SendAsync(Request(HttpMethod.Post, "/api/chain/pairing", token: credential));
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
+    }
+
+    private static Task<HttpResponseMessage> PairAsync(HttpClient client, string code, string deviceName = "Chrome on Android") =>
+        client.SendAsync(Request(HttpMethod.Post, "/api/chains/pair", $$"""{"code":"{{code}}","deviceName":"{{deviceName}}"}"""));
+
+    /// <summary>Enters a pairing code and returns the request token.</summary>
+    private static async Task<string> RequestPairingAsync(HttpClient client, string code, string deviceName = "Chrome on Android")
+    {
+        using var response = await PairAsync(client, code, deviceName);
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("requestToken").GetString()!;
+    }
+
+    private static async Task<JsonElement> PairingStatusAsync(HttpClient client, string requestToken)
+    {
+        using var response = await client.SendAsync(Request(HttpMethod.Post, "/api/pairing/status", token: requestToken));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return await response.Content.ReadFromJsonAsync<JsonElement>();
+    }
+
+    private static async Task<HttpStatusCode> DecideAsync(HttpClient client, string credential, string decision)
+    {
+        using var response = await client.SendAsync(Request(HttpMethod.Post, $"/api/chain/pairing/{decision}", token: credential));
+        return response.StatusCode;
+    }
+
+    private static async Task<List<string>> EventKindsAsync(HttpClient client, string credential)
+    {
+        using var response = await client.SendAsync(Request(HttpMethod.Get, "/api/chain/events", token: credential));
+        return [.. (await response.Content.ReadFromJsonAsync<JsonElement>()).EnumerateArray().Select(e => e.GetProperty("kind").GetString()!)];
+    }
 
     private static Task<HttpResponseMessage> RecoverAsync(HttpClient client, string code, string deviceName = "New phone") =>
         client.SendAsync(Request(HttpMethod.Post, "/api/chains/recover", $$"""{"recoveryCode":"{{code}}","deviceName":"{{deviceName}}"}"""));
@@ -381,15 +427,230 @@ public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFix
     public async Task JoiningIsRateLimited()
     {
         using var client = this.Client(new FakeSyncStore());
-        var body = $$"""{"secret":"{{new string('A', 43)}}","deviceName":"Guess"}""";
         var statuses = new List<HttpStatusCode>();
         for (var i = 0; i < 12; i++)
         {
-            using var response = await client.SendAsync(Request(HttpMethod.Post, "/api/chains/join", body));
+            // Malformed bodies aren't wrong codes, so only the rate limit stops them.
+            using var response = await client.SendAsync(Request(HttpMethod.Post, "/api/chains/join", "not json"));
             statuses.Add(response.StatusCode);
         }
-        Assert.Equal(10, statuses.Count(s => s == HttpStatusCode.Unauthorized));
+        Assert.Equal(10, statuses.Count(s => s == HttpStatusCode.BadRequest));
         Assert.Equal(HttpStatusCode.TooManyRequests, statuses[^1]);
+    }
+
+    [Fact]
+    public async Task WrongCodesLockTheClientOutOfJoiningPairingAndRecovering()
+    {
+        var clock = new FakeClock();
+        var logs = new ListLoggerProvider();
+        using var client = this.Client(new FakeSyncStore(), logs: logs, clock: clock);
+        var laptop = await CreateChainAsync(client);
+        var join = $$"""{"secret":"{{laptop.GetProperty("secret").GetString()}}","deviceName":"Phone"}""";
+
+        // Five wrong codes of any kind, then even a right one is refused for a while.
+        using (var wrongJoin = await client.SendAsync(Request(HttpMethod.Post, "/api/chains/join", $$"""{"secret":"{{new string('A', 43)}}","deviceName":"X"}""")))
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, wrongJoin.StatusCode);
+        }
+        using (var wrongRecovery = await RecoverAsync(client, "00000-00000-00000-00000"))
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, wrongRecovery.StatusCode);
+        }
+        for (var i = 0; i < 3; i++)
+        {
+            using var wrongPairing = await PairAsync(client, "0000-0000");
+            Assert.Equal(HttpStatusCode.Unauthorized, wrongPairing.StatusCode);
+        }
+        using (var locked = await client.SendAsync(Request(HttpMethod.Post, "/api/chains/join", join)))
+        {
+            Assert.Equal(HttpStatusCode.TooManyRequests, locked.StatusCode);
+            Assert.NotNull(locked.Headers.RetryAfter);
+        }
+        using (var lockedPairing = await PairAsync(client, "0000-0000"))
+        {
+            Assert.Equal(HttpStatusCode.TooManyRequests, lockedPairing.StatusCode);
+        }
+        Assert.Contains("locked out", string.Join('\n', logs.Messages), StringComparison.Ordinal);
+
+        clock.Advance(TimeSpan.FromMinutes(16));
+        using var joined = await client.SendAsync(Request(HttpMethod.Post, "/api/chains/join", join));
+        Assert.Equal(HttpStatusCode.OK, joined.StatusCode);
+    }
+
+    [Fact]
+    public async Task ADeviceJoinsWithAPairingCodeOnceTheDeviceThatCreatedItApproves()
+    {
+        var logs = new ListLoggerProvider();
+        using var client = this.Client(new FakeSyncStore(), logs: logs);
+        var laptop = await CreateChainAsync(client, "Laptop");
+
+        using var started = await client.SendAsync(Request(HttpMethod.Post, "/api/chain/pairing", token: Credential(laptop)));
+        Assert.Equal(HttpStatusCode.Created, started.StatusCode);
+        Assert.Equal("no-store", started.Headers.CacheControl?.ToString());
+        var code = (await started.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
+        Assert.Matches("^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$", code);
+
+        // Typed in lower case without the dash still works.
+        var token = await RequestPairingAsync(client, code.Replace("-", "", StringComparison.Ordinal).ToLowerInvariant());
+        Assert.Equal(43, token.Length);
+        Assert.Equal("requested", (await PairingStatusAsync(client, token)).GetProperty("status").GetString());
+        Assert.Equal(JsonValueKind.Null, (await PairingStatusAsync(client, token)).GetProperty("deviceCredential").ValueKind);
+
+        // The laptop sees who wants to join.
+        using var described = await client.SendAsync(Request(HttpMethod.Get, "/api/chain/pairing", token: Credential(laptop)));
+        var pairing = await described.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("requested", pairing.GetProperty("status").GetString());
+        Assert.Equal("Chrome on Android", pairing.GetProperty("requesterName").GetString());
+
+        // The code works once.
+        using var again = await PairAsync(client, code, "Someone else");
+        Assert.Equal(HttpStatusCode.Unauthorized, again.StatusCode);
+
+        Assert.Equal(HttpStatusCode.NoContent, await DecideAsync(client, Credential(laptop), "approve"));
+        Assert.Equal(HttpStatusCode.Conflict, await DecideAsync(client, Credential(laptop), "approve"));
+        var approved = await PairingStatusAsync(client, token);
+        Assert.Equal("approved", approved.GetProperty("status").GetString());
+        Assert.Equal(laptop.GetProperty("chainId").GetString(), approved.GetProperty("chainId").GetString());
+        var phoneCredential = approved.GetProperty("deviceCredential").GetString()!;
+
+        // The credential is handed out once, and works.
+        Assert.Equal("expired", (await PairingStatusAsync(client, token)).GetProperty("status").GetString());
+        using var info = await client.SendAsync(Request(HttpMethod.Get, "/api/chain", token: phoneCredential));
+        Assert.Equal(HttpStatusCode.OK, info.StatusCode);
+        var devices = (await info.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("devices");
+        Assert.Equal(["Laptop", "Chrome on Android"], devices.EnumerateArray().Select(d => d.GetProperty("name").GetString()));
+        using var synced = await client.SendAsync(SyncRequest("{}", phoneCredential));
+        Assert.Equal(HttpStatusCode.OK, synced.StatusCode);
+
+        // The audit log and the logs never hold the code, the token or the credential.
+        using var events = await client.SendAsync(Request(HttpMethod.Get, "/api/chain/events", token: Credential(laptop)));
+        var eventsText = await events.Content.ReadAsStringAsync();
+        Assert.Equal(
+            ["device_joined", "pairing_approved", "pairing_blocked", "pairing_started", "created"],
+            await EventKindsAsync(client, Credential(laptop)));
+        var logged = string.Join('\n', logs.Messages);
+        foreach (var secret in new[] { code, code.Replace("-", "", StringComparison.Ordinal), token, phoneCredential })
+        {
+            Assert.DoesNotContain(secret, eventsText, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(secret, logged, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [Fact]
+    public async Task DeniedExpiredAndCancelledPairingsGiveNoCredential()
+    {
+        var clock = new FakeClock();
+        using var client = this.Client(new FakeSyncStore(), clock: clock);
+        var laptop = await CreateChainAsync(client, "Laptop");
+
+        // Denied.
+        var token = await RequestPairingAsync(client, await StartPairingAsync(client, Credential(laptop)));
+        Assert.Equal(HttpStatusCode.NoContent, await DecideAsync(client, Credential(laptop), "deny"));
+        Assert.Equal("denied", (await PairingStatusAsync(client, token)).GetProperty("status").GetString());
+
+        // A code that wasn't entered in time.
+        var late = await StartPairingAsync(client, Credential(laptop));
+        clock.Advance(TimeSpan.FromMinutes(11));
+        using (var expired = await PairAsync(client, late))
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, expired.StatusCode);
+        }
+
+        // A request that wasn't approved in time.
+        token = await RequestPairingAsync(client, await StartPairingAsync(client, Credential(laptop)));
+        clock.Advance(TimeSpan.FromMinutes(6));
+        Assert.Equal(HttpStatusCode.Conflict, await DecideAsync(client, Credential(laptop), "approve"));
+        Assert.Equal("expired", (await PairingStatusAsync(client, token)).GetProperty("status").GetString());
+
+        // A cancelled code.
+        var cancelled = await StartPairingAsync(client, Credential(laptop));
+        using (var cancel = await client.SendAsync(Request(HttpMethod.Delete, "/api/chain/pairing", token: Credential(laptop))))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, cancel.StatusCode);
+        }
+        using (var gone = await client.SendAsync(Request(HttpMethod.Get, "/api/chain/pairing", token: Credential(laptop))))
+        {
+            Assert.Equal(HttpStatusCode.NotFound, gone.StatusCode);
+        }
+        using (var refused = await PairAsync(client, cancelled))
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, refused.StatusCode);
+        }
+
+        // An unknown request token.
+        using var unknown = await client.SendAsync(Request(HttpMethod.Post, "/api/pairing/status", token: new string('A', 43)));
+        Assert.Equal(HttpStatusCode.Unauthorized, unknown.StatusCode);
+    }
+
+    [Fact]
+    public async Task OnlyTheDeviceThatCreatedTheCodeDecidesAndANewChainCodeCancelsIt()
+    {
+        using var client = this.Client(new FakeSyncStore());
+        var laptop = await CreateChainAsync(client, "Laptop");
+        using var joined = await client.SendAsync(Request(
+            HttpMethod.Post, "/api/chains/join", $$"""{"secret":"{{laptop.GetProperty("secret").GetString()}}","deviceName":"Tablet"}"""));
+        var tablet = await joined.Content.ReadFromJsonAsync<JsonElement>();
+        var stranger = await CreateChainAsync(client, "Stranger");
+
+        var token = await RequestPairingAsync(client, await StartPairingAsync(client, Credential(laptop)));
+        Assert.Equal(HttpStatusCode.Conflict, await DecideAsync(client, Credential(tablet), "approve"));
+        Assert.Equal(HttpStatusCode.Conflict, await DecideAsync(client, Credential(stranger), "approve"));
+        Assert.Equal("requested", (await PairingStatusAsync(client, token)).GetProperty("status").GetString());
+
+        // Approved, but the chain gets a new code before the new device collects its credential.
+        Assert.Equal(HttpStatusCode.NoContent, await DecideAsync(client, Credential(laptop), "approve"));
+        using var replaced = await client.SendAsync(Request(HttpMethod.Post, "/api/chain/replace", token: Credential(laptop)));
+        Assert.Equal(HttpStatusCode.OK, replaced.StatusCode);
+        using var status = await client.SendAsync(Request(HttpMethod.Post, "/api/pairing/status", token: token));
+        Assert.Equal(HttpStatusCode.Unauthorized, status.StatusCode);
+    }
+
+    [Fact]
+    public async Task RepeatedRefusedAttemptsPausePairingForTheChainAndTellItsDevices()
+    {
+        var clock = new FakeClock();
+        using var client = this.Client(new FakeSyncStore(), clock: clock);
+        var laptop = await CreateChainAsync(client, "Laptop");
+
+        // Two denied requests and a used code entered again.
+        for (var i = 0; i < 2; i++)
+        {
+            await RequestPairingAsync(client, await StartPairingAsync(client, Credential(laptop)), "Unknown device");
+            Assert.Equal(HttpStatusCode.NoContent, await DecideAsync(client, Credential(laptop), "deny"));
+        }
+        using (var described = await client.SendAsync(Request(HttpMethod.Get, "/api/chain", token: Credential(laptop))))
+        {
+            Assert.Equal(JsonValueKind.Null, (await described.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("pairingLockedUntil").ValueKind);
+        }
+        var code = await StartPairingAsync(client, Credential(laptop));
+        await RequestPairingAsync(client, code);
+        using (var reused = await PairAsync(client, code, "Attacker"))
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, reused.StatusCode);
+        }
+
+        // Pairing is paused: no new code, the open one is cancelled, and every device can see it.
+        using (var paused = await client.SendAsync(Request(HttpMethod.Post, "/api/chain/pairing", token: Credential(laptop))))
+        {
+            Assert.Equal(HttpStatusCode.Locked, paused.StatusCode);
+        }
+        using (var gone = await client.SendAsync(Request(HttpMethod.Get, "/api/chain/pairing", token: Credential(laptop))))
+        {
+            Assert.Equal(HttpStatusCode.NotFound, gone.StatusCode);
+        }
+        using (var described = await client.SendAsync(Request(HttpMethod.Get, "/api/chain", token: Credential(laptop))))
+        {
+            var lockedUntil = (await described.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("pairingLockedUntil").GetInt64();
+            Assert.True(lockedUntil > clock.GetUtcNow().ToUnixTimeMilliseconds());
+        }
+        var kinds = await EventKindsAsync(client, Credential(laptop));
+        Assert.Equal("pairing_locked", kinds[0]);
+        Assert.Equal(2, kinds.Count(k => k == "pairing_denied"));
+        Assert.Single(kinds, k => k == "pairing_blocked");
+
+        // Joining with the chain code still works, and pairing comes back after an hour.
+        clock.Advance(TimeSpan.FromMinutes(61));
+        await StartPairingAsync(client, Credential(laptop));
     }
 
     [Fact]
