@@ -6,6 +6,8 @@ import { playlists } from '../playlists/playlists.service.svelte.js';
 import { videos } from '../videos/videos.service.svelte.js';
 import * as client from './sync.client.js';
 import { secretToWords, wordsToSecret } from './chain-code.js';
+import { isCheckInDue, needsRecoveryNotice } from './chain-reminders.js';
+import { recoveryCodeProblem } from './recovery-code.js';
 import * as repo from './sync.repository.js';
 
 const PUSH_DELAY_MS = 2500;
@@ -25,13 +27,23 @@ class SyncService {
     /** This device's chain and its devices, once loaded: { chainId, deviceId, devices }. */
     chain = $state(null);
     /**
-     * A chain code to show once, after creating, claiming or replacing a chain:
-     * { words, reason: 'created' | 'claimed' | 'replaced' }. Only kept in memory.
+     * Codes to show once: the chain code's words and the recovery codes after creating,
+     * claiming, recovering or replacing a chain, or only recovery codes after renewing them:
+     * { words?, recoveryCodes?, reason: 'created' | 'claimed' | 'recovered' | 'replaced' | 'recovery-codes' }.
+     * Only kept in memory.
      */
     newCode = $state(null);
+    /** The chain's audit log, once loaded: [{ at, kind, deviceName, detail }], newest first. */
+    events = $state(null);
+    /** When the person last said they still have the codes (this device only). */
+    codeCheckedAt = $state(null);
     busy = $state(false);
 
     configured = $derived(Boolean(this.settings.credential));
+    /** Losing this device would lose the chain: it's the only one, and there are no recovery codes. */
+    recoveryNotice = $derived(this.configured && needsRecoveryNotice(this.chain));
+    /** Time to ask "Do you still have your sync chain code?" again. */
+    checkInDue = $derived(this.configured && isCheckInDue(this.codeCheckedAt));
 
     #inFlight = null;
     #timer = null;
@@ -41,6 +53,9 @@ class SyncService {
         this.settings = repo.getSettings(db);
         this.lastSyncedAt = repo.getLastSyncedAt(db);
         this.pending = repo.countPending(db);
+        this.codeCheckedAt = repo.getCodeCheckedAt(db);
+        // Devices that joined before check-ins existed start counting now.
+        if (this.configured && !this.codeCheckedAt) this.#checkedCodes();
         setApiBase(this.settings.apiUrl);
     }
 
@@ -108,6 +123,21 @@ class SyncService {
         });
     }
 
+    /**
+     * Recovers a chain with one of its recovery codes, on a device that isn't in it: the
+     * chain gets a new code and new recovery codes (shown once), every old device is
+     * removed, and this device joins and merges its library into the chain's.
+     */
+    async recoverChain(codeText, deviceName) {
+        return this.#withBusy(async () => {
+            const problem = recoveryCodeProblem(codeText, { complete: true });
+            if (problem) throw new Error(problem);
+            const access = await client.recoverChain(this.#snapshot(), codeText, deviceName);
+            this.#joined(access, { reason: 'recovered' });
+            return true;
+        });
+    }
+
     /** Loads this device's chain and its devices into `chain`. */
     async loadChain() {
         if (!this.configured) {
@@ -133,14 +163,47 @@ class SyncService {
         });
     }
 
-    /** A new code for the chain: the old one stops working and every other device is removed. */
+    /**
+     * A new code and new recovery codes for the chain: the old ones stop working and
+     * every other device is removed.
+     */
     async replaceCode() {
         return this.#withBusy(async () => {
-            const { secret } = await client.replaceChainCode(this.#snapshot());
-            this.newCode = { words: secretToWords(secret), reason: 'replaced' };
+            const { secret, recoveryCodes } = await client.replaceChainCode(this.#snapshot());
+            this.newCode = { words: secretToWords(secret), recoveryCodes, reason: 'replaced' };
             await this.loadChain();
             return true;
         });
+    }
+
+    /** New recovery codes for the chain, shown once; the old ones stop working. */
+    async renewRecoveryCodes() {
+        return this.#withBusy(async () => {
+            const { codes } = await client.renewRecoveryCodes(this.#snapshot());
+            this.newCode = { recoveryCodes: codes, reason: 'recovery-codes' };
+            await this.loadChain();
+            return true;
+        });
+    }
+
+    /** Loads the chain's audit log into `events`. */
+    async loadEvents() {
+        if (!this.configured) {
+            this.events = null;
+            return null;
+        }
+        try {
+            this.events = await client.getChainEvents(this.#snapshot());
+            return this.events;
+        } catch (err) {
+            if (!this.#failed(err)) notify(err.message, { tone: 'error', timeout: 6000 });
+            return null;
+        }
+    }
+
+    /** The person says they still have the chain code and recovery codes: ask again in a while. */
+    confirmCodeCheckIn() {
+        this.#checkedCodes();
     }
 
     /** Takes this device out of the chain; its playlists stay here. */
@@ -162,9 +225,17 @@ class SyncService {
         });
     }
 
-    /** Called once the person has saved the code shown in `newCode`. */
+    /** Called once the person has saved the codes shown in `newCode`. */
     codeSaved() {
+        if (this.newCode && this.configured) this.#checkedCodes();
         this.newCode = null;
+        this.loadEvents();
+    }
+
+    #checkedCodes() {
+        const now = Date.now();
+        repo.setCodeCheckedAt(getDatabase(), now);
+        this.codeCheckedAt = now;
     }
 
     #snapshot() {
@@ -175,7 +246,10 @@ class SyncService {
         const db = getDatabase();
         this.settings = repo.setChainAccess(db, access, { claimed });
         this.pending = repo.countPending(db);
-        if (reason && access.secret) this.newCode = { words: secretToWords(access.secret), reason };
+        this.codeCheckedAt = repo.getCodeCheckedAt(db);
+        if (reason && access.secret) {
+            this.newCode = { words: secretToWords(access.secret), recoveryCodes: access.recoveryCodes ?? [], reason };
+        }
         this.error = null;
         this.status = 'idle';
         this.syncNow({ quiet: true });
@@ -186,6 +260,8 @@ class SyncService {
         this.settings = repo.clearChainAccess(getDatabase());
         this.chain = null;
         this.newCode = null;
+        this.events = null;
+        this.codeCheckedAt = null;
         notify(message, { timeout: 6000 });
     }
 

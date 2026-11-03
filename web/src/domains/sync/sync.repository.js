@@ -18,6 +18,8 @@ const KEYS = {
     autoSync: 'sync.auto',
     cursor: 'sync.cursor',
     lastSyncedAt: 'sync.lastSyncedAt',
+    // When the person last said they still have the chain code and recovery codes (this device only).
+    codeCheckedAt: 'sync.codeCheckedAt',
 };
 
 const getMeta = (db, key) => {
@@ -79,6 +81,8 @@ export const setChainAccess = (db, { chainId, deviceId, deviceCredential }, { cl
         setMeta(db, KEYS.credential, deviceCredential);
         // The old shared token isn't needed anymore once this device is in a chain.
         setMeta(db, KEYS.legacyToken, null);
+        // Whoever just created, joined or recovered the chain has its code (or codes) at hand.
+        setMeta(db, KEYS.codeCheckedAt, Date.now());
         if (!claimed) startOver(db);
     });
     return getSettings(db);
@@ -90,8 +94,19 @@ export const clearChainAccess = (db) => {
         setMeta(db, KEYS.chainId, null);
         setMeta(db, KEYS.deviceId, null);
         setMeta(db, KEYS.credential, null);
+        setMeta(db, KEYS.codeCheckedAt, null);
     });
     return getSettings(db);
+};
+
+/** When the person last confirmed they still have the chain code and recovery codes, or null. */
+export const getCodeCheckedAt = (db) => {
+    const v = getMeta(db, KEYS.codeCheckedAt);
+    return v ? Number(v) : null;
+};
+
+export const setCodeCheckedAt = (db, t) => {
+    setMeta(db, KEYS.codeCheckedAt, t);
 };
 
 export const getCursor = (db) => {

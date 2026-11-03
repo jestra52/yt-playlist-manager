@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
@@ -18,17 +19,23 @@ public static class ChainEndpoints
     /// <summary>Rate limit policy for the endpoints that take or hand out secrets.</summary>
     public const string SecretsRateLimit = "chain-secrets";
 
+    /// <summary>Stricter rate limit policy for recovering a chain: it works as the lockout after repeated failures.</summary>
+    public const string RecoveryRateLimit = "chain-recovery";
+
     public static IEndpointRouteBuilder MapChainEndpoints(this IEndpointRouteBuilder app)
     {
-        // Without a device credential: create, join or claim a chain (rate limited).
+        // Without a device credential: create, join, claim or recover a chain (rate limited).
         app.MapPost("/api/chains", CreateAsync).RequireRateLimiting(SecretsRateLimit);
         app.MapPost("/api/chains/join", JoinAsync).RequireRateLimiting(SecretsRateLimit);
         app.MapPost("/api/chains/claim", ClaimAsync).RequireRateLimiting(SecretsRateLimit);
+        app.MapPost("/api/chains/recover", RecoverAsync).RequireRateLimiting(RecoveryRateLimit);
 
         // With a device credential: the caller's own chain.
         app.MapGet("/api/chain", DescribeAsync);
+        app.MapGet("/api/chain/events", ListEventsAsync);
         app.MapDelete("/api/chain/devices/{deviceId}", RemoveDeviceAsync);
         app.MapPost("/api/chain/replace", ReplaceAsync);
+        app.MapPost("/api/chain/recovery-codes", RenewRecoveryCodesAsync);
         app.MapDelete("/api/chain", DeleteAsync);
         return app;
     }
@@ -135,6 +142,46 @@ public static class ChainEndpoints
         }
     }
 
+    /// <summary>
+    /// POST /api/chains/recover: recovers the chain with the recovery code sent, from any device.
+    /// The chain gets a new code and new recovery codes, every old device is removed and the
+    /// calling device joins. The code itself is never logged.
+    /// </summary>
+    private static async Task<IResult> RecoverAsync(
+        HttpContext http,
+        ChainService chains,
+        IOptions<JsonOptions> jsonOptions,
+        ILoggerFactory loggerFactory,
+        CancellationToken cancellationToken)
+    {
+        if (!chains.IsAvailable)
+        {
+            return DeviceAuth.NotConfigured();
+        }
+        var (request, error) = await DeviceAuth.ReadJsonAsync<RecoverChainRequest>(http, jsonOptions, cancellationToken);
+        if (error is not null)
+        {
+            return error;
+        }
+        try
+        {
+            var access = await chains.RecoverAsync(request!.RecoveryCode, request.DeviceName, cancellationToken);
+            if (access is null)
+            {
+                loggerFactory.CreateLogger("Chains").RecoveryFailed();
+                return ApiResults.Error(
+                    StatusCodes.Status401Unauthorized,
+                    "that recovery code doesn't match any sync chain, or it was already used");
+            }
+            DeviceAuth.NoStore(http.Response);
+            return Results.Json(access);
+        }
+        catch (DomainValidationException ex)
+        {
+            return ApiResults.Error(StatusCodes.Status400BadRequest, ex.Message);
+        }
+    }
+
     /// <summary>GET /api/chain: the caller's chain and its devices.</summary>
     private static async Task<IResult> DescribeAsync(HttpContext http, ChainService chains, CancellationToken cancellationToken)
     {
@@ -161,7 +208,36 @@ public static class ChainEndpoints
             : ApiResults.Error(StatusCodes.Status404NotFound, "that device isn't in this sync chain");
     }
 
-    /// <summary>POST /api/chain/replace: a new chain code; every other device is removed.</summary>
+    /// <summary>GET /api/chain/events?limit=: the caller's chain's audit log, newest first; never includes a secret.</summary>
+    private static async Task<IResult> ListEventsAsync(HttpContext http, ChainService chains, CancellationToken cancellationToken)
+    {
+        var (device, error) = await DeviceAuth.AuthenticateAsync(http, chains, cancellationToken);
+        if (error is not null)
+        {
+            return error;
+        }
+        int? limit = int.TryParse(http.Request.Query["limit"].ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var l)
+            ? l
+            : null;
+        DeviceAuth.NoStore(http.Response);
+        return Results.Json(await chains.ListEventsAsync(device!, limit, cancellationToken));
+    }
+
+    /// <summary>POST /api/chain/recovery-codes: new recovery codes, shown once; the old ones stop working.</summary>
+    private static async Task<IResult> RenewRecoveryCodesAsync(
+        HttpContext http, ChainService chains, CancellationToken cancellationToken)
+    {
+        var (device, error) = await DeviceAuth.AuthenticateAsync(http, chains, cancellationToken);
+        if (error is not null)
+        {
+            return error;
+        }
+        var codes = await chains.RenewRecoveryCodesAsync(device!, cancellationToken);
+        DeviceAuth.NoStore(http.Response);
+        return Results.Json(codes);
+    }
+
+    /// <summary>POST /api/chain/replace: a new chain code and recovery codes; every other device is removed.</summary>
     private static async Task<IResult> ReplaceAsync(HttpContext http, ChainService chains, CancellationToken cancellationToken)
     {
         var (device, error) = await DeviceAuth.AuthenticateAsync(http, chains, cancellationToken);

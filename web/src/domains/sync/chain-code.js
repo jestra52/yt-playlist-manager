@@ -78,17 +78,33 @@ export const confirmationPositions = (count = 3, random = Math.random) => {
     return [...positions].sort((a, b) => a - b);
 };
 
-/** The text of the downloaded code file: numbered words, and what to do with them. */
-export const chainCodeFileText = (words, appName = 'YouTube Playlist Manager') => {
-    const lines = [
-        `${appName}: sync chain code`,
-        '',
-        'Anyone with these 24 words can join your sync chain and see and change your playlists.',
-        'Keep them somewhere safe and private, like a password manager.',
-        '',
-        ...words.map((w, i) => `${String(i + 1).padStart(2, ' ')}. ${w}`),
-        '',
-    ];
+/**
+ * The text of the downloaded (or printed) code file: the numbered words and the
+ * recovery codes, either of which can be missing, and what to do with them. The
+ * recovery codes aren't numbered, so pasting the whole file to join still only
+ * reads the 24 words.
+ */
+export const chainCodeFileText = ({ words = [], recoveryCodes = [] }, appName = 'YouTube Playlist Manager') => {
+    const lines = [`${appName}: ${words.length ? 'sync chain code' : 'recovery codes'}`, ''];
+    if (words.length) {
+        lines.push(
+            `Anyone with these ${WORD_COUNT} words can join your sync chain and see and change your playlists.`,
+            'Keep them somewhere safe and private, like a password manager.',
+            '',
+            ...words.map((w, i) => `${String(i + 1).padStart(2, ' ')}. ${w}`),
+            '',
+        );
+    }
+    if (recoveryCodes.length) {
+        lines.push(
+            'Recovery codes: if every device is gone and the code is lost, any one of these gets',
+            'the sync chain back. Each works once, and using one gives the chain a new code and',
+            'new recovery codes, and removes every other device.',
+            '',
+            ...recoveryCodes.map((c) => `    ${c}`),
+            '',
+        );
+    }
     return lines.join('\r\n');
 };
 

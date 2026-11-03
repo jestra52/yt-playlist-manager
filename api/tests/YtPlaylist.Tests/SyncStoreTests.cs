@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using YtPlaylist.Application.Chains;
 using YtPlaylist.Infrastructure.Persistence;
+using YtPlaylist.Models.Chains;
 using YtPlaylist.Models.Entities;
 using YtPlaylist.Models.Sync;
 
@@ -22,9 +24,16 @@ public abstract class SyncStoreTests
     {
         var chain = new SyncChain { Id = NewId("c"), SecretHash = NewId("h"), CreatedAt = 1 };
         var device = new SyncDevice { Id = NewId("d"), ChainId = chain.Id, CredentialHash = NewId("k"), Name = "Test", CreatedAt = 1 };
-        await new EfChainStore(db).CreateChainAsync(chain, device, CancellationToken.None);
+        await new EfChainStore(db).CreateChainAsync(
+            chain, device, Codes(chain.Id), Event(chain.Id, ChainEventKind.Created), CancellationToken.None);
         return (chain.Id, device.Id);
     }
+
+    private static SyncRecoveryCode[] Codes(string chainId, int count = 3) =>
+        [.. Enumerable.Range(0, count).Select(_ => new SyncRecoveryCode { Id = NewId("r"), ChainId = chainId, CodeHash = NewId("q"), CreatedAt = 1 })];
+
+    private static SyncChainEvent Event(string chainId, string kind, long at = 1) =>
+        new() { ChainId = chainId, Kind = kind, At = at, DeviceName = "Test" };
 
     [Fact]
     public async Task AppliesLastWriteWinsAndPagesInOrder()
@@ -49,11 +58,11 @@ public abstract class SyncStoreTests
             CreatedAt = 100,
             UpdatedAt = 100,
         };
-        Assert.Equal(2, await store.ApplyAsync(chain, new ChangeSet { Playlists = [playlist], Videos = [video] }, CancellationToken.None));
+        Assert.Equal(2, await store.ApplyAsync(chain, new ChangeSet { Playlists = [playlist], Videos = [video] }, null, CancellationToken.None));
 
         var stale = playlist with { Name = "Stale", UpdatedAt = 50 };
         var newer = video with { Watched = true, UpdatedAt = 200 };
-        Assert.Equal(1, await store.ApplyAsync(chain, new ChangeSet { Playlists = [stale], Videos = [newer] }, CancellationToken.None));
+        Assert.Equal(1, await store.ApplyAsync(chain, new ChangeSet { Playlists = [stale], Videos = [newer] }, null, CancellationToken.None));
 
         var all = await store.GetChangesAsync(chain, 0, 1000, CancellationToken.None);
         Assert.False(all.HasMore);
@@ -101,9 +110,9 @@ public abstract class SyncStoreTests
             CreatedAt = 1,
             UpdatedAt = 1,
         };
-        await store.ApplyAsync(chain, new ChangeSet { Videos = [video] }, CancellationToken.None);
+        await store.ApplyAsync(chain, new ChangeSet { Videos = [video] }, null, CancellationToken.None);
         var fromOlderApp = video with { Artist = null, ArtistSource = null, Watched = true, UpdatedAt = 2 };
-        await store.ApplyAsync(chain, new ChangeSet { Videos = [fromOlderApp] }, CancellationToken.None);
+        await store.ApplyAsync(chain, new ChangeSet { Videos = [fromOlderApp] }, null, CancellationToken.None);
 
         var stored = Assert.Single((await store.GetChangesAsync(chain, 0, 1000, CancellationToken.None)).Changes.Videos);
         Assert.True(stored.Watched);
@@ -142,13 +151,13 @@ public abstract class SyncStoreTests
             CreatedAt = 1,
             UpdatedAt = 1,
         };
-        await store.ApplyAsync(chain, new ChangeSet { Playlists = [playlist], Videos = [video] }, CancellationToken.None);
+        await store.ApplyAsync(chain, new ChangeSet { Playlists = [playlist], Videos = [video] }, null, CancellationToken.None);
         var fromOlderApp = new ChangeSet
         {
             Playlists = [playlist with { Name = "Renamed", Source = null, SourceId = null, UpdatedAt = 2 }],
             Videos = [video with { Watched = true, Unavailable = null, UpdatedAt = 2 }],
         };
-        await store.ApplyAsync(chain, fromOlderApp, CancellationToken.None);
+        await store.ApplyAsync(chain, fromOlderApp, null, CancellationToken.None);
 
         var page = await store.GetChangesAsync(chain, 0, 1000, CancellationToken.None);
         var storedPlaylist = Assert.Single(page.Changes.Playlists);
@@ -170,8 +179,8 @@ public abstract class SyncStoreTests
         var (chain, _) = await NewChainAsync(db);
         var id = NewId("d");
 
-        await store.ApplyAsync(chain, new ChangeSet { Playlists = [new() { Id = id, Name = "Temp", CreatedAt = 1, UpdatedAt = 1 }] }, CancellationToken.None);
-        await store.ApplyAsync(chain, new ChangeSet { Playlists = [new() { Id = id, Name = "Temp", CreatedAt = 1, UpdatedAt = 2, Deleted = true }] }, CancellationToken.None);
+        await store.ApplyAsync(chain, new ChangeSet { Playlists = [new() { Id = id, Name = "Temp", CreatedAt = 1, UpdatedAt = 1 }] }, null, CancellationToken.None);
+        await store.ApplyAsync(chain, new ChangeSet { Playlists = [new() { Id = id, Name = "Temp", CreatedAt = 1, UpdatedAt = 2, Deleted = true }] }, null, CancellationToken.None);
 
         var page = await store.GetChangesAsync(chain, 0, 1000, CancellationToken.None);
         var row = Assert.Single(page.Changes.Playlists);
@@ -191,12 +200,12 @@ public abstract class SyncStoreTests
         var (theirs, _) = await NewChainAsync(db);
         var id = NewId("p");
 
-        await store.ApplyAsync(mine, new ChangeSet { Playlists = [new() { Id = id, Name = "Mine", CreatedAt = 1, UpdatedAt = 1 }] }, CancellationToken.None);
+        await store.ApplyAsync(mine, new ChangeSet { Playlists = [new() { Id = id, Name = "Mine", CreatedAt = 1, UpdatedAt = 1 }] }, null, CancellationToken.None);
 
         // Another chain can't read the row, nor overwrite it by sending the same ID with a newer time.
         Assert.Equal(0, (await store.GetChangesAsync(theirs, 0, 1000, CancellationToken.None)).Changes.Count);
         var hijack = new ChangeSet { Playlists = [new() { Id = id, Name = "Theirs", CreatedAt = 1, UpdatedAt = 99 }] };
-        Assert.Equal(0, await store.ApplyAsync(theirs, hijack, CancellationToken.None));
+        Assert.Equal(0, await store.ApplyAsync(theirs, hijack, null, CancellationToken.None));
         Assert.Equal("Mine", Assert.Single((await store.GetChangesAsync(mine, 0, 1000, CancellationToken.None)).Changes.Playlists).Name);
         Assert.Equal(0, (await store.GetChangesAsync(theirs, 0, 1000, CancellationToken.None)).Changes.Count);
     }
@@ -212,20 +221,88 @@ public abstract class SyncStoreTests
         var chains = new EfChainStore(db);
         var (chain, first) = await NewChainAsync(db);
         var second = new SyncDevice { Id = NewId("d"), ChainId = chain, CredentialHash = NewId("k"), Name = "Phone", CreatedAt = 2 };
-        await chains.AddDeviceAsync(second, CancellationToken.None);
+        await chains.AddDeviceAsync(second, Event(chain, ChainEventKind.DeviceJoined, at: 2), CancellationToken.None);
         Assert.Equal([first, second.Id], (await chains.ListDevicesAsync(chain, CancellationToken.None)).Select(d => d.Id));
         Assert.Equal(chain, (await chains.FindDeviceByCredentialHashAsync(second.CredentialHash, CancellationToken.None))?.ChainId);
+        var oldCodes = await db.SyncRecoveryCodes.Where(r => r.ChainId == chain).Select(r => r.CodeHash).ToListAsync();
 
+        // "Generate a new code": the caller stays, everyone else goes, the codes are new.
         var newHash = NewId("h");
-        await chains.ReplaceSecretAsync(chain, newHash, first, CancellationToken.None);
+        var newCodes = Codes(chain, count: 2);
+        var reset = new ChainReset(chain, newHash, newCodes, Event(chain, ChainEventKind.CodeReplaced, at: 3)) { KeepDeviceId = first };
+        Assert.True(await chains.ResetAccessAsync(reset, CancellationToken.None));
         Assert.Equal(chain, (await chains.FindChainBySecretHashAsync(newHash, CancellationToken.None))?.Id);
         Assert.Equal([first], (await chains.ListDevicesAsync(chain, CancellationToken.None)).Select(d => d.Id));
         Assert.Null(await chains.FindDeviceByCredentialHashAsync(second.CredentialHash, CancellationToken.None));
+        Assert.Null(await chains.FindChainIdByRecoveryCodeHashAsync(oldCodes[0], CancellationToken.None));
+        Assert.Equal(chain, await chains.FindChainIdByRecoveryCodeHashAsync(newCodes[0].CodeHash, CancellationToken.None));
+        Assert.Equal(2, await chains.CountRecoveryCodesAsync(chain, CancellationToken.None));
 
         await chains.TouchDeviceAsync(first, 12345, CancellationToken.None);
         Assert.Equal(12345, Assert.Single(await chains.ListDevicesAsync(chain, CancellationToken.None)).LastSeenAt);
-        Assert.False(await chains.RemoveDeviceAsync(NewId("c"), first, CancellationToken.None));
-        Assert.True(await chains.RemoveDeviceAsync(chain, first, CancellationToken.None));
+        Assert.False(await chains.RemoveDeviceAsync(NewId("c"), first, Event(chain, ChainEventKind.DeviceLeft, at: 4), CancellationToken.None));
+        Assert.True(await chains.RemoveDeviceAsync(chain, first, Event(chain, ChainEventKind.DeviceLeft, at: 5), CancellationToken.None));
+
+        // The audit log, newest first; the refused removal left no entry.
+        var events = await chains.ListEventsAsync(chain, 10, CancellationToken.None);
+        Assert.Equal(
+            [ChainEventKind.DeviceLeft, ChainEventKind.CodeReplaced, ChainEventKind.DeviceJoined, ChainEventKind.Created],
+            events.Select(e => e.Kind));
+        Assert.Equal("removed Phone", events[1].Detail);
+        Assert.Equal(2, (await chains.ListEventsAsync(chain, 2, CancellationToken.None)).Count);
+    }
+
+    [Fact]
+    public async Task RecoveringUsesTheCodeOnceAndReplacesEveryDevice()
+    {
+        await using var db = this.CreateContext();
+        if (db is null)
+        {
+            return;
+        }
+        var chains = new EfChainStore(db);
+        var (chain, oldDevice) = await NewChainAsync(db);
+        var usedHash = await db.SyncRecoveryCodes.Where(r => r.ChainId == chain).Select(r => r.CodeHash).FirstAsync();
+        Assert.Equal(chain, await chains.FindChainIdByRecoveryCodeHashAsync(usedHash, CancellationToken.None));
+
+        ChainReset Recovery(string deviceName) => new(chain, NewId("h"), Codes(chain), Event(chain, ChainEventKind.Recovered, at: 2))
+        {
+            NewDevice = new SyncDevice { Id = NewId("d"), ChainId = chain, CredentialHash = NewId("k"), Name = deviceName, CreatedAt = 2 },
+            UsedRecoveryCodeHash = usedHash,
+        };
+        var first = Recovery("New phone");
+        Assert.True(await chains.ResetAccessAsync(first, CancellationToken.None));
+        var devices = await chains.ListDevicesAsync(chain, CancellationToken.None);
+        Assert.Equal([first.NewDevice!.Id], devices.Select(d => d.Id));
+        Assert.DoesNotContain(oldDevice, devices.Select(d => d.Id));
+
+        // The same code again (e.g. a second request racing the first) changes nothing.
+        var second = Recovery("Attacker");
+        Assert.False(await chains.ResetAccessAsync(second, CancellationToken.None));
+        Assert.Null(await chains.FindChainBySecretHashAsync(second.SecretHash, CancellationToken.None));
+        Assert.Equal(["New phone"], (await chains.ListDevicesAsync(chain, CancellationToken.None)).Select(d => d.Name));
+        Assert.Equal(first.RecoveryCodes.Count, await chains.CountRecoveryCodesAsync(chain, CancellationToken.None));
+        Assert.Single(await db.SyncChainEvents.Where(e => e.ChainId == chain && e.Kind == ChainEventKind.Recovered).ToListAsync());
+    }
+
+    [Fact]
+    public async Task ARemovedDeviceCantWriteEvenIfItWasAuthenticatedBefore()
+    {
+        await using var db = this.CreateContext();
+        if (db is null)
+        {
+            return;
+        }
+        var store = new EfSyncStore(db);
+        var (chain, device) = await NewChainAsync(db);
+        var run = NewId("x");
+        ChangeSet Change(string name) => new() { Playlists = [new() { Id = $"{run}-p", Name = name, CreatedAt = 1, UpdatedAt = name.Length }] };
+
+        Assert.Equal(1, await store.ApplyAsync(chain, Change("Kept"), device, CancellationToken.None));
+        await new EfChainStore(db).RemoveDeviceAsync(chain, device, Event(chain, ChainEventKind.DeviceLeft), CancellationToken.None);
+
+        await Assert.ThrowsAsync<DeviceRemovedException>(() => store.ApplyAsync(chain, Change("Too late"), device, CancellationToken.None));
+        Assert.Equal("Kept", Assert.Single((await store.GetChangesAsync(chain, 0, 1000, CancellationToken.None)).Changes.Playlists).Name);
     }
 
     [Fact]
@@ -245,13 +322,16 @@ public abstract class SyncStoreTests
             Playlists = [new() { Id = $"{run}-p", Name = "Gone", CreatedAt = 1, UpdatedAt = 1 }],
             Videos = [new() { Id = $"{run}-v", PlaylistId = $"{run}-p", YouTubeId = "dQw4w9WgXcQ", CreatedAt = 1, UpdatedAt = 1 }],
         };
-        await store.ApplyAsync(chain, changes, CancellationToken.None);
-        await store.ApplyAsync(other, new ChangeSet { Playlists = [new() { Id = $"{run}-o", Name = "Kept", CreatedAt = 1, UpdatedAt = 1 }] }, CancellationToken.None);
+        await store.ApplyAsync(chain, changes, null, CancellationToken.None);
+        await store.ApplyAsync(other, new ChangeSet { Playlists = [new() { Id = $"{run}-o", Name = "Kept", CreatedAt = 1, UpdatedAt = 1 }] }, null, CancellationToken.None);
 
         await new EfChainStore(db).DeleteChainAsync(chain, CancellationToken.None);
 
         Assert.False(await db.SyncChains.AnyAsync(c => c.Id == chain));
         Assert.False(await db.SyncDevices.AnyAsync(d => d.ChainId == chain));
+        Assert.False(await db.SyncRecoveryCodes.AnyAsync(r => r.ChainId == chain));
+        Assert.False(await db.SyncChainEvents.AnyAsync(e => e.ChainId == chain));
+        Assert.True(await db.SyncRecoveryCodes.AnyAsync(r => r.ChainId == other));
         Assert.False(await db.Playlists.AnyAsync(p => p.ChainId == chain));
         Assert.False(await db.Videos.AnyAsync(v => v.ChainId == chain));
         Assert.Single((await store.GetChangesAsync(other, 0, 1000, CancellationToken.None)).Changes.Playlists);
@@ -273,9 +353,12 @@ public abstract class SyncStoreTests
         static SyncDevice Device() => new() { Id = NewId("d"), ChainId = SyncChain.LegacyId, CredentialHash = NewId("k"), Name = "Old laptop", CreatedAt = 1 };
 
         var hash = NewId("h");
-        Assert.True(await chains.ClaimLegacyChainAsync(hash, Device(), CancellationToken.None));
+        Assert.True(await chains.ClaimLegacyChainAsync(
+            hash, Device(), Codes(SyncChain.LegacyId), Event(SyncChain.LegacyId, ChainEventKind.Claimed), CancellationToken.None));
         Assert.Equal(SyncChain.LegacyId, (await chains.FindChainBySecretHashAsync(hash, CancellationToken.None))?.Id);
-        Assert.False(await chains.ClaimLegacyChainAsync(NewId("h"), Device(), CancellationToken.None));
+        Assert.False(await chains.ClaimLegacyChainAsync(
+            NewId("h"), Device(), Codes(SyncChain.LegacyId), Event(SyncChain.LegacyId, ChainEventKind.Claimed), CancellationToken.None));
         Assert.Single(await chains.ListDevicesAsync(SyncChain.LegacyId, CancellationToken.None));
+        Assert.Equal(3, await chains.CountRecoveryCodesAsync(SyncChain.LegacyId, CancellationToken.None));
     }
 }

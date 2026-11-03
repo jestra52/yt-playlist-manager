@@ -66,7 +66,7 @@ export const getHealth = ({ apiUrl }) => {
     return request(endpoint(apiUrl, '/health'), { method: 'GET' }, 8000);
 };
 
-/** Creates a chain with this device in it. Resolves to { chainId, deviceId, deviceCredential, secret }. */
+/** Creates a chain with this device in it. Resolves to { chainId, deviceId, deviceCredential, secret, recoveryCodes }. */
 export const createChain = ({ apiUrl }, deviceName) => {
     return request(endpoint(apiUrl, '/chains'), json('POST', { deviceName }));
 };
@@ -81,7 +81,18 @@ export const claimLegacyChain = ({ apiUrl }, syncToken, deviceName) => {
     return request(endpoint(apiUrl, '/chains/claim'), json('POST', { deviceName }, syncToken));
 };
 
-/** This device's chain and its devices: { chainId, deviceId, devices: [{ id, name, createdAt, lastSeenAt }] }. */
+/**
+ * Recovers the chain with one of its recovery codes: the chain gets a new code and new
+ * recovery codes, every old device is removed and this device joins. Resolves like createChain.
+ */
+export const recoverChain = ({ apiUrl }, recoveryCode, deviceName) => {
+    return request(endpoint(apiUrl, '/chains/recover'), json('POST', { recoveryCode, deviceName }));
+};
+
+/**
+ * This device's chain and its devices:
+ * { chainId, deviceId, devices: [{ id, name, createdAt, lastSeenAt }], recoveryCodesLeft }.
+ */
 export const getChain = ({ apiUrl, credential }) => {
     return request(endpoint(apiUrl, '/chain'), json('GET', undefined, credential));
 };
@@ -94,9 +105,19 @@ export const removeDevice = ({ apiUrl, credential }, deviceId) => {
     );
 };
 
-/** A new code for this device's chain; every other device is removed. Resolves to { secret }. */
+/** A new code and recovery codes for this device's chain; every other device is removed. Resolves to { secret, recoveryCodes }. */
 export const replaceChainCode = ({ apiUrl, credential }) => {
     return request(endpoint(apiUrl, '/chain/replace'), json('POST', undefined, credential));
+};
+
+/** New recovery codes for this device's chain; the old ones stop working. Resolves to { codes }. */
+export const renewRecoveryCodes = ({ apiUrl, credential }) => {
+    return request(endpoint(apiUrl, '/chain/recovery-codes'), json('POST', undefined, credential));
+};
+
+/** The chain's audit log, newest first: [{ at, kind, deviceName, detail }]. Never includes a secret. */
+export const getChainEvents = ({ apiUrl, credential }, limit = 50) => {
+    return request(endpoint(apiUrl, `/chain/events?limit=${limit}`), json('GET', undefined, credential));
 };
 
 /** Deletes this device's chain, its devices and all its synced data. */

@@ -31,12 +31,13 @@ internal static class DeviceAuth
         }
         var credential = BearerToken(http.Request);
         var device = credential is null ? null : await chains.AuthenticateAsync(credential, cancellationToken);
-        return device is null
-            ? (null, ApiResults.Error(
-                StatusCodes.Status401Unauthorized,
-                "this device isn't in a sync chain (it was removed, or the chain was replaced or deleted)"))
-            : (device, null);
+        return device is null ? (null, NotInAChain()) : (device, null);
     }
+
+    /// <summary>The 401 for a credential that is unknown, or whose device was removed.</summary>
+    public static IResult NotInAChain() => ApiResults.Error(
+        StatusCodes.Status401Unauthorized,
+        "this device isn't in a sync chain (it was removed, or the chain's code was replaced, recovered or deleted)");
 
     public static IResult NotConfigured() => ApiResults.Error(
         StatusCodes.Status503ServiceUnavailable,

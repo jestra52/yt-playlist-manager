@@ -6,6 +6,10 @@ internal static partial class Log
     [LoggerMessage(Level = LogLevel.Error, Message = "Sync failed")]
     public static partial void SyncFailed(this ILogger logger, Exception exception);
 
+    /// <summary>Never logs the code that was tried.</summary>
+    [LoggerMessage(Level = LogLevel.Warning, Message = "A sync chain recovery attempt failed")]
+    public static partial void RecoveryFailed(this ILogger logger);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "oEmbed lookup for {VideoId} failed")]
     public static partial void OEmbedLookupFailed(this ILogger logger, Exception exception, string? videoId);
 

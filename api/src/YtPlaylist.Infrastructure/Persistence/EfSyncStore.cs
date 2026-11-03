@@ -1,6 +1,5 @@
-using System.Globalization;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
+using YtPlaylist.Application.Chains;
 using YtPlaylist.Application.Sync;
 using YtPlaylist.Domain.Common;
 using YtPlaylist.Models.Entities;
@@ -17,7 +16,7 @@ namespace YtPlaylist.Infrastructure.Persistence;
 /// </remarks>
 public sealed class EfSyncStore(AppDbContext db) : ISyncStore
 {
-    public async Task<int> ApplyAsync(string chainId, ChangeSet changes, CancellationToken cancellationToken)
+    public async Task<int> ApplyAsync(string chainId, ChangeSet changes, string? deviceId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(chainId);
         ArgumentNullException.ThrowIfNull(changes);
@@ -33,14 +32,22 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
         return await strategy.ExecuteAsync(async () =>
         {
             db.ChangeTracker.Clear();
-            return await this.ApplyOnceAsync(chainId, changes, cancellationToken);
+            return await this.ApplyOnceAsync(chainId, changes, deviceId, cancellationToken);
         });
     }
 
-    private async Task<int> ApplyOnceAsync(string chainId, ChangeSet changes, CancellationToken cancellationToken)
+    private async Task<int> ApplyOnceAsync(
+        string chainId, ChangeSet changes, string? deviceId, CancellationToken cancellationToken)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-        var seq = await this.LockCounterAsync(transaction, cancellationToken);
+        var seq = await SyncCounterLock.LockAsync(db, cancellationToken);
+
+        // Checked under the lock: once the recovery hook (or a removal) has committed, a device
+        // it removed can't write anymore, even if its request was authenticated just before.
+        if (deviceId is not null && !await db.SyncDevices.AnyAsync(d => d.Id == deviceId && d.ChainId == chainId, cancellationToken))
+        {
+            throw new DeviceRemovedException();
+        }
         var applied = 0;
 
         var playlistIds = changes.Playlists.Select(p => p.Id).Distinct().ToList();
@@ -170,22 +177,6 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
         };
         var cursor = page.Count > 0 ? page[^1].Seq : since;
         return new ChangePage(changes, cursor, hasMore);
-    }
-
-    /// <summary>
-    /// Locks the counter row for the rest of the transaction and returns its value.
-    /// <c>UPDATE … RETURNING</c> works on PostgreSQL and SQLite (used in tests).
-    /// </summary>
-    private async Task<long> LockCounterAsync(IDbContextTransaction transaction, CancellationToken cancellationToken)
-    {
-        await using var command = db.Database.GetDbConnection().CreateCommand();
-        command.Transaction = transaction.GetDbTransaction();
-        command.CommandText = "UPDATE sync_counter SET value = value WHERE id = "
-            + SyncCounter.SingletonId.ToString(CultureInfo.InvariantCulture)
-            + " RETURNING value";
-        var value = await command.ExecuteScalarAsync(cancellationToken)
-            ?? throw new InvalidOperationException("The sync_counter row is missing. Run the database migrations.");
-        return Convert.ToInt64(value, CultureInfo.InvariantCulture);
     }
 
     private static PlaylistChange ToChange(Playlist p) => new()

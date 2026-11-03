@@ -10,7 +10,7 @@ internal sealed class FakeSyncStore : ISyncStore
     public string? LastChainId { get; private set; }
     public bool Fail { get; init; }
 
-    public Task<int> ApplyAsync(string chainId, ChangeSet changes, CancellationToken cancellationToken)
+    public Task<int> ApplyAsync(string chainId, ChangeSet changes, string? deviceId, CancellationToken cancellationToken)
     {
         if (this.Fail)
         {
