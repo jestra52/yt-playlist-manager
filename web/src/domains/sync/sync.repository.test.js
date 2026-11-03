@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import initSqlJs from 'sql.js';
 import { Database } from '../../core/db/database.js';
+import { meta } from '../../core/db/tables.js';
 import * as playlists from '../playlists/playlists.repository.js';
 import * as videos from '../videos/videos.repository.js';
 import * as sync from './sync.repository.js';
@@ -137,14 +138,68 @@ describe('sync bookkeeping', () => {
         expect(sync.countPending(db)).toBe(1);
     });
 
-    it('stores settings and resets the cursor when the server changes', () => {
+    const access = { chainId: 'chain-1', deviceId: 'device-1', deviceCredential: 'credential-1' };
+
+    it('stores settings, and a different server leaves the chain and starts over', () => {
         const db = freshDb();
-        expect(sync.getSettings(db)).toEqual({ apiUrl: '/api', token: '', autoSync: true });
+        expect(sync.getSettings(db)).toEqual({
+            apiUrl: '/api',
+            credential: '',
+            chainId: '',
+            deviceId: '',
+            legacyToken: '',
+            autoSync: true,
+        });
+        sync.setChainAccess(db, access);
         sync.setCursor(db, 99);
-        sync.saveSettings(db, { apiUrl: '/api', token: ' abc ', autoSync: false });
+        sync.saveSettings(db, { apiUrl: ' /api ', autoSync: false });
         expect(sync.getCursor(db)).toBe(99);
-        expect(sync.getSettings(db)).toEqual({ apiUrl: '/api', token: 'abc', autoSync: false });
-        sync.saveSettings(db, { apiUrl: 'https://other.example/api', token: 'abc', autoSync: true });
+        expect(sync.getSettings(db)).toMatchObject({ apiUrl: '/api', credential: 'credential-1', autoSync: false });
+
+        sync.saveSettings(db, { apiUrl: 'https://other.example/api', autoSync: true });
         expect(sync.getCursor(db)).toBe(0);
+        expect(sync.getSettings(db)).toMatchObject({ credential: '', chainId: '', deviceId: '' });
+    });
+
+    it('joining a chain merges this device’s library into it; claiming keeps the cursor', () => {
+        const db = freshDb();
+        const p = playlists.createPlaylist(db, { name: 'Mine' });
+        sync.markPushed(db, sync.collectChanges(db));
+        sync.setCursor(db, 42);
+
+        sync.setChainAccess(db, access, { claimed: true });
+        expect(sync.getCursor(db)).toBe(42);
+        expect(sync.countPending(db)).toBe(0);
+
+        sync.setChainAccess(db, access);
+        expect(sync.getCursor(db)).toBe(0);
+        expect(sync.collectChanges(db).playlists.map((x) => x.id)).toEqual([p.id]);
+    });
+
+    it('forgets the old sync token once in a chain, and forgets the chain when leaving', () => {
+        const db = freshDb();
+        // A token saved by the app before sync chains, under its old key.
+        db.write(db.orm.insert(meta).values({ key: 'sync.token', value: 'old-token' }));
+        expect(sync.getSettings(db).legacyToken).toBe('old-token');
+
+        sync.setChainAccess(db, access, { claimed: true });
+        expect(sync.getSettings(db)).toMatchObject({ legacyToken: '', chainId: 'chain-1', deviceId: 'device-1' });
+
+        sync.clearChainAccess(db);
+        expect(sync.getSettings(db)).toMatchObject({ credential: '', chainId: '', deviceId: '' });
+    });
+
+    it('remembers when the codes were last checked, until the device leaves the chain', () => {
+        const db = freshDb();
+        expect(sync.getCodeCheckedAt(db)).toBeNull();
+
+        const before = Date.now();
+        sync.setChainAccess(db, access);
+        expect(sync.getCodeCheckedAt(db)).toBeGreaterThanOrEqual(before);
+
+        sync.setCodeCheckedAt(db, 1234);
+        expect(sync.getCodeCheckedAt(db)).toBe(1234);
+        sync.clearChainAccess(db);
+        expect(sync.getCodeCheckedAt(db)).toBeNull();
     });
 });

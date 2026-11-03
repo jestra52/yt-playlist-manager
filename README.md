@@ -94,6 +94,7 @@ web/
         sync.service.svelte.js       two-way sync use case + auto-sync
         sync.repository.js           cursor, settings, dirty rows
         sync.client.js               HTTP client for the sync API
+        chain-code.js                domain rules: 24-word chain codes (BIP-39)
       ui/                            app shell: drawer, dialog, theme, notices
     shared/components/       Dialog, Icon
     styles/
@@ -122,8 +123,25 @@ Tailwind v4 and daisyUI are loaded from plain CSS (`styles/tailwind.css`), becau
 
 ### How sync works
 
+**Sync chains.** Each library is a *sync chain*, joined with its code: 24 words (a standard BIP-39 phrase) that encode a 256-bit secret, with a checksum that catches typos on the device. There are no accounts or passwords.
+
+* **Create a chain** on one device (`POST /api/chains`): the API generates the secret and shows its code once, with **10 recovery codes**. Save them (download as `.txt`, copy, print, or the QR code for the words), and type back three of the words to confirm.
+* **Join it** on another device by typing, pasting or scanning the code (`POST /api/chains/join`). Joining merges that device's playlists into the chain.
+* **Or add a device with a pairing code**, without the 24 words: on a device in the chain, **Show a pairing code** (`POST /api/chain/pairing`) gives an 8-character code like `7K3Q-D9X2` and its QR code. On the new device, **Enter a pairing code** (or scan it) asks to join (`POST /api/chains/pair`), and the first device asks "Allow Chrome on Android to join?". Only after **Allow** does the new device get its credential (`POST /api/pairing/status`). A code works once, for 10 minutes, and the request has to be approved within 5. See [docs/architecture.md](docs/architecture.md) for the flow.
+* **Scanning:** on a phone, **Scan a QR code instead** opens the camera and reads either the chain code's QR code (from the save step) or a pairing code's. It uses the browser's `BarcodeDetector` where there is one and [jsQR](https://github.com/cozmo/jsQR) elsewhere; the image never leaves the device.
+* **Each device gets its own credential** and syncs with it; it doesn't keep the code. The sync settings list the chain's devices, where any of them can be removed; a removed device stops syncing at once and keeps its playlists.
+* **Generate a new code** if the code leaked or a device was lost: the old code and recovery codes stop working, and every other device is removed (`POST /api/chain/replace`). **Generate new recovery codes** replaces only the recovery codes (`POST /api/chain/recovery-codes`). **Leave** takes one device out; **Delete** removes the chain and the server's copy of its data.
+* **Recover with a recovery code** when every device is gone and the code is lost (`POST /api/chains/recover`). A recovery code is 20 characters (`XXXXX-XXXXX-XXXXX-XXXXX`, about 100 random bits) and works once. Recovering gives the chain a new code and new recovery codes, removes every old device, and joins this device, which merges its local playlists into the chain. The chain's data stays.
+* **The recovery hook:** every way of replacing a chain's code (recovering, a new code, and later the cleanup of abandoned chains) runs the same step in one transaction. It sets the new secret, removes the old devices, replaces the recovery codes and writes the audit log. It also takes the same lock as a sync, so it never lands halfway through one, and a device it removed can't write afterwards. Requests with an old credential get a 401 that says the chain was replaced or recovered.
+* **Activity:** the sync settings show the chain's audit log (`GET /api/chain/events`): devices joined, left and removed, pairing codes created, approved and refused, new codes, new recovery codes and recoveries, with the device that did it. No secrets.
+* **Reminders:** a notice when this is the only device and the chain has no recovery codes (e.g. a chain created before they existed), and every 90 days a "Do you still have your sync chain code and recovery codes?" check-in.
+* The server never stores a code, a recovery code or a credential, only their HMAC-SHA256 keyed with `SYNC_PEPPER`, which lives outside the database. Creating, joining and claiming are rate limited (10 per minute per IP), and recovering and entering pairing codes more strictly. Five wrong codes of any kind from one IP within 15 minutes lock it out of joining, pairing and recovering for 15 minutes. Three refused pairing attempts on a chain within an hour (denied requests, or a used code entered again) pause pairing for that chain for an hour, and every device in it shows a notice. Failed attempts are logged without the code. Everything is kept in PostgreSQL and the API's memory; there's no Redis (why: [docs/architecture.md](docs/architecture.md)).
+* **From the old shared token:** data synced with `SYNC_TOKEN` before sync chains belongs to a *legacy* chain. A device that still has the token saved offers **Turn it into a sync chain** (`POST /api/chains/claim`), once; it then gets the chain's code to add the other devices, and the token isn't needed anymore.
+
+**Syncing rows.**
+
 * Every synced row has `updated_at` (ms), `deleted` (tombstone) and, locally, `dirty`.
-* `POST /api/sync` sends `{ since, changes }`: every dirty row plus the last server cursor the device has seen.
+* `POST /api/sync` sends `{ since, changes }` with the device's credential: every dirty row plus the last server cursor the device has seen. Everything it reads and writes is scoped to the device's chain.
 * The server applies rows in one transaction with **last-write-wins** (`updated_at` must be newer), stamps each with an increasing `seq`, and answers with every row whose `seq > since` and a new cursor (paged with `hasMore`). Each sync first locks the single `sync_counter` row, so writes are serialized and `seq` values are committed in order; a device never skips a row.
 * The client clears `dirty` only for rows that weren't edited again during the request, then applies the server rows with the same last-write-wins rule.
 * Newer fields are optional on both sides, so devices and servers of different versions keep working together: when a device's app is older and doesn't send a field (e.g. a video's `artist`, a playlist's `source`), the server keeps the stored value, and the web app keeps its local value when an older server doesn't send it.
@@ -141,7 +159,7 @@ cd api && docker compose up -d
 
 # 2. local settings: copy the examples (the copies are git-ignored)
 cp src/YtPlaylist.Api/appsettings.Local.example.json src/YtPlaylist.Api/appsettings.Local.json
-                                           # DATABASE_URL, SYNC_TOKEN=dev-token, YOUTUBE_API_KEY
+                                           # DATABASE_URL, SYNC_PEPPER (any random 32+ characters), YOUTUBE_API_KEY
 cp ../web/.env.example ../web/.env         # web/.env: API_URL for the dev proxy
 
 # 3. API on http://localhost:8787. Reads appsettings.Local.json and applies the EF Core migrations on start
@@ -151,9 +169,9 @@ dotnet run --project src/YtPlaylist.Api
 cd ../web && npm install && npm run dev    # http://localhost:5173
 ```
 
-In the app, open the sync status at the bottom of the sidebar, enter `dev-token`, and choose **Save and sync**. The app works without steps 1 to 3; it just stays on one device.
+In the app, open the sync settings at the bottom of the sidebar and choose **Create a sync chain**. To try a second device, open the app in another browser (or a private window) and **Join with a code**. The app works without steps 1 to 3; it just stays on one device.
 
-**Using a hosted database locally:** if `DATABASE_URL` in `appsettings.Local.json` points at a hosted database instead of the local one, the API applies its pending migrations there when it starts. To try a branch that changes the database without touching production, point the API at a copy instead: on Neon, create a branch of the database and set `DATABASE_URL` to its connection string for that run (an environment variable wins over the settings file). Delete the branch when you're done.
+**Using a hosted database locally:** if `DATABASE_URL` in `appsettings.Local.json` points at a hosted database instead of the local one, the API applies its pending migrations there when it starts. To try a branch that changes the database without touching production, point the API at a copy instead: on Neon, create a branch of the database and set `DATABASE_URL` to its connection string for that run (an environment variable wins over the settings file). Delete the branch when you're done. A Neon branch inherits its parent's roles **and passwords**, so its connection string carries the production password: keep it out of anything shared or committed, or create a separate role on the branch for testing.
 
 ### Local settings
 
@@ -161,7 +179,7 @@ Settings and secrets for local development live in two git-ignored files, each w
 
 | File | Copy from | Read by | Settings |
 | --- | --- | --- | --- |
-| `api/src/YtPlaylist.Api/appsettings.Local.json` | `appsettings.Local.example.json` (same folder) | `dotnet run`, only in the Development environment | `DATABASE_URL`, `SYNC_TOKEN`, `YOUTUBE_API_KEY`, `ALLOWED_ORIGIN` |
+| `api/src/YtPlaylist.Api/appsettings.Local.json` | `appsettings.Local.example.json` (same folder) | `dotnet run`, only in the Development environment | `DATABASE_URL`, `SYNC_PEPPER`, `SYNC_TOKEN` (only to claim old data), `YOUTUBE_API_KEY`, `ALLOWED_ORIGIN` |
 | `web/.env` | `web/.env.example` | `npm run dev` and `npm run preview` | `API_URL` (where the dev server forwards `/api`) |
 
 Variables set in the shell win over both files, and deployed hosts (Render, Netlify) use their own environment settings with the same names, never these files. `appsettings.Local.json` is a standard .NET JSON settings file (comments allowed) loaded just below the environment variables. `.gitignore` covers it and `.env` files, and the API project never copies it to the build output, so it can't reach the published app or the Docker image (`api/.dockerignore` leaves it out too).
@@ -225,7 +243,8 @@ The API creates its tables (EF Core migrations) the first time it starts.
    | Variable          | Value                                                     |
    | ----------------- | --------------------------------------------------------- |
    | `DATABASE_URL`    | the Neon connection string from step 1                    |
-   | `SYNC_TOKEN`      | generated by Render; copy it from the service's **Environment** page |
+   | `SYNC_PEPPER`     | generated by Render; keep it secret and never change it (every chain code and device would stop working) |
+   | `SYNC_TOKEN`      | only for data synced before sync chains: the old token, to claim that library once; new services leave it out |
    | `YOUTUBE_API_KEY` | optional, see "Importing YouTube playlists" below         |
    | `ALLOWED_ORIGIN`  | optional, `<yt-playlist-manager-web-uri>` (your Netlify site's address) |
 
@@ -239,7 +258,9 @@ The API creates its tables (EF Core migrations) the first time it starts.
 
 ### 4. Connect your devices
 
-Open the site, click the sync status at the bottom of the sidebar, keep the API address as `/api`, paste your `SYNC_TOKEN`, choose **Test connection**, then **Save and sync**. Do the same on every device.
+Open the site, open the sync settings at the bottom of the sidebar, and choose **Create a sync chain**. Save the 24-word code it shows (download it, copy it into a password manager, or keep the QR code), and type back the three words it asks for. To add another device, open the sync settings on the first one and choose **Show a pairing code**; on the new device choose **Enter a pairing code** (or scan its QR code), then **Allow** it on the first device. You can also join with the 24-word code: **Enter the chain code**, and type, paste or scan it.
+
+**Upgrading a deployment that used `SYNC_TOKEN`:** add `SYNC_PEPPER` on Render before deploying this version (any random 32+ characters, e.g. from **Generate** in Render's environment settings); without it, sync is off. Keep `SYNC_TOKEN` until a device has claimed the old library: on a device that synced before, the sync settings offer **Turn it into a sync chain**. After that, join the other devices with the new code and remove `SYNC_TOKEN`.
 
 ### Automatic deploys: only what changed
 
@@ -304,7 +325,7 @@ The artist follows the last ` | ` and is empty when unknown. Reports saved befor
 
 ## Notes and limits
 
-* **One library per deployment.** Everyone with the sync token shares the same playlists. For several people, deploy one site each or extend `SYNC_TOKEN` into per-user tokens.
+* **One library per sync chain.** Several people can use the same deployment, each with their own chain; one chain can't read or change another's playlists. Anyone with a chain's code can join it, so keep the code private.
 * **Local data lives in this browser.** Clearing site data removes it; with sync on, it comes back from the cloud on the next sync. The sync dialog can also export the database as a `.sqlite` file.
 * **Video titles** come from YouTube's public oEmbed endpoint through `/api/oembed` (falling back to noembed.com). No YouTube API key or Google sign-in is needed, and the app can't read or change your playlists on youtube.com.
 * **The embedded player** loads in each viewer's browser straight from `youtube-nocookie.com`; it doesn't go through the API or use `YOUTUBE_API_KEY`. The key is only used to read playlists (imports and syncing from YouTube).

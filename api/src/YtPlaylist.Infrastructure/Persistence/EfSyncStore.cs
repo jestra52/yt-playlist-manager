@@ -1,6 +1,5 @@
-using System.Globalization;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
+using YtPlaylist.Application.Chains;
 using YtPlaylist.Application.Sync;
 using YtPlaylist.Domain.Common;
 using YtPlaylist.Models.Entities;
@@ -8,16 +7,18 @@ using YtPlaylist.Models.Sync;
 
 namespace YtPlaylist.Infrastructure.Persistence;
 
-/// <summary>Stores synced rows with Entity Framework Core.</summary>
+/// <summary>Stores synced rows with Entity Framework Core, scoped to one sync chain per call.</summary>
 /// <remarks>
 /// Every write first locks the single <see cref="SyncCounter"/> row. That serializes
 /// sync writes, so change numbers (<c>seq</c>) are committed in increasing order and a
-/// device that pulled up to a cursor never misses a row committed later.
+/// device that pulled up to a cursor never misses a row committed later. Change numbers
+/// are shared by every chain; each chain only ever reads its own rows.
 /// </remarks>
 public sealed class EfSyncStore(AppDbContext db) : ISyncStore
 {
-    public async Task<int> ApplyAsync(ChangeSet changes, CancellationToken cancellationToken)
+    public async Task<int> ApplyAsync(string chainId, ChangeSet changes, string? deviceId, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(chainId);
         ArgumentNullException.ThrowIfNull(changes);
         if (changes.Count == 0)
         {
@@ -31,14 +32,22 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
         return await strategy.ExecuteAsync(async () =>
         {
             db.ChangeTracker.Clear();
-            return await this.ApplyOnceAsync(changes, cancellationToken);
+            return await this.ApplyOnceAsync(chainId, changes, deviceId, cancellationToken);
         });
     }
 
-    private async Task<int> ApplyOnceAsync(ChangeSet changes, CancellationToken cancellationToken)
+    private async Task<int> ApplyOnceAsync(
+        string chainId, ChangeSet changes, string? deviceId, CancellationToken cancellationToken)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-        var seq = await this.LockCounterAsync(transaction, cancellationToken);
+        var seq = await SyncCounterLock.LockAsync(db, cancellationToken);
+
+        // Checked under the lock: once the recovery hook (or a removal) has committed, a device
+        // it removed can't write anymore, even if its request was authenticated just before.
+        if (deviceId is not null && !await db.SyncDevices.AnyAsync(d => d.Id == deviceId && d.ChainId == chainId, cancellationToken))
+        {
+            throw new DeviceRemovedException();
+        }
         var applied = 0;
 
         var playlistIds = changes.Playlists.Select(p => p.Id).Distinct().ToList();
@@ -49,14 +58,15 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
         {
             if (playlists.TryGetValue(change.Id, out var row))
             {
-                if (change.UpdatedAt <= row.UpdatedAt)
+                // A row of another chain is never read or changed, even if a device guesses its ID.
+                if (row.ChainId != chainId || change.UpdatedAt <= row.UpdatedAt)
                 {
                     continue;
                 }
             }
             else
             {
-                row = new Playlist { Id = change.Id, CreatedAt = change.CreatedAt };
+                row = new Playlist { Id = change.Id, ChainId = chainId, CreatedAt = change.CreatedAt };
                 db.Playlists.Add(row);
                 playlists[change.Id] = row;
             }
@@ -82,7 +92,7 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
         {
             if (videos.TryGetValue(change.Id, out var row))
             {
-                if (change.UpdatedAt <= row.UpdatedAt)
+                if (row.ChainId != chainId || change.UpdatedAt <= row.UpdatedAt)
                 {
                     continue;
                 }
@@ -92,6 +102,7 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
                 row = new Video
                 {
                     Id = change.Id,
+                    ChainId = chainId,
                     PlaylistId = change.PlaylistId,
                     YouTubeId = change.YouTubeId,
                     CreatedAt = change.CreatedAt,
@@ -131,8 +142,9 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
         return applied;
     }
 
-    public async Task<ChangePage> GetChangesAsync(long since, int limit, CancellationToken cancellationToken)
+    public async Task<ChangePage> GetChangesAsync(string chainId, long since, int limit, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(chainId);
         if (limit is <= 0 or > SyncLimits.MaxPullPageSize)
         {
             limit = SyncLimits.MaxPullPageSize;
@@ -140,13 +152,13 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
 
         var playlists = await db.Playlists
             .AsNoTracking()
-            .Where(p => p.Seq > since)
+            .Where(p => p.ChainId == chainId && p.Seq > since)
             .OrderBy(p => p.Seq)
             .Take(limit)
             .ToListAsync(cancellationToken);
         var videos = await db.Videos
             .AsNoTracking()
-            .Where(v => v.Seq > since)
+            .Where(v => v.ChainId == chainId && v.Seq > since)
             .OrderBy(v => v.Seq)
             .Take(limit)
             .ToListAsync(cancellationToken);
@@ -165,22 +177,6 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
         };
         var cursor = page.Count > 0 ? page[^1].Seq : since;
         return new ChangePage(changes, cursor, hasMore);
-    }
-
-    /// <summary>
-    /// Locks the counter row for the rest of the transaction and returns its value.
-    /// <c>UPDATE … RETURNING</c> works on PostgreSQL and SQLite (used in tests).
-    /// </summary>
-    private async Task<long> LockCounterAsync(IDbContextTransaction transaction, CancellationToken cancellationToken)
-    {
-        await using var command = db.Database.GetDbConnection().CreateCommand();
-        command.Transaction = transaction.GetDbTransaction();
-        command.CommandText = "UPDATE sync_counter SET value = value WHERE id = "
-            + SyncCounter.SingletonId.ToString(CultureInfo.InvariantCulture)
-            + " RETURNING value";
-        var value = await command.ExecuteScalarAsync(cancellationToken)
-            ?? throw new InvalidOperationException("The sync_counter row is missing. Run the database migrations.");
-        return Convert.ToInt64(value, CultureInfo.InvariantCulture);
     }
 
     private static PlaylistChange ToChange(Playlist p) => new()

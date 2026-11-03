@@ -108,7 +108,8 @@ describe('values are never part of the SQL text', () => {
         const [v] = videos.addVideos(db, p.id, [{ youtubeId: 'dQw4w9WgXcQ', title: attack, author: attack }]).added;
         videos.updateVideo(db, v.id, { notes: attack, artist: attack });
         videos.insertVideosAfter(db, p.id, [{ title: attack, youtubeId: '', afterId: v.id }]);
-        sync.saveSettings(db, { apiUrl: attack, token: attack, autoSync: true });
+        sync.saveSettings(db, { apiUrl: attack, autoSync: true });
+        sync.setChainAccess(db, { chainId: attack, deviceId: attack, deviceCredential: attack });
 
         expect(playlists.getPlaylist(db, p.id)).toMatchObject({ name: attack, description: attack });
         expect(videos.getVideo(db, v.id)).toMatchObject({
@@ -118,7 +119,7 @@ describe('values are never part of the SQL text', () => {
             artist: attack,
         });
         expect(videos.listVideos(db).map((video) => video.title)).toEqual([attack, attack]);
-        expect(sync.getSettings(db)).toMatchObject({ apiUrl: attack, token: attack });
+        expect(sync.getSettings(db)).toMatchObject({ apiUrl: attack, chainId: attack, credential: attack });
         expect(
             rows(sqlDb, "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").map((t) => t.name),
         ).toEqual(['meta', 'playlists', 'videos']);

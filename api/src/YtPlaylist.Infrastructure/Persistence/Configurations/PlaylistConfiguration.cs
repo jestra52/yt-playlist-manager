@@ -13,6 +13,12 @@ public sealed class PlaylistConfiguration : IEntityTypeConfiguration<Playlist>
         builder.ToTable("playlists");
         builder.HasKey(p => p.Id);
         builder.Property(p => p.Id).HasColumnName("id").HasMaxLength(SyncLimits.MaxIdLength);
+        // Rows from before sync chains (synced with SYNC_TOKEN) belong to the legacy chain.
+        builder.Property(p => p.ChainId)
+            .HasColumnName("chain_id")
+            .HasMaxLength(SyncLimits.MaxIdLength)
+            .HasDefaultValue(SyncChain.LegacyId)
+            .IsRequired();
         builder.Property(p => p.Name).HasColumnName("name").HasMaxLength(SyncLimits.MaxNameLength).IsRequired();
         builder.Property(p => p.Description)
             .HasColumnName("description")
@@ -25,6 +31,7 @@ public sealed class PlaylistConfiguration : IEntityTypeConfiguration<Playlist>
         builder.Property(p => p.UpdatedAt).HasColumnName("updated_at");
         builder.Property(p => p.Deleted).HasColumnName("deleted");
         builder.Property(p => p.Seq).HasColumnName("seq");
-        builder.HasIndex(p => p.Seq);
+        builder.HasIndex(p => new { p.ChainId, p.Seq });
+        builder.HasOne<SyncChain>().WithMany().HasForeignKey(p => p.ChainId).OnDelete(DeleteBehavior.Cascade);
     }
 }

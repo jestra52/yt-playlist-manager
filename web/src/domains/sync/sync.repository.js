@@ -2,16 +2,24 @@ import { and, asc, count, eq, gt, sql } from 'drizzle-orm';
 import { meta, playlists, videos } from '../../core/db/tables.js';
 
 /**
- * Sync bookkeeping in the local SQLite database: settings and cursor in the
- * `meta` table, and the `dirty` flags on synced rows.
+ * Sync bookkeeping in the local SQLite database: settings, this device's sync
+ * chain credential and the cursor in the `meta` table, and the `dirty` flags on
+ * synced rows. The chain code itself is never stored, only this device's own
+ * credential.
  */
 
 const KEYS = {
     apiUrl: 'sync.apiUrl',
-    token: 'sync.token',
+    // The shared token from before sync chains, kept only to claim that library once.
+    legacyToken: 'sync.token',
+    credential: 'sync.deviceCredential',
+    chainId: 'sync.chainId',
+    deviceId: 'sync.deviceId',
     autoSync: 'sync.auto',
     cursor: 'sync.cursor',
     lastSyncedAt: 'sync.lastSyncedAt',
+    // When the person last said they still have the chain code and recovery codes (this device only).
+    codeCheckedAt: 'sync.codeCheckedAt',
 };
 
 const getMeta = (db, key) => {
@@ -31,25 +39,74 @@ const setMeta = (db, key, value) => {
 export const getSettings = (db) => {
     return {
         apiUrl: getMeta(db, KEYS.apiUrl) ?? '/api',
-        token: getMeta(db, KEYS.token) ?? '',
+        credential: getMeta(db, KEYS.credential) ?? '',
+        chainId: getMeta(db, KEYS.chainId) ?? '',
+        deviceId: getMeta(db, KEYS.deviceId) ?? '',
+        legacyToken: getMeta(db, KEYS.legacyToken) ?? '',
         autoSync: (getMeta(db, KEYS.autoSync) ?? '1') === '1',
     };
 };
 
-export const saveSettings = (db, { apiUrl, token, autoSync }) => {
+/** Pull everything again and push every local row: the next sync starts from scratch. */
+const startOver = (db) => {
+    setMeta(db, KEYS.cursor, 0);
+    db.write(db.orm.update(playlists).set({ dirty: true }));
+    db.write(db.orm.update(videos).set({ dirty: true }));
+};
+
+export const saveSettings = (db, { apiUrl, autoSync }) => {
     const previous = getSettings(db);
+    const nextApiUrl = apiUrl.trim() || '/api';
     db.transaction(() => {
-        setMeta(db, KEYS.apiUrl, apiUrl.trim() || '/api');
-        setMeta(db, KEYS.token, token.trim());
+        setMeta(db, KEYS.apiUrl, nextApiUrl);
         setMeta(db, KEYS.autoSync, autoSync ? '1' : '0');
-        // A different server means a different change history: pull from scratch.
-        if (previous.apiUrl !== (apiUrl.trim() || '/api')) {
-            setMeta(db, KEYS.cursor, 0);
-            db.write(db.orm.update(playlists).set({ dirty: true }));
-            db.write(db.orm.update(videos).set({ dirty: true }));
+        // A different server has different chains: this device's credential means nothing there.
+        if (previous.apiUrl !== nextApiUrl) {
+            clearChainAccess(db);
+            startOver(db);
         }
     });
     return getSettings(db);
+};
+
+/**
+ * Saves this device's place in a sync chain. A new or joined chain has its own
+ * change history, so the next sync starts over and merges this device's library
+ * into the chain; claiming the library this device already synced keeps the cursor.
+ */
+export const setChainAccess = (db, { chainId, deviceId, deviceCredential }, { claimed = false } = {}) => {
+    db.transaction(() => {
+        setMeta(db, KEYS.chainId, chainId);
+        setMeta(db, KEYS.deviceId, deviceId);
+        setMeta(db, KEYS.credential, deviceCredential);
+        // The old shared token isn't needed anymore once this device is in a chain.
+        setMeta(db, KEYS.legacyToken, null);
+        // Whoever just created, joined or recovered the chain has its code (or codes) at hand.
+        setMeta(db, KEYS.codeCheckedAt, Date.now());
+        if (!claimed) startOver(db);
+    });
+    return getSettings(db);
+};
+
+/** Forgets this device's chain (left, removed, or the chain was deleted). Local data stays. */
+export const clearChainAccess = (db) => {
+    db.transaction(() => {
+        setMeta(db, KEYS.chainId, null);
+        setMeta(db, KEYS.deviceId, null);
+        setMeta(db, KEYS.credential, null);
+        setMeta(db, KEYS.codeCheckedAt, null);
+    });
+    return getSettings(db);
+};
+
+/** When the person last confirmed they still have the chain code and recovery codes, or null. */
+export const getCodeCheckedAt = (db) => {
+    const v = getMeta(db, KEYS.codeCheckedAt);
+    return v ? Number(v) : null;
+};
+
+export const setCodeCheckedAt = (db, t) => {
+    setMeta(db, KEYS.codeCheckedAt, t);
 };
 
 export const getCursor = (db) => {

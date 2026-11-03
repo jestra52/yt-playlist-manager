@@ -1,11 +1,12 @@
+using YtPlaylist.Application.Chains;
 using YtPlaylist.Domain.Common;
 using YtPlaylist.Models.Sync;
 
 namespace YtPlaylist.Application.Sync;
 
 /// <summary>
-/// The two-way sync use case: store the device's changes, then return every
-/// server change newer than the device's cursor.
+/// The two-way sync use case: store the device's changes in its sync chain, then
+/// return every change in that chain newer than the device's cursor.
 /// </summary>
 /// <param name="store">Null when no database is configured; sync is then unavailable.</param>
 public sealed class SyncService(ISyncStore? store = null)
@@ -14,8 +15,11 @@ public sealed class SyncService(ISyncStore? store = null)
 
     /// <exception cref="DomainValidationException">When the request is invalid.</exception>
     /// <exception cref="InvalidOperationException">When no database is configured.</exception>
-    public async Task<SyncResponse> SyncAsync(SyncRequest request, int? limit, CancellationToken cancellationToken)
+    /// <exception cref="DeviceRemovedException">When the device was removed while its request was in progress.</exception>
+    public async Task<SyncResponse> SyncAsync(
+        DeviceContext caller, SyncRequest request, int? limit, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(caller);
         ArgumentNullException.ThrowIfNull(request);
         if (store is null)
         {
@@ -29,10 +33,10 @@ public sealed class SyncService(ISyncStore? store = null)
 
         var applied = request.Changes.Count == 0
             ? 0
-            : await store.ApplyAsync(request.Changes, cancellationToken).ConfigureAwait(false);
+            : await store.ApplyAsync(caller.ChainId, request.Changes, caller.DeviceId, cancellationToken).ConfigureAwait(false);
 
         var pageSize = limit is > 0 and <= SyncLimits.MaxPullPageSize ? limit.Value : SyncLimits.MaxPullPageSize;
-        var page = await store.GetChangesAsync(request.Since, pageSize, cancellationToken).ConfigureAwait(false);
+        var page = await store.GetChangesAsync(caller.ChainId, request.Since, pageSize, cancellationToken).ConfigureAwait(false);
         return new SyncResponse(page.Cursor, page.HasMore, applied, page.Changes);
     }
 }
