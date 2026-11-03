@@ -5,15 +5,18 @@
     import { playlists } from '../playlists.service.svelte.js';
     import { videos } from '../../videos/videos.service.svelte.js';
     import { ui } from '../../ui/ui.service.svelte.js';
-    import { parsePlaylistId } from '../../videos/youtube.js';
+    import { parsePlaylistId, videoInPlaylist } from '../../videos/youtube.js';
+    import LinkChoice from '../../videos/components/LinkChoice.svelte';
     import { SOURCE_URL } from '../../../core/config.js';
 
     let creating = $state(false);
     let name = $state('');
     let input = $state();
     let withDeleted = $state(false);
+    let wholePlaylist = $state(true);
 
-    const isLink = $derived(Boolean(parsePlaylistId(name)));
+    const fromList = $derived(Boolean(videoInPlaylist(name)));
+    const isLink = $derived(Boolean(parsePlaylistId(name)) && (!fromList || wholePlaylist));
 
     const startCreating = () => {
         creating = true;
@@ -22,7 +25,12 @@
 
     const submit = async (event) => {
         event.preventDefault();
-        if (await playlists.createFromInput(name, { includeUnavailable: withDeleted })) {
+        if (
+            await playlists.createFromInput(name, {
+                includeUnavailable: withDeleted,
+                justVideo: fromList && !wholePlaylist,
+            })
+        ) {
             ui.toggleSidebar(false);
             name = '';
             creating = false;
@@ -100,6 +108,17 @@
                 {/if}
             </button>
         </form>
+        {#if fromList}
+            <div class="mt-2 px-1">
+                <LinkChoice
+                    bind:value={wholePlaylist}
+                    videoLabel="Just this video"
+                    playlistLabel="Whole playlist"
+                    size="xs"
+                    disabled={playlists.importing}
+                />
+            </div>
+        {/if}
         {#if isLink}
             <label class="with-deleted mt-2 flex items-center gap-2 px-1 text-sm">
                 <input

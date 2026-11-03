@@ -198,11 +198,29 @@ public sealed class YouTubeClientTests
         await Assert.ThrowsAsync<DomainValidationException>(() => client.GetPlaylistAsync(id, false, CancellationToken.None));
     }
 
-    [Fact]
-    public async Task RejectsMixes()
+    [Theory]
+    [InlineData("RDdQw4w9WgXcQ")]
+    [InlineData("RDCMZRJb1jxzE")]
+    [InlineData("RDAMVMdQw4w9WgXcQ")]
+    [InlineData("RDEMhe2mUnf9hDPhrWZ7Vp5XUA")]
+    [InlineData("RDTMAK5uy_kset8DisdE7LSD4TNjEVvrKRTmG7a56sY")]
+    public async Task RejectsMixes(string id)
     {
         using var http = new HttpClient(new StubHandler(_ => throw new InvalidOperationException("no request expected")));
         var client = new YouTubePlaylistClient(http, Microsoft.Extensions.Options.Options.Create(Options()));
-        await Assert.ThrowsAsync<PlaylistNotSupportedException>(() => client.GetPlaylistAsync("RDdQw4w9WgXcQ", false, CancellationToken.None));
+        await Assert.ThrowsAsync<PlaylistNotSupportedException>(() => client.GetPlaylistAsync(id, false, CancellationToken.None));
     }
+
+    [Theory]
+    [InlineData("RDCLAK5uy_kmPRjHDECIcuVwnKsx2Ng7fyNgFKWNJFs", YouTubeListKind.Playlist)]
+    [InlineData("PLsPETV9bmUbpSAj-kxXP4vzUvumC8TZUG", YouTubeListKind.Playlist)]
+    [InlineData("OLAK5uy_kzRUdbcOQn6Hm0rzEaYtTCoZLmNOjgkYU", YouTubeListKind.Playlist)]
+    [InlineData("UULFrAXtmErZgOeiKm4sgNOknG", YouTubeListKind.Playlist)]
+    [InlineData("RDCMZRJb1jxzE", YouTubeListKind.Mix)]
+    [InlineData("RDMM", YouTubeListKind.Mix)]
+    [InlineData("WL", YouTubeListKind.Private)]
+    [InlineData("LM", YouTubeListKind.Private)]
+    [InlineData("WLxxxxxxxxxx", YouTubeListKind.Playlist)]
+    public void TellsMixesAndPrivateListsFromPlaylists(string id, YouTubeListKind kind) =>
+        Assert.Equal(kind, YouTubeIds.ListKind(id));
 }

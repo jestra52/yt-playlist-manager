@@ -4,7 +4,7 @@
     import Icon from '../../../shared/components/Icon.svelte';
     import { playlists } from '../playlists.service.svelte.js';
     import { hasChanges } from '../youtube-sync.js';
-    import { parsePlaylistId } from '../../videos/youtube.js';
+    import { listProblem, parsePlaylistId } from '../../videos/youtube.js';
 
     /**
      * Everything about a playlist's YouTube playlist in one place: linking it
@@ -110,7 +110,9 @@
             <button class="btn btn-primary join-item" type="submit" disabled={!parsePlaylistId(link)}>Link</button>
         </form>
         {#if link.trim() && !parsePlaylistId(link)}
-            <p class="mt-2 text-sm text-error" role="alert">That isn’t a YouTube playlist link or ID.</p>
+            <p class="mt-2 text-sm text-error" role="alert">
+                {listProblem(link) ?? 'That isn’t a YouTube playlist link or ID'}.
+            </p>
         {/if}
         {#if editingLink}
             <button class="btn btn-ghost btn-sm mt-3" type="button" onclick={() => (editingLink = false)}>
