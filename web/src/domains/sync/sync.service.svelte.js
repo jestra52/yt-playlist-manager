@@ -228,12 +228,14 @@ class SyncService {
         pairingFlow
             .watchPairing(this.#snapshot(), {
                 signal: ctrl.signal,
-                onChange: ({ status, requesterName }) => {
+                onChange: ({ status, requesterName, expiresAt }) => {
                     if (!this.pairing || ctrl.signal.aborted) return;
+                    // Once a device enters the code, the time left is the shorter one to approve it.
                     this.pairing = {
                         ...this.pairing,
                         status,
                         requesterName: requesterName || this.pairing.requesterName,
+                        expiresAt: expiresAt ?? this.pairing.expiresAt,
                     };
                     if (status === 'joined') {
                         notify(`${this.pairing.requesterName || 'The new device'} joined the sync chain`);

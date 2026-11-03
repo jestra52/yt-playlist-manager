@@ -195,12 +195,13 @@ describe('adding a device with a pairing code', () => {
     it('shows a code on this device and asks to approve the device that entered it', async () => {
         await sync.createChain('Laptop');
         sync.codeSaved();
-        pairingInfo = { status: 'requested', requesterName: 'Chrome on Android', expiresAt: Date.now() + 300_000 };
+        const approveBy = Date.now() + 300_000;
+        pairingInfo = { status: 'requested', requesterName: 'Chrome on Android', expiresAt: approveBy };
 
         expect(await sync.startPairing()).toBe(true);
         expect(sync.pairing.code).toBe(PAIRING_CODE);
         await vi.waitFor(() => expect(sync.pairing.status).toBe('requested'));
-        expect(sync.pairing.requesterName).toBe('Chrome on Android');
+        expect(sync.pairing).toMatchObject({ requesterName: 'Chrome on Android', expiresAt: approveBy });
 
         expect(await sync.approvePairing()).toBe(true);
         expect(sync.pairing.status).toBe('approved');
