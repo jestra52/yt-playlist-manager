@@ -3,7 +3,7 @@ import { dataChanged } from '../../core/events.js';
 import { notify } from '../ui/ui.service.svelte.js';
 import { getApiBase } from '../../core/config.js';
 import { videos, PARTIAL_IMPORT_NOTE } from '../videos/videos.service.svelte.js';
-import { listProblem, parsePlaylistId, parseYouTubeId, parseYouTubeList } from '../videos/youtube.js';
+import { listProblem, parsePlaylistId, parseYouTubeId, parseYouTubeList, videoInPlaylist } from '../videos/youtube.js';
 import { fetchYouTubePlaylist } from '../videos/playlist.client.js';
 import { fetchVideoMetadata } from '../videos/metadata.client.js';
 import { downloadTextFile } from '../../shared/download.js';
@@ -70,9 +70,13 @@ class PlaylistsService {
      * playlist link (then the playlist's title and videos are imported; see
      * importFromYouTube for `options`). A Mix can't be imported, so a Mix link
      * starts a playlist with just its video; a private list (Watch later) is refused.
+     * With `justVideo`, a watch link played from a playlist starts a playlist with
+     * just its video instead of importing the playlist.
      * Resolves to the new playlist, or null when nothing was created.
      */
-    async createFromInput(input, options = {}) {
+    async createFromInput(input, { justVideo = false, ...options } = {}) {
+        const fromList = justVideo ? videoInPlaylist(input) : null;
+        if (fromList) return this.createFromVideo(fromList.id);
         const listId = parsePlaylistId(input);
         if (listId) return this.importFromYouTube(listId, options);
         const problem = listProblem(input);

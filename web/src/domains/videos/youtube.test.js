@@ -6,6 +6,7 @@ import {
     listKind,
     listProblem,
     parseYouTubeList,
+    videoInPlaylist,
 } from './youtube.js';
 
 describe('parseYouTubeId', () => {
@@ -46,6 +47,7 @@ describe('extractYouTubeIds', () => {
             ids: ['dQw4w9WgXcQ', '9bZkp7q19f0', 'kJQP7kiw5Fk'],
             playlistIds: ['PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf'],
             invalid: ['not-a-link'],
+            inPlaylist: 1,
         });
     });
 });
@@ -153,6 +155,29 @@ describe('Mixes and private lists', () => {
             ids: ['CMZRJb1jxzE'],
             playlistIds: [],
             invalid: ['https://www.youtube.com/playlist?list=RDMM', 'https://www.youtube.com/playlist?list=WL'],
+            inPlaylist: 0,
+        });
+    });
+});
+
+describe('watch links played from a playlist', () => {
+    const list = 'PLsPETV9bmUbpSAj-kxXP4vzUvumC8TZUG';
+    const link = `www.youtube.com/watch?v=QicgfPt_k6M&list=${list}`;
+
+    it('name both the video and the playlist', () => {
+        expect(videoInPlaylist(link)).toEqual({ id: 'QicgfPt_k6M', listId: list });
+        expect(videoInPlaylist(`https://www.youtube.com/playlist?list=${list}`)).toBeNull();
+        expect(videoInPlaylist('https://youtu.be/dQw4w9WgXcQ')).toBeNull();
+        expect(videoInPlaylist('https://www.youtube.com/watch?v=CMZRJb1jxzE&list=RDCMZRJb1jxzE')).toBeNull();
+    });
+
+    it('add the video, or the whole playlist when asked', () => {
+        expect(extractYouTubeIds(link)).toEqual({ ids: ['QicgfPt_k6M'], playlistIds: [], invalid: [], inPlaylist: 1 });
+        expect(extractYouTubeIds(`${link} https://youtu.be/dQw4w9WgXcQ`, { wholePlaylists: true })).toEqual({
+            ids: ['dQw4w9WgXcQ'],
+            playlistIds: [list],
+            invalid: [],
+            inPlaylist: 1,
         });
     });
 });
