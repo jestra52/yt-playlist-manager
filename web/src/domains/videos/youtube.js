@@ -2,10 +2,21 @@ const ID = /^[A-Za-z0-9_-]{11}$/;
 const LIST_ID = /^[A-Za-z0-9_-]{10,64}$/;
 // Bare playlist IDs we recognise without a link: user playlists (PL…) and album playlists (OLAK5uy_…).
 const BARE_LIST_ID = /^(PL|OLAK5uy_)[A-Za-z0-9_-]{10,62}$/;
-// Lists that only exist in the viewer's own YouTube account: Watch later, Liked videos, Liked music.
-const PRIVATE_LISTS = new Set(['WL', 'LL', 'LM']);
-// YouTube Music's curated playlists start with RD too, but they're real playlists.
-const CURATED_PREFIX = 'RDCLAK5uy_';
+/**
+ * What a `list` ID points to, by the ID itself (`id`) or how it starts (`prefix`).
+ * The first matching rule wins; anything else is a playlist. YouTube doesn't
+ * document these, so they live here, mirrored by YouTubeIds.ListRules in the API.
+ */
+const LIST_RULES = [
+    // Only in the viewer's own account: Watch later, Liked videos, Liked music.
+    { id: 'WL', kind: 'private' },
+    { id: 'LL', kind: 'private' },
+    { id: 'LM', kind: 'private' },
+    // YouTube Music's curated playlists start with RD too, but they're real playlists.
+    { prefix: 'RDCLAK5uy_', kind: 'playlist' },
+    // Mixes: started from a video (RD + its ID), My Mix (RDMM), artist and music mixes.
+    { prefix: 'RD', kind: 'mix' },
+];
 const HOSTS = new Set([
     'youtube.com',
     'www.youtube.com',
@@ -63,12 +74,11 @@ const toYouTubeUrl = (raw) => {
  * What a `list` ID points to: 'mix' for YouTube's auto-generated Mixes (RD…,
  * endless and personal, so they can't be imported), 'private' for lists that
  * only exist in the viewer's account (Watch later, liked videos), otherwise
- * 'playlist'. The prefixes aren't documented by YouTube; keep them here.
+ * 'playlist'. See LIST_RULES.
  */
 export const listKind = (listId) => {
-    if (PRIVATE_LISTS.has(listId)) return 'private';
-    if (listId.startsWith('RD') && !listId.startsWith(CURATED_PREFIX)) return 'mix';
-    return 'playlist';
+    const rule = LIST_RULES.find((r) => (r.id ? listId === r.id : listId.startsWith(r.prefix)));
+    return rule?.kind ?? 'playlist';
 };
 
 /**
@@ -82,7 +92,7 @@ export const parseYouTubeList = (input) => {
     if (BARE_LIST_ID.test(raw)) return { id: raw, kind: 'playlist' };
     const url = toYouTubeUrl(raw);
     const list = url?.searchParams.get('list');
-    if (!list || !(LIST_ID.test(list) || PRIVATE_LISTS.has(list))) return null;
+    if (!list || !(LIST_ID.test(list) || listKind(list) === 'private')) return null;
     return { id: list, kind: url.searchParams.has('start_radio') ? 'mix' : listKind(list) };
 };
 

@@ -212,8 +212,15 @@ public sealed class YouTubeClientTests
     }
 
     [Theory]
-    [InlineData("RDCLAK5uy_kmPRjHDECIcuVwnKsx2Ng7fyNgFKWNJFs", false)]
-    [InlineData("PLsPETV9bmUbpSAj-kxXP4vzUvumC8TZUG", false)]
-    [InlineData("RDMMxxxxxxxx", true)]
-    public void TellsMixesFromPlaylists(string id, bool mix) => Assert.Equal(mix, YouTubeIds.IsMix(id));
+    [InlineData("RDCLAK5uy_kmPRjHDECIcuVwnKsx2Ng7fyNgFKWNJFs", YouTubeListKind.Playlist)]
+    [InlineData("PLsPETV9bmUbpSAj-kxXP4vzUvumC8TZUG", YouTubeListKind.Playlist)]
+    [InlineData("OLAK5uy_kzRUdbcOQn6Hm0rzEaYtTCoZLmNOjgkYU", YouTubeListKind.Playlist)]
+    [InlineData("UULFrAXtmErZgOeiKm4sgNOknG", YouTubeListKind.Playlist)]
+    [InlineData("RDCMZRJb1jxzE", YouTubeListKind.Mix)]
+    [InlineData("RDMM", YouTubeListKind.Mix)]
+    [InlineData("WL", YouTubeListKind.Private)]
+    [InlineData("LM", YouTubeListKind.Private)]
+    [InlineData("WLxxxxxxxxxx", YouTubeListKind.Playlist)]
+    public void TellsMixesAndPrivateListsFromPlaylists(string id, YouTubeListKind kind) =>
+        Assert.Equal(kind, YouTubeIds.ListKind(id));
 }
