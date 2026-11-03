@@ -37,7 +37,7 @@ public sealed class YouTubePlaylistClient(HttpClient http, IOptions<YouTubeOptio
         {
             throw new DomainValidationException("invalid playlist id");
         }
-        if (playlistId.StartsWith("RD", StringComparison.Ordinal))
+        if (YouTubeIds.IsMix(playlistId))
         {
             throw new PlaylistNotSupportedException();
         }
