@@ -111,11 +111,22 @@ const playlistOnlyId = (token) => {
 };
 
 /**
+ * A watch link played from a real playlist (not a Mix): { id, listId }, so the
+ * person can choose between the video and the whole playlist. Null otherwise.
+ */
+export const videoInPlaylist = (input) => {
+    const id = parseYouTubeId(input);
+    const listId = id ? parsePlaylistId(input) : null;
+    return listId ? { id, listId } : null;
+};
+
+/**
  * Splits pasted text (one or many links, separated by spaces, commas or new
  * lines) into unique video IDs and playlist IDs, and reports what couldn't be
- * read. A watch link that also names a playlist counts as that one video.
+ * read. A watch link that also names a playlist counts as that one video, or
+ * as the whole playlist with `wholePlaylists`; `inPlaylist` counts those links.
  */
-export const extractYouTubeIds = (text) => {
+export const extractYouTubeIds = (text, { wholePlaylists = false } = {}) => {
     const tokens = String(text ?? '')
         .split(/[\s,]+/)
         .map((t) => t.trim())
@@ -123,9 +134,12 @@ export const extractYouTubeIds = (text) => {
     const ids = [];
     const playlistIds = [];
     const invalid = [];
+    let inPlaylist = 0;
     for (const token of tokens) {
-        const id = parseYouTubeId(token);
-        const listId = id ? null : playlistOnlyId(token);
+        const fromList = videoInPlaylist(token);
+        if (fromList) inPlaylist++;
+        const id = fromList && wholePlaylists ? null : parseYouTubeId(token);
+        const listId = id ? null : (fromList?.listId ?? playlistOnlyId(token));
         if (id) {
             if (!ids.includes(id)) ids.push(id);
         } else if (listId) {
@@ -134,7 +148,7 @@ export const extractYouTubeIds = (text) => {
             invalid.push(token);
         }
     }
-    return { ids, playlistIds, invalid };
+    return { ids, playlistIds, invalid, inPlaylist };
 };
 
 export const thumbnailFor = (youtubeId) => {
