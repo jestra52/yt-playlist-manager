@@ -81,8 +81,7 @@ class VideosService {
     /**
      * Adds every YouTube link found in `text`: video links add that video, and
      * playlist links add all of the playlist's videos. Plain video links show up
-     * at once and get their titles as they load. A watch link played from a playlist
-     * adds just its video, or the whole playlist with `wholePlaylists`.
+     * at once and get their titles as they load.
      * Resolves to true when at least one video was added.
      */
     async addFromText(text, playlistId, { wholePlaylists = false } = {}) {

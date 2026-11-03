@@ -2,19 +2,11 @@ const ID = /^[A-Za-z0-9_-]{11}$/;
 const LIST_ID = /^[A-Za-z0-9_-]{10,64}$/;
 // Bare playlist IDs we recognise without a link: user playlists (PL…) and album playlists (OLAK5uy_…).
 const BARE_LIST_ID = /^(PL|OLAK5uy_)[A-Za-z0-9_-]{10,62}$/;
-/**
- * What a `list` ID points to, by the ID itself (`id`) or how it starts (`prefix`).
- * The first matching rule wins; anything else is a playlist. YouTube doesn't
- * document these, so they live here, mirrored by YouTubeIds.ListRules in the API.
- */
 const LIST_RULES = [
-    // Only in the viewer's own account: Watch later, Liked videos, Liked music.
     { id: 'WL', kind: 'private' },
     { id: 'LL', kind: 'private' },
     { id: 'LM', kind: 'private' },
-    // YouTube Music's curated playlists start with RD too, but they're real playlists.
     { prefix: 'RDCLAK5uy_', kind: 'playlist' },
-    // Mixes: started from a video (RD + its ID), My Mix (RDMM), artist and music mixes.
     { prefix: 'RD', kind: 'mix' },
 ];
 const HOSTS = new Set([
@@ -70,22 +62,11 @@ const toYouTubeUrl = (raw) => {
     }
 };
 
-/**
- * What a `list` ID points to: 'mix' for YouTube's auto-generated Mixes (RD…,
- * endless and personal, so they can't be imported), 'private' for lists that
- * only exist in the viewer's account (Watch later, liked videos), otherwise
- * 'playlist'. See LIST_RULES.
- */
 export const listKind = (listId) => {
     const rule = LIST_RULES.find((r) => (r.id ? listId === r.id : listId.startsWith(r.prefix)));
     return rule?.kind ?? 'playlist';
 };
 
-/**
- * Reads the `list` of a YouTube link (or a bare playlist ID such as PL…) and
- * what it points to (see listKind): { id, kind }, or null when there is none.
- * A link with `start_radio` is always a Mix.
- */
 export const parseYouTubeList = (input) => {
     const raw = String(input ?? '').trim();
     if (!raw) return null;
@@ -99,15 +80,13 @@ export const parseYouTubeList = (input) => {
 /**
  * Extracts the playlist ID from a YouTube playlist link
  * (youtube.com/playlist?list=…, or any watch link with a `list` parameter)
- * or a bare playlist ID such as PL…. Returns null when there is none, and for
- * Mixes and private lists, which can't be imported (see listProblem).
+ * or a bare playlist ID such as PL…. Returns null when there is none.
  */
 export const parsePlaylistId = (input) => {
     const list = parseYouTubeList(input);
     return list?.kind === 'playlist' ? list.id : null;
 };
 
-/** Why a link's list can't be imported or linked, or null when it can (or has no list). */
 export const listProblem = (input) => {
     const kind = parseYouTubeList(input)?.kind;
     if (kind === 'mix') return 'That’s a YouTube Mix, not a playlist. Mixes can’t be imported';
@@ -120,10 +99,6 @@ const playlistOnlyId = (token) => {
     return parseYouTubeId(token) ? null : parsePlaylistId(token);
 };
 
-/**
- * A watch link played from a real playlist (not a Mix): { id, listId }, so the
- * person can choose between the video and the whole playlist. Null otherwise.
- */
 export const videoInPlaylist = (input) => {
     const id = parseYouTubeId(input);
     const listId = id ? parsePlaylistId(input) : null;
@@ -133,8 +108,7 @@ export const videoInPlaylist = (input) => {
 /**
  * Splits pasted text (one or many links, separated by spaces, commas or new
  * lines) into unique video IDs and playlist IDs, and reports what couldn't be
- * read. A watch link that also names a playlist counts as that one video, or
- * as the whole playlist with `wholePlaylists`; `inPlaylist` counts those links.
+ * read. A watch link that also names a playlist counts as that one video.
  */
 export const extractYouTubeIds = (text, { wholePlaylists = false } = {}) => {
     const tokens = String(text ?? '')

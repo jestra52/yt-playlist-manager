@@ -1,8 +1,4 @@
 <script>
-    /**
-     * Two choices for a watch link played from a playlist: the video alone, or
-     * the whole playlist. `value` is true for the whole playlist.
-     */
     let { value = $bindable(false), videoLabel, playlistLabel, disabled = false, size = 'sm' } = $props();
 </script>
 

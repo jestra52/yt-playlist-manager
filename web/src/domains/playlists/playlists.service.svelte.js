@@ -68,10 +68,7 @@ class PlaylistsService {
     /**
      * Creates a playlist from what the person typed: a name, or a YouTube
      * playlist link (then the playlist's title and videos are imported; see
-     * importFromYouTube for `options`). A Mix can't be imported, so a Mix link
-     * starts a playlist with just its video; a private list (Watch later) is refused.
-     * With `justVideo`, a watch link played from a playlist starts a playlist with
-     * just its video instead of importing the playlist.
+     * importFromYouTube for `options`).
      * Resolves to the new playlist, or null when nothing was created.
      */
     async createFromInput(input, { justVideo = false, ...options } = {}) {
@@ -91,7 +88,6 @@ class PlaylistsService {
         return playlist;
     }
 
-    /** Creates a playlist named after one YouTube video, holding just that video. */
     async createFromVideo(youtubeId) {
         this.importing = true;
         try {
