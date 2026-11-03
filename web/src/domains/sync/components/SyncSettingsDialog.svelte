@@ -7,15 +7,23 @@
     import { ui } from '../../ui/ui.service.svelte.js';
     import { ChainCodeError, WORD_COUNT, defaultDeviceName, splitWords, wordsToSecret } from '../chain-code.js';
     import { RECOVERY_CODE_LENGTH, isRecoveryCode, recoveryCodeProblem } from '../recovery-code.js';
+    import { isPairingCode, pairingCodeProblem } from '../pairing-code.js';
+    import { countdown } from '../pairing.js';
+    import { canScan } from '../qr-scan.js';
+    import AddDevice from './AddDevice.svelte';
     import ChainActivity from './ChainActivity.svelte';
     import ChainCodeStep from './ChainCodeStep.svelte';
     import ChainDevices from './ChainDevices.svelte';
+    import QrScanner from './QrScanner.svelte';
 
     let apiUrl = $state('/api');
     let autoSync = $state(true);
     let deviceName = $state('');
-    let mode = $state('choose'); // 'choose' | 'join' | 'recover'
+    let mode = $state('choose'); // 'choose' | 'pair' | 'join' | 'recover'
     let codeText = $state('');
+    let pairText = $state('');
+    let scanning = $state(false);
+    let now = $state(Date.now());
     let recoveryText = $state('');
     let testing = $state(false);
     let result = $state(null);
@@ -30,8 +38,11 @@
             apiUrl = s.apiUrl;
             autoSync = s.autoSync;
             deviceName = defaultDeviceName();
-            mode = 'choose';
+            // A request waiting for approval keeps going while the dialog is closed.
+            mode = sync.joinRequest ? 'pair' : 'choose';
             codeText = '';
+            pairText = '';
+            scanning = false;
             recoveryText = '';
             result = null;
             confirming = null;
@@ -42,6 +53,42 @@
     });
 
     const recoveryProblem = $derived(recoveryCodeProblem(recoveryText));
+    const pairProblem = $derived(pairingCodeProblem(pairText));
+
+    // The countdown while this device waits for approval.
+    $effect(() => {
+        if (sync.joinRequest?.status !== 'requested') return;
+        const id = setInterval(() => (now = Date.now()), 1000);
+        return () => clearInterval(id);
+    });
+
+    const close = () => {
+        // A pairing code is only shown while someone is looking at it.
+        sync.cancelPairing();
+        ui.closeSettings();
+    };
+
+    const pairWith = async (text) => {
+        if (await sync.joinWithPairingCode(text, deviceName)) pairText = '';
+    };
+
+    const pair = (event) => {
+        event.preventDefault();
+        pairWith(pairText);
+    };
+
+    /** A scanned pairing code is sent at once; scanned words fill in the chain code to check before joining. */
+    const scanned = (code) => {
+        scanning = false;
+        if (code.kind === 'pairing') {
+            pairText = code.code;
+            mode = 'pair';
+            pairWith(code.code);
+        } else {
+            codeText = code.text;
+            mode = 'join';
+        }
+    };
 
     const typedWords = $derived(splitWords(codeText).length);
     const codeProblem = $derived.by(() => {
@@ -97,7 +144,7 @@
     };
 </script>
 
-<Dialog open={ui.settingsOpen} title="Sync across devices" onclose={() => ui.closeSettings()}>
+<Dialog open={ui.settingsOpen} title="Sync across devices" onclose={close}>
     {#if sync.newCode}
         <ChainCodeStep code={sync.newCode} ondone={() => sync.codeSaved()} />
     {:else if sync.configured}
@@ -171,6 +218,8 @@
 
         <ChainDevices />
 
+        <AddDevice />
+
         <div class="mt-4 flex flex-wrap gap-2">
             <button
                 class="btn btn-sm"
@@ -233,7 +282,8 @@
     {:else}
         <p class="mb-4 text-sm text-base-content/65">
             Your playlists are saved in a SQLite database in this browser. A <strong>sync chain</strong> keeps your devices
-            in step: create one here, then join it on your other devices with its 24-word code. No account or password needed.
+            in step: create one here, then add your other devices with a pairing code from this one, or with the chain’s 24-word
+            code. No account or password needed.
         </p>
 
         <label class="fieldset mb-3">
@@ -262,8 +312,10 @@
             </div>
         {/if}
 
-        {#if mode === 'choose'}
-            <div class="grid gap-3 sm:grid-cols-2">
+        {#if scanning}
+            <QrScanner onscan={scanned} oncancel={() => (scanning = false)} />
+        {:else if mode === 'choose'}
+            <div class="grid gap-3 sm:grid-cols-3">
                 <button
                     class="btn btn-primary"
                     type="button"
@@ -273,10 +325,20 @@
                     {#if sync.busy}<span class="loading loading-spinner loading-xs"></span>{/if}
                     Create a sync chain
                 </button>
+                <button class="btn" type="button" disabled={sync.busy} onclick={() => (mode = 'pair')}>
+                    Enter a pairing code
+                </button>
                 <button class="btn" type="button" disabled={sync.busy} onclick={() => (mode = 'join')}>
-                    Join with a code
+                    Enter the chain code
                 </button>
             </div>
+            {#if canScan()}
+                <p class="mt-3 text-center text-sm">
+                    <button class="link" type="button" disabled={sync.busy} onclick={() => (scanning = true)}>
+                        Scan a QR code instead
+                    </button>
+                </p>
+            {/if}
             <p class="mt-3 text-center text-sm text-base-content/65">
                 Lost every device and the code?
                 <button class="link" type="button" disabled={sync.busy} onclick={() => (mode = 'recover')}>
@@ -312,6 +374,62 @@
                     </button>
                 </div>
             </form>
+        {:else if mode === 'pair'}
+            {#if sync.joinRequest?.status === 'requested'}
+                <div class="alert alert-info alert-soft items-start text-sm" role="status">
+                    <span class="loading loading-spinner loading-sm"></span>
+                    <div>
+                        <p class="font-semibold">Waiting for approval</p>
+                        <p class="mt-1">
+                            Allow “{deviceName || 'this device'}” on the device that shows the pairing code. Time left:
+                            {countdown(sync.joinRequest.expiresAt, now)}.
+                        </p>
+                        <button
+                            class="btn btn-ghost btn-sm mt-2"
+                            type="button"
+                            onclick={() => sync.cancelJoinRequest()}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            {:else}
+                {#if sync.joinRequest}
+                    <p class="mb-2 text-sm text-error" role="alert">
+                        {sync.joinRequest.status === 'denied'
+                            ? 'The other device refused to let this one join.'
+                            : 'The request expired before it was approved.'} Ask for a new pairing code to try again.
+                    </p>
+                {/if}
+                <form onsubmit={pair}>
+                    <label class="fieldset">
+                        <span class="fieldset-legend">Pairing code</span>
+                        <input
+                            class="input w-full font-mono text-lg tracking-widest uppercase"
+                            bind:value={pairText}
+                            placeholder="XXXX-XXXX"
+                            autocomplete="one-time-code"
+                            autocapitalize="characters"
+                            spellcheck="false"
+                        />
+                        <span class="label whitespace-normal" class:text-error={pairProblem}>
+                            {pairProblem ||
+                                'On a device that’s already in the chain, open sync settings and choose Show a pairing code.'}
+                        </span>
+                    </label>
+                    <div class="mt-3 flex flex-wrap justify-end gap-2">
+                        <button class="btn btn-ghost" type="button" onclick={() => (mode = 'choose')}>Back</button>
+                        {#if canScan()}
+                            <button class="btn" type="button" disabled={sync.busy} onclick={() => (scanning = true)}>
+                                Scan
+                            </button>
+                        {/if}
+                        <button class="btn btn-primary" type="submit" disabled={sync.busy || !isPairingCode(pairText)}>
+                            Ask to join
+                        </button>
+                    </div>
+                </form>
+            {/if}
         {:else}
             <form onsubmit={join}>
                 <label class="fieldset">
@@ -328,8 +446,13 @@
                         {codeProblem || `${typedWords} of ${WORD_COUNT} words`}
                     </span>
                 </label>
-                <div class="mt-3 flex justify-end gap-2">
+                <div class="mt-3 flex flex-wrap justify-end gap-2">
                     <button class="btn btn-ghost" type="button" onclick={() => (mode = 'choose')}>Back</button>
+                    {#if canScan()}
+                        <button class="btn" type="button" disabled={sync.busy} onclick={() => (scanning = true)}>
+                            Scan
+                        </button>
+                    {/if}
                     <button
                         class="btn btn-primary"
                         type="submit"

@@ -1,4 +1,5 @@
 using YtPlaylist.Application.Chains;
+using YtPlaylist.Models.Chains;
 using YtPlaylist.Models.Entities;
 
 namespace YtPlaylist.Tests;
@@ -14,6 +15,7 @@ internal sealed class FakeChainStore : IChainStore
     public List<SyncRecoveryCode> RecoveryCodes { get; } = [];
     public List<SyncChainEvent> Events { get; } = [];
     public List<string> DeletedChains { get; } = [];
+    public List<SyncPairing> Pairings { get; } = [];
 
     public Task<SyncChain?> FindChainBySecretHashAsync(string secretHash, CancellationToken cancellationToken)
     {
@@ -79,6 +81,7 @@ internal sealed class FakeChainStore : IChainStore
     {
         lock (this.gate)
         {
+            this.Pairings.RemoveAll(p => p.CreatedByDeviceId == deviceId);
             if (this.Devices.RemoveAll(d => d.ChainId == chainId && d.Id == deviceId) == 0)
             {
                 return Task.FromResult(false);
@@ -98,6 +101,7 @@ internal sealed class FakeChainStore : IChainStore
                 return Task.FromResult(false);
             }
             this.Chains.Single(c => c.Id == reset.ChainId).SecretHash = reset.SecretHash;
+            this.Pairings.RemoveAll(p => p.ChainId == reset.ChainId);
             var removed = this.Devices.Where(d => d.ChainId == reset.ChainId && d.Id != reset.KeepDeviceId).ToList();
             this.Devices.RemoveAll(removed.Contains);
             this.RecoveryCodes.RemoveAll(r => r.ChainId == reset.ChainId);
@@ -148,6 +152,7 @@ internal sealed class FakeChainStore : IChainStore
     {
         lock (this.gate)
         {
+            this.Pairings.RemoveAll(p => p.ChainId == chainId);
             this.Devices.RemoveAll(d => d.ChainId == chainId);
             this.RecoveryCodes.RemoveAll(r => r.ChainId == chainId);
             this.Events.RemoveAll(e => e.ChainId == chainId);
@@ -189,6 +194,153 @@ internal sealed class FakeChainStore : IChainStore
             }
         }
         return Task.CompletedTask;
+    }
+
+    public Task<SyncChain?> FindChainAsync(string chainId, CancellationToken cancellationToken)
+    {
+        lock (this.gate)
+        {
+            return Task.FromResult(this.Chains.FirstOrDefault(c => c.Id == chainId));
+        }
+    }
+
+    public Task CreatePairingAsync(SyncPairing pairing, SyncChainEvent auditEvent, CancellationToken cancellationToken)
+    {
+        lock (this.gate)
+        {
+            this.Pairings.RemoveAll(p => p.ExpiresAt <= pairing.CreatedAt || p.CreatedByDeviceId == pairing.CreatedByDeviceId);
+            this.Pairings.Add(pairing);
+            this.Log(auditEvent);
+        }
+        return Task.CompletedTask;
+    }
+
+    public Task<SyncPairing?> FindPairingByCreatorAsync(string deviceId, CancellationToken cancellationToken) =>
+        this.FindPairing(p => p.CreatedByDeviceId == deviceId);
+
+    public Task<SyncPairing?> FindPairingByCodeHashAsync(string codeHash, CancellationToken cancellationToken) =>
+        this.FindPairing(p => p.CodeHash == codeHash);
+
+    public Task<SyncPairing?> FindPairingByRequestTokenHashAsync(string tokenHash, CancellationToken cancellationToken) =>
+        this.FindPairing(p => p.RequestTokenHash == tokenHash);
+
+    public Task<bool> RequestPairingAsync(
+        string pairingId,
+        string requesterName,
+        string requestTokenHash,
+        long now,
+        long expiresAt,
+        CancellationToken cancellationToken)
+    {
+        lock (this.gate)
+        {
+            var pairing = this.Pairings.FirstOrDefault(p => p.Id == pairingId && p.Status == PairingStatus.Waiting && p.ExpiresAt > now);
+            if (pairing is null)
+            {
+                return Task.FromResult(false);
+            }
+            pairing.Status = PairingStatus.Requested;
+            pairing.RequesterName = requesterName;
+            pairing.RequestTokenHash = requestTokenHash;
+            pairing.ExpiresAt = expiresAt;
+            return Task.FromResult(true);
+        }
+    }
+
+    public Task<bool> ApprovePairingAsync(
+        string pairingId, string creatorDeviceId, long now, SyncChainEvent auditEvent, CancellationToken cancellationToken)
+    {
+        lock (this.gate)
+        {
+            if (!this.Decide(pairingId, creatorDeviceId, now, PairingStatus.Approved))
+            {
+                return Task.FromResult(false);
+            }
+            this.Log(auditEvent);
+            return Task.FromResult(true);
+        }
+    }
+
+    public Task<bool> DenyPairingAsync(
+        string pairingId, string creatorDeviceId, long now, PairingStrike strike, CancellationToken cancellationToken)
+    {
+        lock (this.gate)
+        {
+            if (!this.Decide(pairingId, creatorDeviceId, now, PairingStatus.Denied))
+            {
+                return Task.FromResult(false);
+            }
+            this.Strike(strike);
+            return Task.FromResult(true);
+        }
+    }
+
+    public Task<bool> AddPairingStrikeAsync(PairingStrike strike, CancellationToken cancellationToken)
+    {
+        lock (this.gate)
+        {
+            return Task.FromResult(this.Strike(strike));
+        }
+    }
+
+    public Task<bool> CompletePairingAsync(
+        string pairingId, long now, SyncDevice device, SyncChainEvent auditEvent, CancellationToken cancellationToken)
+    {
+        lock (this.gate)
+        {
+            var pairing = this.Pairings.FirstOrDefault(p => p.Id == pairingId && p.Status == PairingStatus.Approved && p.ExpiresAt > now);
+            if (pairing is null)
+            {
+                return Task.FromResult(false);
+            }
+            pairing.Status = PairingStatus.Joined;
+            this.Devices.Add(device);
+            this.Log(auditEvent);
+            return Task.FromResult(true);
+        }
+    }
+
+    public Task CancelPairingAsync(string creatorDeviceId, CancellationToken cancellationToken)
+    {
+        lock (this.gate)
+        {
+            this.Pairings.RemoveAll(p => p.CreatedByDeviceId == creatorDeviceId);
+        }
+        return Task.CompletedTask;
+    }
+
+    private Task<SyncPairing?> FindPairing(Func<SyncPairing, bool> match)
+    {
+        lock (this.gate)
+        {
+            return Task.FromResult(this.Pairings.FirstOrDefault(match));
+        }
+    }
+
+    private bool Decide(string pairingId, string creatorDeviceId, long now, string status)
+    {
+        var pairing = this.Pairings.FirstOrDefault(p =>
+            p.Id == pairingId && p.CreatedByDeviceId == creatorDeviceId && p.Status == PairingStatus.Requested && p.ExpiresAt > now);
+        if (pairing is null)
+        {
+            return false;
+        }
+        pairing.Status = status;
+        return true;
+    }
+
+    private bool Strike(PairingStrike strike)
+    {
+        this.Log(strike.Event);
+        var strikes = this.Events.Count(e => e.ChainId == strike.ChainId && PairingStrike.Kinds.Contains(e.Kind) && e.At >= strike.Since);
+        if (strikes < strike.Limit)
+        {
+            return false;
+        }
+        this.Chains.Single(c => c.Id == strike.ChainId).PairingLockedUntil = strike.LockedUntil;
+        this.Pairings.RemoveAll(p => p.ChainId == strike.ChainId);
+        this.Log(strike.LockEvent);
+        return true;
     }
 
     private void Log(SyncChainEvent auditEvent)

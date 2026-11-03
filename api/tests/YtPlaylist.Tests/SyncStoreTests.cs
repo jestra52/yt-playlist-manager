@@ -253,6 +253,108 @@ public abstract class SyncStoreTests
     }
 
     [Fact]
+    public async Task PairsADeviceOnceItsApprovedByTheDeviceThatCreatedTheCode()
+    {
+        await using var db = this.CreateContext();
+        if (db is null)
+        {
+            return;
+        }
+        var chains = new EfChainStore(db);
+        var (chain, creator) = await NewChainAsync(db);
+        var other = new SyncDevice { Id = NewId("d"), ChainId = chain, CredentialHash = NewId("k"), Name = "Tablet", CreatedAt = 2 };
+        await chains.AddDeviceAsync(other, Event(chain, ChainEventKind.DeviceJoined, at: 2), CancellationToken.None);
+        SyncPairing Pairing() => new()
+        {
+            Id = NewId("p"),
+            ChainId = chain,
+            CreatedByDeviceId = creator,
+            CodeHash = NewId("q"),
+            Status = PairingStatus.Waiting,
+            CreatedAt = 10,
+            ExpiresAt = 1000,
+        };
+
+        // A new code replaces the device's previous one.
+        var replaced = Pairing();
+        await chains.CreatePairingAsync(replaced, Event(chain, ChainEventKind.PairingStarted, at: 10), CancellationToken.None);
+        var pairing = Pairing();
+        await chains.CreatePairingAsync(pairing, Event(chain, ChainEventKind.PairingStarted, at: 11), CancellationToken.None);
+        Assert.Null(await chains.FindPairingByCodeHashAsync(replaced.CodeHash, CancellationToken.None));
+        Assert.Equal(pairing.Id, (await chains.FindPairingByCreatorAsync(creator, CancellationToken.None))?.Id);
+
+        // Only the first device that enters the code gets it, and only before it expires.
+        var token = NewId("t");
+        Assert.False(await chains.RequestPairingAsync(pairing.Id, "Phone", token, now: 1000, expiresAt: 2000, CancellationToken.None));
+        Assert.True(await chains.RequestPairingAsync(pairing.Id, "Phone", token, now: 20, expiresAt: 500, CancellationToken.None));
+        Assert.False(await chains.RequestPairingAsync(pairing.Id, "Other", NewId("t"), now: 21, expiresAt: 500, CancellationToken.None));
+        var requested = await chains.FindPairingByRequestTokenHashAsync(token, CancellationToken.None);
+        Assert.Equal((PairingStatus.Requested, "Phone", 500L), (requested?.Status, requested?.RequesterName, requested?.ExpiresAt ?? 0));
+
+        // Only the creating device decides; the new device is added once.
+        var approved = Event(chain, ChainEventKind.PairingApproved, at: 30);
+        Assert.False(await chains.ApprovePairingAsync(pairing.Id, other.Id, 30, approved, CancellationToken.None));
+        Assert.True(await chains.ApprovePairingAsync(pairing.Id, creator, 30, approved, CancellationToken.None));
+        SyncDevice Phone() => new() { Id = NewId("d"), ChainId = chain, CredentialHash = NewId("k"), Name = "Phone", CreatedAt = 40 };
+        Assert.False(await chains.CompletePairingAsync(pairing.Id, 500, Phone(), Event(chain, ChainEventKind.DeviceJoined, at: 40), CancellationToken.None));
+        Assert.True(await chains.CompletePairingAsync(pairing.Id, 40, Phone(), Event(chain, ChainEventKind.DeviceJoined, at: 40), CancellationToken.None));
+        Assert.False(await chains.CompletePairingAsync(pairing.Id, 41, Phone(), Event(chain, ChainEventKind.DeviceJoined, at: 41), CancellationToken.None));
+        Assert.Equal(["Test", "Tablet", "Phone"], (await chains.ListDevicesAsync(chain, CancellationToken.None)).Select(d => d.Name));
+
+        // Removing the creating device takes its pairing with it.
+        await chains.RemoveDeviceAsync(chain, creator, Event(chain, ChainEventKind.DeviceLeft, at: 50), CancellationToken.None);
+        Assert.Null(await chains.FindPairingByCreatorAsync(creator, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task RefusedPairingAttemptsPausePairingForTheChain()
+    {
+        await using var db = this.CreateContext();
+        if (db is null)
+        {
+            return;
+        }
+        var chains = new EfChainStore(db);
+        var (chain, creator) = await NewChainAsync(db);
+        var pairing = new SyncPairing
+        {
+            Id = NewId("p"),
+            ChainId = chain,
+            CreatedByDeviceId = creator,
+            CodeHash = NewId("q"),
+            Status = PairingStatus.Waiting,
+            CreatedAt = 10,
+            ExpiresAt = 1000,
+        };
+        await chains.CreatePairingAsync(pairing, Event(chain, ChainEventKind.PairingStarted, at: 10), CancellationToken.None);
+        PairingStrike Strike(string kind, long at) =>
+            new(chain, Event(chain, kind, at), Since: 100, Limit: 3, LockedUntil: 9000, Event(chain, ChainEventKind.PairingLocked, at));
+
+        // A strike before the window doesn't count.
+        Assert.False(await chains.AddPairingStrikeAsync(Strike(ChainEventKind.PairingBlocked, 50), CancellationToken.None));
+        await chains.RequestPairingAsync(pairing.Id, "Phone", NewId("t"), 101, 1000, CancellationToken.None);
+        Assert.True(await chains.DenyPairingAsync(pairing.Id, creator, 102, Strike(ChainEventKind.PairingDenied, 102), CancellationToken.None));
+        Assert.False(await chains.DenyPairingAsync(pairing.Id, creator, 103, Strike(ChainEventKind.PairingDenied, 103), CancellationToken.None));
+        Assert.False(await chains.AddPairingStrikeAsync(Strike(ChainEventKind.PairingBlocked, 104), CancellationToken.None));
+        Assert.Null((await chains.FindChainAsync(chain, CancellationToken.None))?.PairingLockedUntil);
+
+        // The third strike in the window pauses pairing and cancels the open codes.
+        Assert.True(await chains.AddPairingStrikeAsync(Strike(ChainEventKind.PairingBlocked, 105), CancellationToken.None));
+        Assert.Equal(9000, (await chains.FindChainAsync(chain, CancellationToken.None))?.PairingLockedUntil);
+        Assert.Null(await chains.FindPairingByCreatorAsync(creator, CancellationToken.None));
+        Assert.Equal(ChainEventKind.PairingLocked, (await chains.ListEventsAsync(chain, 1, CancellationToken.None))[0].Kind);
+
+        // A new chain code cancels every pairing too, so an approved one can't add a device afterwards.
+        await chains.CreatePairingAsync(
+            new SyncPairing { Id = NewId("p"), ChainId = chain, CreatedByDeviceId = creator, CodeHash = NewId("q"), Status = PairingStatus.Approved, CreatedAt = 200, ExpiresAt = 1000 },
+            Event(chain, ChainEventKind.PairingStarted, at: 200),
+            CancellationToken.None);
+        var reset = new ChainReset(chain, NewId("h"), Codes(chain), Event(chain, ChainEventKind.CodeReplaced, at: 201)) { KeepDeviceId = creator };
+        Assert.True(await chains.ResetAccessAsync(reset, CancellationToken.None));
+        Assert.Null(await chains.FindPairingByCreatorAsync(creator, CancellationToken.None));
+    }
+
+    [Fact]
     public async Task RecoveringUsesTheCodeOnceAndReplacesEveryDevice()
     {
         await using var db = this.CreateContext();

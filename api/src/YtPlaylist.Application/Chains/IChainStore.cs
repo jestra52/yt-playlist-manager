@@ -68,4 +68,52 @@ public interface IChainStore
 
     /// <summary>Records that the device used the API at <paramref name="now"/>.</summary>
     public Task TouchDeviceAsync(string deviceId, long now, CancellationToken cancellationToken);
+
+    public Task<SyncChain?> FindChainAsync(string chainId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Stores a new pairing code with its audit entry, replacing any other pairing of the
+    /// device that created it, and deletes every pairing (of any chain) that has expired.
+    /// </summary>
+    public Task CreatePairingAsync(SyncPairing pairing, SyncChainEvent auditEvent, CancellationToken cancellationToken);
+
+    /// <summary>The pairing the device created (a device has at most one), or null.</summary>
+    public Task<SyncPairing?> FindPairingByCreatorAsync(string deviceId, CancellationToken cancellationToken);
+
+    public Task<SyncPairing?> FindPairingByCodeHashAsync(string codeHash, CancellationToken cancellationToken);
+
+    public Task<SyncPairing?> FindPairingByRequestTokenHashAsync(string tokenHash, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Records that a device entered the code, if the pairing is still waiting and hasn't expired
+    /// at <paramref name="now"/>: of two devices entering the same code, only one gets it.
+    /// </summary>
+    public Task<bool> RequestPairingAsync(
+        string pairingId,
+        string requesterName,
+        string requestTokenHash,
+        long now,
+        long expiresAt,
+        CancellationToken cancellationToken);
+
+    /// <summary>Approves the request, if it's the creating device's and still unexpired; logs it in the same transaction.</summary>
+    public Task<bool> ApprovePairingAsync(
+        string pairingId, string creatorDeviceId, long now, SyncChainEvent auditEvent, CancellationToken cancellationToken);
+
+    /// <summary>Denies the request, if it's the creating device's and still unexpired, and records the strike with it.</summary>
+    public Task<bool> DenyPairingAsync(
+        string pairingId, string creatorDeviceId, long now, PairingStrike strike, CancellationToken cancellationToken);
+
+    /// <summary>Records a strike against the chain; true when it paused pairing.</summary>
+    public Task<bool> AddPairingStrikeAsync(PairingStrike strike, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Adds the approved device and marks the pairing joined, in one transaction with the audit
+    /// entry. False, with nothing changed, when it isn't approved or has expired at <paramref name="now"/>.
+    /// </summary>
+    public Task<bool> CompletePairingAsync(
+        string pairingId, long now, SyncDevice device, SyncChainEvent auditEvent, CancellationToken cancellationToken);
+
+    /// <summary>Deletes the pairing the device created, if any.</summary>
+    public Task CancelPairingAsync(string creatorDeviceId, CancellationToken cancellationToken);
 }

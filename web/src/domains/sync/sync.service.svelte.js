@@ -6,12 +6,16 @@ import { playlists } from '../playlists/playlists.service.svelte.js';
 import { videos } from '../videos/videos.service.svelte.js';
 import * as client from './sync.client.js';
 import { secretToWords, wordsToSecret } from './chain-code.js';
-import { isCheckInDue, needsRecoveryNotice } from './chain-reminders.js';
+import { isCheckInDue, needsRecoveryNotice, pairingPausedUntil } from './chain-reminders.js';
+import * as pairingFlow from './pairing.js';
+import { formatPairingCode, isPairingCode, pairingCodeProblem } from './pairing-code.js';
 import { recoveryCodeProblem } from './recovery-code.js';
 import * as repo from './sync.repository.js';
 
 const PUSH_DELAY_MS = 2500;
 const POLL_INTERVAL_MS = 60_000;
+/** After a sync, the chain (its devices, and whether pairing is paused) is reloaded at most this often. */
+const CHAIN_REFRESH_MS = 10 * 60_000;
 
 /**
  * Application layer for sync: settings, this device's sync chain, status for
@@ -38,8 +42,21 @@ class SyncService {
     /** When the person last said they still have the codes (this device only). */
     codeCheckedAt = $state(null);
     busy = $state(false);
+    /**
+     * This device's pairing code while it's shown, to add another device:
+     * { code, expiresAt, status, requesterName }, status 'waiting' | 'requested' |
+     * 'approved' | 'joined' | 'denied' | 'expired'. Only kept in memory.
+     */
+    pairing = $state(null);
+    /**
+     * This device's request to join a chain with a pairing code, while it waits:
+     * { status: 'requested' | 'denied' | 'expired', expiresAt }.
+     */
+    joinRequest = $state(null);
 
     configured = $derived(Boolean(this.settings.credential));
+    /** Until when adding devices with a pairing code is paused for this chain, or null. */
+    pairingPaused = $derived(this.configured ? pairingPausedUntil(this.chain) : null);
     /** Losing this device would lose the chain: it's the only one, and there are no recovery codes. */
     recoveryNotice = $derived(this.configured && needsRecoveryNotice(this.chain));
     /** Time to ask "Do you still have your sync chain code?" again. */
@@ -47,6 +64,10 @@ class SyncService {
 
     #inFlight = null;
     #timer = null;
+    #chainLoadedAt = 0;
+    #warnedPauseUntil = null;
+    #pairingWatch = null;
+    #joinWait = null;
 
     load() {
         const db = getDatabase();
@@ -146,11 +167,157 @@ class SyncService {
         }
         try {
             this.chain = await client.getChain(this.#snapshot());
+            this.#chainLoadedAt = Date.now();
+            this.#warnIfPairingPaused();
             return this.chain;
         } catch (err) {
             this.#failed(err);
             return null;
         }
+    }
+
+    // ---- adding a device with a pairing code ---------------------------
+
+    /**
+     * Shows a new pairing code on this device for another device to enter, and
+     * follows it: when that device enters it, `pairing.status` becomes 'requested'
+     * and the person is asked to approve it.
+     */
+    async startPairing() {
+        return this.#withBusy(async () => {
+            const { code, expiresAt } = await client.startPairing(this.#snapshot());
+            this.pairing = { code, expiresAt, status: 'waiting', requesterName: '' };
+            this.#followPairing();
+            return true;
+        });
+    }
+
+    /** Lets the device that entered this device's pairing code join. */
+    async approvePairing() {
+        return this.#withBusy(async () => {
+            await client.approvePairing(this.#snapshot());
+            if (this.pairing) this.pairing.status = 'approved';
+            return true;
+        });
+    }
+
+    /** Refuses the device that entered this device's pairing code; after a few, pairing is paused. */
+    async denyPairing() {
+        return this.#withBusy(async () => {
+            await client.denyPairing(this.#snapshot());
+            this.#stopFollowingPairing();
+            if (this.pairing) this.pairing.status = 'denied';
+            await this.loadChain();
+            this.loadEvents();
+            return true;
+        });
+    }
+
+    /** Stops showing this device's pairing code; it stops working. */
+    cancelPairing() {
+        this.#stopFollowingPairing();
+        const open = this.pairing && !['joined', 'denied', 'expired'].includes(this.pairing.status);
+        this.pairing = null;
+        if (open && this.configured) client.cancelPairing(this.#snapshot()).catch(() => {});
+    }
+
+    #followPairing() {
+        this.#stopFollowingPairing();
+        const ctrl = new AbortController();
+        this.#pairingWatch = ctrl;
+        pairingFlow
+            .watchPairing(this.#snapshot(), {
+                signal: ctrl.signal,
+                onChange: ({ status, requesterName, expiresAt }) => {
+                    if (!this.pairing || ctrl.signal.aborted) return;
+                    // Once a device enters the code, the time left is the shorter one to approve it.
+                    this.pairing = {
+                        ...this.pairing,
+                        status,
+                        requesterName: requesterName || this.pairing.requesterName,
+                        expiresAt: expiresAt ?? this.pairing.expiresAt,
+                    };
+                    if (status === 'joined') {
+                        notify(`${this.pairing.requesterName || 'The new device'} joined the sync chain`);
+                        this.loadChain();
+                        this.loadEvents();
+                    } else if (status === 'expired') {
+                        // A pause after refused attempts cancels the code too.
+                        this.loadChain();
+                    }
+                },
+            })
+            .catch((err) => {
+                if (!ctrl.signal.aborted && !this.#failed(err)) notify(err.message, { tone: 'error', timeout: 6000 });
+            });
+    }
+
+    #stopFollowingPairing() {
+        this.#pairingWatch?.abort();
+        this.#pairingWatch = null;
+    }
+
+    /**
+     * Joins a chain with a pairing code shown on one of its devices, from this device
+     * (not in a chain): waits until that device approves, then gets its own credential
+     * and syncs. Resolves to true once joined; false when refused, expired or cancelled.
+     */
+    async joinWithPairingCode(codeText, deviceName) {
+        if (!isPairingCode(codeText)) {
+            notify(pairingCodeProblem(codeText) || 'A pairing code has 8 characters.', { tone: 'error' });
+            return false;
+        }
+        const ctrl = new AbortController();
+        this.#joinWait?.abort();
+        this.#joinWait = ctrl;
+        this.busy = true;
+        try {
+            const settings = this.#snapshot();
+            const ticket = await client.requestPairing(settings, formatPairingCode(codeText), deviceName);
+            if (ctrl.signal.aborted) return false;
+            this.joinRequest = { status: 'requested', expiresAt: ticket.expiresAt };
+            const result = await pairingFlow.waitForApproval(settings, ticket.requestToken, { signal: ctrl.signal });
+            if (!result) return false;
+            if (result.status !== 'approved') {
+                this.joinRequest = { status: result.status, expiresAt: ticket.expiresAt };
+                return false;
+            }
+            this.joinRequest = null;
+            this.#joined(result);
+            notify('Joined the sync chain. Your playlists are syncing.');
+            return true;
+        } catch (err) {
+            if (!ctrl.signal.aborted) {
+                this.joinRequest = null;
+                notify(err.message, { tone: 'error', timeout: 6000 });
+            }
+            return false;
+        } finally {
+            if (this.#joinWait === ctrl) {
+                this.#joinWait = null;
+                this.busy = false;
+            }
+        }
+    }
+
+    /** Stops waiting for approval of this device's pairing request. */
+    cancelJoinRequest() {
+        this.#joinWait?.abort();
+        this.#joinWait = null;
+        this.joinRequest = null;
+        this.busy = false;
+    }
+
+    /** Shows a toast once per pause, on whichever device of the chain notices it first. */
+    #warnIfPairingPaused() {
+        const until = pairingPausedUntil(this.chain);
+        if (!until || until === this.#warnedPauseUntil) return;
+        this.#warnedPauseUntil = until;
+        const time = new Date(until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        notify(
+            `Someone was refused several times while trying to join your sync chain. Adding devices with a pairing code is paused until ${time}.`,
+            { tone: 'error', timeout: 10000 },
+        );
     }
 
     /** Removes another device from the chain. */
@@ -257,8 +424,10 @@ class SyncService {
     }
 
     #left(message) {
+        this.#stopFollowingPairing();
         this.settings = repo.clearChainAccess(getDatabase());
         this.chain = null;
+        this.pairing = null;
         this.newCode = null;
         this.events = null;
         this.codeCheckedAt = null;
@@ -337,6 +506,8 @@ class SyncService {
             this.status = 'idle';
             this.offline = false;
             this.pending = repo.countPending(db);
+            // So every device hears of a pause in pairing, not only the one showing the settings.
+            if (Date.now() - this.#chainLoadedAt >= CHAIN_REFRESH_MS) this.loadChain();
             if (!quiet)
                 notify(
                     pulled > 0

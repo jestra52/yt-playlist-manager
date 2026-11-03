@@ -15,4 +15,22 @@ describe('audit log sentences', () => {
         );
         expect(describeEvent({ kind: 'something_new', deviceName: '', detail: '' })).toBe('A device: something_new');
     });
+
+    it('describes pairing', () => {
+        expect(describeEvent({ kind: 'pairing_started', deviceName: 'Laptop', detail: '' })).toBe(
+            'Laptop created a pairing code',
+        );
+        expect(describeEvent({ kind: 'pairing_approved', deviceName: 'Laptop', detail: 'Chrome on Android' })).toBe(
+            'Laptop let Chrome on Android join with a pairing code',
+        );
+        expect(describeEvent({ kind: 'pairing_denied', deviceName: 'Laptop', detail: 'Unknown' })).toBe(
+            'Laptop refused Unknown',
+        );
+        expect(describeEvent({ kind: 'pairing_blocked', deviceName: 'Phone', detail: '' })).toBe(
+            'Phone tried to join with a pairing code that was already used',
+        );
+        expect(describeEvent({ kind: 'pairing_locked', deviceName: '', detail: '' })).toMatch(
+            /^Adding devices .* paused/,
+        );
+    });
 });

@@ -98,6 +98,10 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("created_at");
 
+                    b.Property<long?>("PairingLockedUntil")
+                        .HasColumnType("bigint")
+                        .HasColumnName("pairing_locked_until");
+
                     b.Property<string>("SecretHash")
                         .HasMaxLength(43)
                         .HasColumnType("character varying(43)")
@@ -225,6 +229,73 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("sync_devices", (string)null);
+                });
+
+            modelBuilder.Entity("YtPlaylist.Models.Entities.SyncPairing", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChainId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("chain_id");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(43)
+                        .HasColumnType("character varying(43)")
+                        .HasColumnName("code_hash");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedByDeviceId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("created_by_device_id");
+
+                    b.Property<long>("ExpiresAt")
+                        .HasColumnType("bigint")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("RequestTokenHash")
+                        .HasMaxLength(43)
+                        .HasColumnType("character varying(43)")
+                        .HasColumnName("request_token_hash");
+
+                    b.Property<string>("RequesterName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("requester_name");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChainId");
+
+                    b.HasIndex("CodeHash")
+                        .IsUnique();
+
+                    b.HasIndex("CreatedByDeviceId");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("RequestTokenHash")
+                        .IsUnique();
+
+                    b.ToTable("sync_pairings", (string)null);
                 });
 
             modelBuilder.Entity("YtPlaylist.Models.Entities.SyncRecoveryCode", b =>
@@ -383,6 +454,21 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
                     b.HasOne("YtPlaylist.Models.Entities.SyncChain", null)
                         .WithMany()
                         .HasForeignKey("ChainId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("YtPlaylist.Models.Entities.SyncPairing", b =>
+                {
+                    b.HasOne("YtPlaylist.Models.Entities.SyncChain", null)
+                        .WithMany()
+                        .HasForeignKey("ChainId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("YtPlaylist.Models.Entities.SyncDevice", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByDeviceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

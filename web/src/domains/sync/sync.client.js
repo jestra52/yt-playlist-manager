@@ -120,6 +120,47 @@ export const getChainEvents = ({ apiUrl, credential }, limit = 50) => {
     return request(endpoint(apiUrl, `/chain/events?limit=${limit}`), json('GET', undefined, credential));
 };
 
+/** A new pairing code for this device's chain, replacing this device's previous one. Resolves to { code, expiresAt }. */
+export const startPairing = ({ apiUrl, credential }) => {
+    return request(endpoint(apiUrl, '/chain/pairing'), json('POST', undefined, credential));
+};
+
+/** Where this device's pairing code stands: { status, requesterName, expiresAt }; 404 when it has none. */
+export const getPairing = ({ apiUrl, credential }) => {
+    return request(endpoint(apiUrl, '/chain/pairing'), json('GET', undefined, credential), 8000);
+};
+
+/** Lets the device that entered this device's pairing code join. */
+export const approvePairing = ({ apiUrl, credential }) => {
+    return request(endpoint(apiUrl, '/chain/pairing/approve'), json('POST', undefined, credential));
+};
+
+/** Refuses the device that entered this device's pairing code. */
+export const denyPairing = ({ apiUrl, credential }) => {
+    return request(endpoint(apiUrl, '/chain/pairing/deny'), json('POST', undefined, credential));
+};
+
+/** Cancels this device's pairing code. */
+export const cancelPairing = ({ apiUrl, credential }) => {
+    return request(endpoint(apiUrl, '/chain/pairing'), json('DELETE', undefined, credential));
+};
+
+/**
+ * Asks to join the chain whose device showed this pairing code, from a device that
+ * isn't in a chain. Resolves to { requestToken, expiresAt }.
+ */
+export const requestPairing = ({ apiUrl }, code, deviceName) => {
+    return request(endpoint(apiUrl, '/chains/pair'), json('POST', { code, deviceName }));
+};
+
+/**
+ * Whether the pairing request was approved: { status: 'requested' | 'denied' | 'expired' },
+ * or once approved { status: 'approved', chainId, deviceId, deviceCredential }, only once.
+ */
+export const getPairingStatus = ({ apiUrl }, requestToken) => {
+    return request(endpoint(apiUrl, '/pairing/status'), json('POST', undefined, requestToken), 8000);
+};
+
 /** Deletes this device's chain, its devices and all its synced data. */
 export const deleteChain = ({ apiUrl, credential }) => {
     return request(endpoint(apiUrl, '/chain'), json('DELETE', undefined, credential));
