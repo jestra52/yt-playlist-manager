@@ -1,14 +1,22 @@
 <script>
     import Icon from '../../../shared/components/Icon.svelte';
+    import LinkChoice from './LinkChoice.svelte';
     import { videos } from '../videos.service.svelte.js';
+    import { extractYouTubeIds } from '../youtube.js';
 
     let { playlistId } = $props();
     let text = $state('');
+    let wholePlaylists = $state(false);
+
+    const inPlaylist = $derived(extractYouTubeIds(text).inPlaylist);
 
     const submit = async (event) => {
         event.preventDefault();
         if (!text.trim() || videos.importing) return;
-        if (await videos.addFromText(text, playlistId)) text = '';
+        if (await videos.addFromText(text, playlistId, { wholePlaylists: inPlaylist > 0 && wholePlaylists })) {
+            text = '';
+            wholePlaylists = false;
+        }
     };
 </script>
 
@@ -36,3 +44,13 @@
         {/if}
     </button>
 </form>
+{#if inPlaylist > 0}
+    <div class="mt-2 px-1">
+        <LinkChoice
+            bind:value={wholePlaylists}
+            videoLabel={inPlaylist === 1 ? 'Add this video' : 'Add these videos'}
+            playlistLabel={inPlaylist === 1 ? 'Add the whole playlist' : 'Add the whole playlists'}
+            disabled={videos.importing}
+        />
+    </div>
+{/if}

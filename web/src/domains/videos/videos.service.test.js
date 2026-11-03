@@ -271,6 +271,37 @@ describe('playlists and videos services', () => {
         expect(message).toContain('YOUTUBE_API_KEY');
     });
 
+    it('adds just the video of a watch link played from a playlist, or the whole playlist when asked', async () => {
+        const link = `https://www.youtube.com/watch?v=9bZkp7q19f0&list=${LIST}`;
+        const p = playlists.create('Choices');
+        expect(await videos.addFromText(link, p.id)).toBe(true);
+        expect(videos.forPlaylist(p.id).map((v) => v.youtubeId)).toEqual(['9bZkp7q19f0']);
+        expect(await videos.addFromText(link, p.id, { wholePlaylists: true })).toBe(true);
+        expect(videos.forPlaylist(p.id).map((v) => v.youtubeId)).toEqual(['9bZkp7q19f0', 'dQw4w9WgXcQ', 'kJQP7kiw5Fk']);
+    });
+
+    it('imports the playlist of a watch link, or starts with just its video when asked', async () => {
+        const link = `https://www.youtube.com/watch?v=9bZkp7q19f0&list=${LIST}`;
+        const imported = await playlists.createFromInput(link);
+        expect(imported.name).toBe('Road trip');
+        const single = await playlists.createFromInput(link, { justVideo: true });
+        expect(single.sourceId ?? '').toBe('');
+        expect(videos.forPlaylist(single.id).map((v) => v.youtubeId)).toEqual(['9bZkp7q19f0']);
+    });
+
+    it('starts a playlist with just the video of a Mix link, and refuses private lists', async () => {
+        const mix = await playlists.createFromInput(
+            'https://www.youtube.com/watch?v=CMZRJb1jxzE&list=RDCMZRJb1jxzE&start_radio=1',
+        );
+        expect(videos.forPlaylist(mix.id).map((v) => v.youtubeId)).toEqual(['CMZRJb1jxzE']);
+        expect(ui.notices.at(-1).message).toContain('Mixes can’t be imported');
+
+        const before = playlists.items.length;
+        expect(await playlists.createFromInput('https://www.youtube.com/playlist?list=WL')).toBeNull();
+        expect(playlists.items).toHaveLength(before);
+        expect(ui.notices.at(-1)).toMatchObject({ tone: 'error' });
+    });
+
     it('puts back items missing since an old report, in their old place', async () => {
         const p = playlists.create('City Pop');
         videos.addEntries(p.id, [
