@@ -2,6 +2,7 @@
   "recommendations": [
     "dbaeumer.vscode-eslint",
     "esbenp.prettier-vscode",
+    "vitest.explorer",
     "svelte.svelte-vscode",
     "editorconfig.editorconfig",
     "muhammad-sammy.csharp"
