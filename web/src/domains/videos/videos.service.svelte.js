@@ -6,7 +6,7 @@ import { extractYouTubeIds, parseYouTubeId, thumbnailFor } from '@ytpm/core/vide
 import { cleanArtist, guessedArtistPatch, knownArtists, matchKnownArtist } from '@ytpm/core/videos/artist';
 import { fetchVideoMetadata } from './metadata.client.js';
 import { fetchYouTubePlaylist } from './playlist.client.js';
-import * as repo from './videos.repository.js';
+import * as repo from '@ytpm/core/videos/videos.repository';
 
 const byPosition = (a, b) => a.position - b.position;
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;

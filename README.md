@@ -86,6 +86,7 @@ packages/core/                shared logic in TypeScript, no UI (also for the Re
   src/videos/                 youtube.ts (parsing YouTube links), artist.ts (guessing artists)
   src/playlists/              report.ts, report-compare.ts (reports), youtube-sync.ts (YouTube comparison)
   src/db/                     SQLite wrapper (sql.js + Drizzle), tables.ts, generated migrations, IndexedDB persistence
+  src/*/…repository.ts        playlists and videos data access (Drizzle ORM queries)
 web/
   scripts/write-redirects.mjs  writes the Netlify /api proxy rule from API_ORIGIN
   public/_headers            security headers (CSP) for Netlify
@@ -98,11 +99,9 @@ web/
       playlists/
         components/                  presentation (Svelte + daisyUI)
         playlists.service.svelte.js  application: reactive state + use cases
-        playlists.repository.js      data access (Drizzle ORM queries)
       videos/
         components/
         videos.service.svelte.js
-        videos.repository.js
         metadata.client.js           external HTTP (oEmbed through /api)
         playlist.client.js           external HTTP (YouTube playlists through /api)
       sync/

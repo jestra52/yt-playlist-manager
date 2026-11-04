@@ -1,7 +1,7 @@
 import { and, asc, eq, max, ne } from 'drizzle-orm';
-import { now, newId } from '@ytpm/core/db/index';
-import { videos } from '@ytpm/core/db/tables';
-import { thumbnailFor } from '@ytpm/core/videos/youtube';
+import { newId, now, type Database } from '../db/index';
+import { videos } from '../db/tables';
+import { thumbnailFor } from './youtube';
 
 const fields = {
     id: videos.id,
@@ -20,8 +20,63 @@ const fields = {
     updatedAt: videos.updatedAt,
 };
 
+interface StoredVideo {
+    id: string;
+    playlistId: string;
+    youtubeId: string;
+    title: string;
+    author: string;
+    artist: string;
+    artistSource: string;
+    thumbnailUrl: string;
+    notes: string;
+    watched: boolean;
+    unavailable: boolean;
+    position: number;
+    createdAt: number;
+    updatedAt: number;
+}
+
+/** The video shape used by stores and views. */
+export interface Video extends StoredVideo {
+    missing: boolean;
+}
+
+/** A video to add: a YouTube ID with whatever is already known about it. */
+export interface VideoEntry {
+    youtubeId: string;
+    title?: string;
+    author?: string;
+    artist?: string;
+    artistSource?: string;
+    thumbnailUrl?: string;
+    unavailable?: boolean;
+}
+
+/** A video to put back near its old place (see insertVideosAfter). */
+export interface PlacedEntry extends Partial<VideoEntry> {
+    afterId?: string | null;
+}
+
+export type VideoPatch = Partial<
+    Pick<
+        StoredVideo,
+        | 'youtubeId'
+        | 'title'
+        | 'author'
+        | 'artist'
+        | 'artistSource'
+        | 'thumbnailUrl'
+        | 'notes'
+        | 'watched'
+        | 'unavailable'
+        | 'position'
+        | 'playlistId'
+    >
+>;
+
 /** Adds what views need on top of the stored row. */
-const toVideo = (row) => {
+const toVideo = (row: StoredVideo): Video => {
     return {
         ...row,
         // Waits for a link: a placeholder from an old report (known by its title), or a
@@ -33,7 +88,7 @@ const toVideo = (row) => {
 
 const live = eq(videos.deleted, false);
 
-export const listVideos = (db) => {
+export const listVideos = (db: Database): Video[] => {
     return db.orm
         .select(fields)
         .from(videos)
@@ -43,7 +98,7 @@ export const listVideos = (db) => {
         .map(toVideo);
 };
 
-export const getVideo = (db, id) => {
+export const getVideo = (db: Database, id: string): Video | null => {
     const row = db.orm
         .select(fields)
         .from(videos)
@@ -52,21 +107,29 @@ export const getVideo = (db, id) => {
     return row ? toVideo(row) : null;
 };
 
-const nextPosition = (db, playlistId) => {
-    const { top } = db.orm
+const nextPosition = (db: Database, playlistId: string): number => {
+    const top = db.orm
         .select({ top: max(videos.position) })
         .from(videos)
         .where(and(eq(videos.playlistId, playlistId), live))
-        .get();
+        .get()?.top;
     return (top ?? 0) + 1;
 };
 
 const insertVideo = (
-    db,
-    playlistId,
-    { youtubeId, title = '', author = '', artist = '', artistSource = '', thumbnailUrl, unavailable = false },
-    position,
-) => {
+    db: Database,
+    playlistId: string,
+    {
+        youtubeId,
+        title = '',
+        author = '',
+        artist = '',
+        artistSource = '',
+        thumbnailUrl,
+        unavailable = false,
+    }: VideoEntry,
+    position: number,
+): Video => {
     const t = now();
     const id = newId();
     db.write(
@@ -89,11 +152,11 @@ const insertVideo = (
             dirty: true,
         }),
     );
-    return getVideo(db, id);
+    return getVideo(db, id)!;
 };
 
 /** The videos still in a playlist, in order. */
-const playlistRows = (db, playlistId) => {
+const playlistRows = (db: Database, playlistId: string) => {
     return db.orm
         .select({ id: videos.id, youtubeId: videos.youtubeId, position: videos.position })
         .from(videos)
@@ -108,12 +171,16 @@ const playlistRows = (db, playlistId) => {
  * `artist`, `artistSource`, `thumbnailUrl` and `unavailable` (e.g. from a playlist import).
  * Returns { added, skipped } where skipped lists the duplicate YouTube IDs.
  */
-export const addVideos = (db, playlistId, entries) => {
+export const addVideos = (
+    db: Database,
+    playlistId: string,
+    entries: readonly (string | VideoEntry)[],
+): { added: Video[]; skipped: string[] } => {
     return db.transaction(() => {
         const existing = new Set(playlistRows(db, playlistId).map((r) => r.youtubeId));
         let position = nextPosition(db, playlistId);
-        const added = [];
-        const skipped = [];
+        const added: Video[] = [];
+        const skipped: string[] = [];
         for (const entry of entries) {
             const fields = typeof entry === 'string' ? { youtubeId: entry } : entry;
             if (existing.has(fields.youtubeId)) {
@@ -134,11 +201,11 @@ export const addVideos = (db, playlistId, entries) => {
  * it is null, at the end when the video is gone), in their given order. An
  * empty `youtubeId` makes a placeholder. Returns the inserted videos.
  */
-export const insertVideosAfter = (db, playlistId, entries) => {
+export const insertVideosAfter = (db: Database, playlistId: string, entries: readonly PlacedEntry[]): Video[] => {
     return db.transaction(() => {
         const rows = playlistRows(db, playlistId);
         const existing = new Set(rows.map((r) => r.youtubeId).filter(Boolean));
-        const groups = new Map();
+        const groups = new Map<string | null, PlacedEntry[]>();
         for (const entry of entries) {
             if (entry.youtubeId && existing.has(entry.youtubeId)) continue;
             if (entry.youtubeId) existing.add(entry.youtubeId);
@@ -146,13 +213,13 @@ export const insertVideosAfter = (db, playlistId, entries) => {
             groups.set(key, [...(groups.get(key) ?? []), entry]);
         }
 
-        const added = [];
+        const added: Video[] = [];
         for (const [afterId, group] of groups) {
             // Spread the group evenly between its anchor and the next video.
             const span = group.length + 1;
             const index = afterId === null ? -1 : rows.findIndex((r) => r.id === afterId);
-            let low;
-            let high;
+            let low: number;
+            let high: number;
             if (afterId === null) {
                 high = rows[0]?.position ?? span;
                 low = high - span;
@@ -160,7 +227,7 @@ export const insertVideosAfter = (db, playlistId, entries) => {
                 low = rows.at(-1)?.position ?? 0;
                 high = low + span;
             } else {
-                low = rows[index].position;
+                low = rows[index]!.position;
                 high = rows[index + 1]?.position ?? low + span;
             }
             group.forEach((entry, i) => {
@@ -200,13 +267,13 @@ const EDITABLE = [
     'unavailable',
     'position',
     'playlistId',
-];
+] as const;
 
-const FLAGS = new Set(['watched', 'unavailable']);
+const FLAGS = new Set<string>(['watched', 'unavailable']);
 
 /** Updates the given fields and marks the row for sync. */
-export const updateVideo = (db, id, patch) => {
-    const changes = {};
+export const updateVideo = (db: Database, id: string, patch: VideoPatch): Video | null => {
+    const changes: Record<string, unknown> = {};
     for (const key of EDITABLE) {
         if (patch[key] !== undefined) changes[key] = FLAGS.has(key) ? Boolean(patch[key]) : patch[key];
     }
@@ -214,7 +281,7 @@ export const updateVideo = (db, id, patch) => {
     db.write(
         db.orm
             .update(videos)
-            .set({ ...changes, updatedAt: now(), dirty: true })
+            .set({ ...(changes as VideoPatch), updatedAt: now(), dirty: true })
             .where(and(eq(videos.id, id), live)),
     );
     return getVideo(db, id);
@@ -224,7 +291,7 @@ export const updateVideo = (db, id, patch) => {
  * Moves a video to `toIndex` within its playlist by giving it a position
  * between its new neighbours, so only one row changes (and syncs).
  */
-export const reorderVideo = (db, id, toIndex) => {
+export const reorderVideo = (db: Database, id: string, toIndex: number): Video | null => {
     const video = getVideo(db, id);
     if (!video) return null;
     const others = db.orm
@@ -237,15 +304,19 @@ export const reorderVideo = (db, id, toIndex) => {
     const index = Math.max(0, Math.min(toIndex, others.length));
     const before = others[index - 1];
     const after = others[index];
-    let position;
+    let position: number;
     if (before === undefined && after === undefined) position = 1;
-    else if (before === undefined) position = after - 1;
+    else if (before === undefined) position = after! - 1;
     else if (after === undefined) position = before + 1;
     else position = (before + after) / 2;
     return updateVideo(db, id, { position });
 };
 
-export const moveVideoToPlaylist = (db, id, playlistId) => {
+export const moveVideoToPlaylist = (
+    db: Database,
+    id: string,
+    playlistId: string,
+): { video: Video | null; duplicate: boolean } => {
     const video = getVideo(db, id);
     if (!video || video.playlistId === playlistId) return { video, duplicate: false };
     const dup =
@@ -259,11 +330,11 @@ export const moveVideoToPlaylist = (db, id, playlistId) => {
     return { video: updateVideo(db, id, { playlistId, position: nextPosition(db, playlistId) }), duplicate: false };
 };
 
-export const deleteVideo = (db, id) => {
+export const deleteVideo = (db: Database, id: string): void => {
     db.write(db.orm.update(videos).set({ deleted: true, updatedAt: now(), dirty: true }).where(eq(videos.id, id)));
 };
 
-export const restoreVideo = (db, id) => {
+export const restoreVideo = (db: Database, id: string): Video | null => {
     db.write(db.orm.update(videos).set({ deleted: false, updatedAt: now(), dirty: true }).where(eq(videos.id, id)));
     return getVideo(db, id);
 };

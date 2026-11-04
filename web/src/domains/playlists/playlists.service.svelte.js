@@ -16,7 +16,7 @@ import { downloadTextFile } from '../../shared/download.js';
 import { buildPlaylistReport, reportFileName } from '@ytpm/core/playlists/report';
 import { compareReport, parseReport } from '@ytpm/core/playlists/report-compare';
 import { diffWithYouTube } from '@ytpm/core/playlists/youtube-sync';
-import * as repo from './playlists.repository.js';
+import * as repo from '@ytpm/core/playlists/playlists.repository';
 
 const LAST_SELECTED_KEY = 'ytpm:selectedPlaylist';
 

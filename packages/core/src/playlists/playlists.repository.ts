@@ -1,6 +1,6 @@
 import { and, asc, eq, max } from 'drizzle-orm';
-import { now, newId } from '@ytpm/core/db/index';
-import { playlists, videos } from '@ytpm/core/db/tables';
+import { newId, now, type Database } from '../db/index';
+import { playlists, videos } from '../db/tables';
 
 /** The playlist shape used by stores and views. */
 const fields = {
@@ -14,9 +14,34 @@ const fields = {
     updatedAt: playlists.updatedAt,
 };
 
+export interface Playlist {
+    id: string;
+    name: string;
+    description: string;
+    source: string;
+    sourceId: string;
+    position: number;
+    createdAt: number;
+    updatedAt: number;
+}
+
+export interface NewPlaylist {
+    name: string;
+    description?: string;
+    source?: string;
+    sourceId?: string;
+}
+
+export interface PlaylistPatch {
+    name?: string;
+    description?: string;
+    source?: string;
+    sourceId?: string;
+}
+
 const live = eq(playlists.deleted, false);
 
-export const listPlaylists = (db) => {
+export const listPlaylists = (db: Database): Playlist[] => {
     return db.orm
         .select(fields)
         .from(playlists)
@@ -25,7 +50,7 @@ export const listPlaylists = (db) => {
         .all();
 };
 
-export const getPlaylist = (db, id) => {
+export const getPlaylist = (db: Database, id: string): Playlist | null => {
     return (
         db.orm
             .select(fields)
@@ -36,15 +61,18 @@ export const getPlaylist = (db, id) => {
 };
 
 /** `source` and `sourceId` say where an imported playlist came from, e.g. 'youtube' and its playlist ID. */
-export const createPlaylist = (db, { name, description = '', source = '', sourceId = '' }) => {
+export const createPlaylist = (
+    db: Database,
+    { name, description = '', source = '', sourceId = '' }: NewPlaylist,
+): Playlist | null => {
     const clean = name.trim();
     if (!clean) throw new Error('Give the playlist a name');
     const t = now();
-    const { top } = db.orm
+    const top = db.orm
         .select({ top: max(playlists.position) })
         .from(playlists)
         .where(live)
-        .get();
+        .get()?.top;
     const id = newId();
     db.write(
         db.orm.insert(playlists).values({
@@ -64,7 +92,11 @@ export const createPlaylist = (db, { name, description = '', source = '', source
 };
 
 /** Changes the given fields; `source` and `sourceId` link the playlist to (or unlink it from) its source. */
-export const updatePlaylist = (db, id, { name, description, source, sourceId }) => {
+export const updatePlaylist = (
+    db: Database,
+    id: string,
+    { name, description, source, sourceId }: PlaylistPatch,
+): Playlist | null => {
     const current = getPlaylist(db, id);
     if (!current) throw new Error('That playlist no longer exists');
     const nextName = name === undefined ? current.name : name.trim().slice(0, 200);
@@ -89,7 +121,7 @@ export const updatePlaylist = (db, id, { name, description, source, sourceId }) 
 };
 
 /** Soft-deletes the playlist and its videos so the deletion syncs. */
-export const deletePlaylist = (db, id) => {
+export const deletePlaylist = (db: Database, id: string): void => {
     db.transaction(() => {
         const t = now();
         db.write(
