@@ -2,6 +2,13 @@
 
 Two views of Yuzu Tapes Playlist Manager: how the code is split into components, and where each part runs once deployed. GitHub renders both diagrams from the Mermaid source below.
 
+## Contents
+
+- [Components](#components)
+  - [Web app](#web-app) · [.NET API](#net-api)
+- [Deployment](#deployment)
+- [Back to the README](../README.md)
+
 ## Components
 
 ### Web app
