@@ -17,6 +17,29 @@ import tseslint from 'typescript-eslint';
 
 const unusedVars = ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' }];
 
+// SQL injection: queries go through Drizzle ORM, which sends values as parameters.
+const sqlSafety = [
+    {
+        selector: "MemberExpression[object.name='sql'][property.name='raw']",
+        message:
+            'sql.raw() puts text straight into the SQL. Build the query with Drizzle, or put values in a sql`…` template (sent as parameters) and names in sql.identifier().',
+    },
+    {
+        selector: "ImportSpecifier[imported.name='sql'][local.name!='sql']",
+        message: "Import Drizzle's sql tag as `sql`, so the sql.raw() check can see it.",
+    },
+    {
+        selector:
+            'CallExpression[callee.property.name=/^(exec|run|prepare)$/] > TemplateLiteral.arguments:first-child[expressions.length>0]',
+        message: 'This builds SQL from a template string. Use a Drizzle query, or pass values as parameters instead.',
+    },
+    {
+        selector:
+            "CallExpression[callee.property.name=/^(exec|run|prepare)$/] > BinaryExpression.arguments:first-child[operator='+']",
+        message: 'This builds SQL by joining strings. Use a Drizzle query, or pass values as parameters instead.',
+    },
+];
+
 export const base = [
     { ignores: ['dist/', 'node_modules/', 'coverage/'] },
     js.configs.recommended,
@@ -42,31 +65,7 @@ export const base = [
             'no-unreachable-loop': 'error',
             'no-constructor-return': 'error',
 
-            // SQL injection: queries go through Drizzle ORM, which sends values as parameters.
-            'no-restricted-syntax': [
-                'error',
-                {
-                    selector: "MemberExpression[object.name='sql'][property.name='raw']",
-                    message:
-                        'sql.raw() puts text straight into the SQL. Build the query with Drizzle, or put values in a sql`…` template (sent as parameters) and names in sql.identifier().',
-                },
-                {
-                    selector: "ImportSpecifier[imported.name='sql'][local.name!='sql']",
-                    message: "Import Drizzle's sql tag as `sql`, so the sql.raw() check can see it.",
-                },
-                {
-                    selector:
-                        'CallExpression[callee.property.name=/^(exec|run|prepare)$/] > TemplateLiteral.arguments:first-child[expressions.length>0]',
-                    message:
-                        'This builds SQL from a template string. Use a Drizzle query, or pass values as parameters instead.',
-                },
-                {
-                    selector:
-                        "CallExpression[callee.property.name=/^(exec|run|prepare)$/] > BinaryExpression.arguments:first-child[operator='+']",
-                    message:
-                        'This builds SQL by joining strings. Use a Drizzle query, or pass values as parameters instead.',
-                },
-            ],
+            'no-restricted-syntax': ['error', ...sqlSafety],
 
             // Functions are const arrow functions; class methods stay methods.
             'func-style': ['error', 'expression'],
@@ -140,6 +139,15 @@ export const react = [
         },
         rules: {
             '@eslint-react/rules-of-hooks': 'off',
+            // Styles live in *.module.scss files and the Material UI theme, not in components.
+            'no-restricted-syntax': [
+                'error',
+                ...sqlSafety,
+                {
+                    selector: 'JSXAttribute[name.name=/^(sx|style)$/]',
+                    message: 'Move these styles into a *.module.scss file (className) or the Material UI theme.',
+                },
+            ],
         },
     },
 ];
