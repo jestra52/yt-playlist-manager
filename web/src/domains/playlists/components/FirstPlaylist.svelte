@@ -2,16 +2,19 @@
     import { playlists } from '../playlists.service.svelte.js';
     import { ui } from '../../ui/ui.service.svelte.js';
     import Icon from '../../../shared/components/Icon.svelte';
-    import { parsePlaylistId } from '../../videos/youtube.js';
+    import { parsePlaylistId, videoInPlaylist } from '../../videos/youtube.js';
+    import LinkChoice from '../../videos/components/LinkChoice.svelte';
 
     let name = $state('Watch later');
     let withDeleted = $state(false);
+    let wholePlaylist = $state(true);
 
-    const isLink = $derived(Boolean(parsePlaylistId(name)));
+    const fromList = $derived(Boolean(videoInPlaylist(name)));
+    const isLink = $derived(Boolean(parsePlaylistId(name)) && (!fromList || wholePlaylist));
 
     const submit = (event) => {
         event.preventDefault();
-        playlists.createFromInput(name, { includeUnavailable: withDeleted });
+        playlists.createFromInput(name, { includeUnavailable: withDeleted, justVideo: fromList && !wholePlaylist });
     };
 </script>
 
@@ -51,6 +54,16 @@
             {/if}
         </button>
     </form>
+    {#if fromList}
+        <div class="mb-2">
+            <LinkChoice
+                bind:value={wholePlaylist}
+                videoLabel="Start with just this video"
+                playlistLabel="Import the whole playlist"
+                disabled={playlists.importing}
+            />
+        </div>
+    {/if}
     {#if isLink}
         <label class="mb-2 flex cursor-pointer items-center gap-2 text-sm">
             <input
@@ -67,7 +80,7 @@
         Type a name, or paste a link to a YouTube playlist to bring in its videos.
     </p>
     <p class="text-sm text-base-content/65">
-        Already using YouTube Playlist Manager on another device?
+        Already using Yuzu Tapes on another device?
         <button class="link font-semibold text-base-content" type="button" onclick={() => ui.openSettings()}
             >Connect sync</button
         >

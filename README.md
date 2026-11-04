@@ -1,6 +1,6 @@
-# YouTube Playlist Manager
+# Yuzu Tapes Playlist Manager 🍋
 
-Save YouTube videos into your own playlists, put them in order, mark what you've watched, keep notes, and play them in place. Each video shows its artist, guessed from YouTube and editable, and a playlist imported from YouTube can be synced with it again later. Everything is stored in a **SQLite database inside your browser**, so the app works offline. An **ASP.NET Core API** with **Entity Framework Core** syncs that database with **PostgreSQL** (Neon) so your phone and laptop stay in step. The web app is hosted on **Netlify**; the API runs as a Docker container on **Render**, and Netlify forwards `/api` to it.
+Keep your own playlists of videos (music, talks, recipes, anything you want to watch), put them in order, mark what you've watched, keep notes, and play them in place. YouTube is the first source. Each video shows its artist, guessed from YouTube and editable, and a playlist imported from YouTube can be synced with it again later. Everything is stored in a **SQLite database inside your browser**, so the app works offline. An **ASP.NET Core API** with **Entity Framework Core** syncs that database with **PostgreSQL** (Neon) so your phone and laptop stay in step. The web app is hosted on **Netlify**; the API runs as a Docker container on **Render**, and Netlify forwards `/api` to it.
 
 ## Screenshots
 
@@ -337,8 +337,12 @@ The artist follows the last ` | ` and is empty when unknown. Reports saved befor
 
 Copyright (C) 2026 Juan Carlos Estrada Alvarez.
 
-YouTube Playlist Manager is free software, licensed under the **GNU Affero General Public License v3.0 only** (`AGPL-3.0-only`); see [LICENSE](LICENSE). You may use, study, change and share it, including commercially. If you distribute it, or let people use a modified version over a network (for example as a website or a hosted API), you must offer them the complete source code of your version under the same license.
+Yuzu Tapes Playlist Manager is free software, licensed under the **GNU Affero General Public License v3.0 only** (`AGPL-3.0-only`); see [LICENSE](LICENSE). You may use, study, change and share it, including commercially. If you distribute it, or let people use a modified version over a network (for example as a website or a hosted API), you must offer them the complete source code of your version under the same license.
 
 The app links to its source code from the sidebar. If you host a modified version, point that link (`SOURCE_URL` in `web/src/core/config.js`) at your own source code.
 
-Code published before November 2, 2026 was released under the MIT License, and copies of it obtained under MIT keep those terms. Third-party libraries keep their own licenses.
+Code published before November 2, 2026, when the app was called YouTube Playlist Manager, was released under the MIT License, and copies of it obtained under MIT keep those terms. Third-party libraries keep their own licenses.
+
+## Trademark
+
+"Yuzu Tapes"™ is the name of this app. The AGPL covers the code, not the name: forks are welcome, but must use a different name and logo, so they aren't mistaken for the official app. YouTube is a trademark of Google LLC; this app isn't affiliated with or endorsed by YouTube or Google.

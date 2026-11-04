@@ -3,8 +3,9 @@ import { dataChanged } from '../../core/events.js';
 import { notify } from '../ui/ui.service.svelte.js';
 import { getApiBase } from '../../core/config.js';
 import { videos, PARTIAL_IMPORT_NOTE } from '../videos/videos.service.svelte.js';
-import { parsePlaylistId } from '../videos/youtube.js';
+import { listProblem, parsePlaylistId, parseYouTubeId, parseYouTubeList, videoInPlaylist } from '../videos/youtube.js';
 import { fetchYouTubePlaylist } from '../videos/playlist.client.js';
+import { fetchVideoMetadata } from '../videos/metadata.client.js';
 import { downloadTextFile } from '../../shared/download.js';
 import { buildPlaylistReport, reportFileName } from './report.js';
 import { compareReport, parseReport } from './report-compare.js';
@@ -70,9 +71,33 @@ class PlaylistsService {
      * importFromYouTube for `options`).
      * Resolves to the new playlist, or null when nothing was created.
      */
-    async createFromInput(input, options = {}) {
+    async createFromInput(input, { justVideo = false, ...options } = {}) {
+        const fromList = justVideo ? videoInPlaylist(input) : null;
+        if (fromList) return this.createFromVideo(fromList.id);
         const listId = parsePlaylistId(input);
-        return listId ? this.importFromYouTube(listId, options) : this.create(input);
+        if (listId) return this.importFromYouTube(listId, options);
+        const problem = listProblem(input);
+        if (!problem) return this.create(input);
+        const videoId = parseYouTubeList(input)?.kind === 'mix' ? parseYouTubeId(input) : null;
+        if (!videoId) {
+            notify(problem, { tone: 'error', timeout: 6000 });
+            return null;
+        }
+        const playlist = await this.createFromVideo(videoId);
+        if (playlist) notify('YouTube Mixes can’t be imported, so only this video was added', { timeout: 6000 });
+        return playlist;
+    }
+
+    async createFromVideo(youtubeId) {
+        this.importing = true;
+        try {
+            const meta = await fetchVideoMetadata(youtubeId, getApiBase());
+            const playlist = this.create(meta?.title?.trim() || 'New playlist');
+            if (playlist) videos.addEntries(playlist.id, [meta?.title ? { youtubeId, ...meta } : youtubeId]);
+            return playlist;
+        } finally {
+            this.importing = false;
+        }
     }
 
     /**
@@ -131,7 +156,9 @@ class PlaylistsService {
         }
         const listId = parsePlaylistId(text);
         if (!listId) {
-            notify('Paste a YouTube playlist link, like https://www.youtube.com/playlist?list=…', { tone: 'error' });
+            notify(listProblem(text) ?? 'Paste a YouTube playlist link, like https://www.youtube.com/playlist?list=…', {
+                tone: 'error',
+            });
             return false;
         }
         if (!this.#update(id, { source: 'youtube', sourceId: listId })) return false;

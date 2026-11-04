@@ -5,15 +5,18 @@
     import { playlists } from '../playlists.service.svelte.js';
     import { videos } from '../../videos/videos.service.svelte.js';
     import { ui } from '../../ui/ui.service.svelte.js';
-    import { parsePlaylistId } from '../../videos/youtube.js';
+    import { parsePlaylistId, videoInPlaylist } from '../../videos/youtube.js';
+    import LinkChoice from '../../videos/components/LinkChoice.svelte';
     import { SOURCE_URL } from '../../../core/config.js';
 
     let creating = $state(false);
     let name = $state('');
     let input = $state();
     let withDeleted = $state(false);
+    let wholePlaylist = $state(true);
 
-    const isLink = $derived(Boolean(parsePlaylistId(name)));
+    const fromList = $derived(Boolean(videoInPlaylist(name)));
+    const isLink = $derived(Boolean(parsePlaylistId(name)) && (!fromList || wholePlaylist));
 
     const startCreating = () => {
         creating = true;
@@ -22,7 +25,12 @@
 
     const submit = async (event) => {
         event.preventDefault();
-        if (await playlists.createFromInput(name, { includeUnavailable: withDeleted })) {
+        if (
+            await playlists.createFromInput(name, {
+                includeUnavailable: withDeleted,
+                justVideo: fromList && !wholePlaylist,
+            })
+        ) {
             ui.toggleSidebar(false);
             name = '';
             creating = false;
@@ -45,7 +53,10 @@
             <rect x="5" y="20.6" width="9" height="3.4" rx="1.7" fill="currentColor" />
             <path d="M20.5 17.5v8.5l7-4.25z" fill="var(--color-primary)" />
         </svg>
-        <span>YouTube Playlist Manager</span>
+        <span class="flex flex-col">
+            <span>Yuzu Tapes</span>
+            <span class="brand-sub">Playlist Manager</span>
+        </span>
     </div>
 
     <ul class="menu playlist-menu w-full gap-0.5 p-0">
@@ -100,6 +111,17 @@
                 {/if}
             </button>
         </form>
+        {#if fromList}
+            <div class="mt-2 px-1">
+                <LinkChoice
+                    bind:value={wholePlaylist}
+                    videoLabel="Just this video"
+                    playlistLabel="Whole playlist"
+                    size="xs"
+                    disabled={playlists.importing}
+                />
+            </div>
+        {/if}
         {#if isLink}
             <label class="with-deleted mt-2 flex items-center gap-2 px-1 text-sm">
                 <input
@@ -132,8 +154,16 @@
 
     // The name is long for the 18rem sidebar: smaller type, two lines if needed.
     .brand {
-        @include display(1.1rem);
-        line-height: 1.15;
+        @include display(1.25rem);
+        line-height: 1.1;
+    }
+
+    .brand-sub {
+        font-family: inherit;
+        font-size: 0.75rem;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        opacity: 0.7;
     }
 
     // daisyUI's menu-active uses the neutral color, which is this panel's

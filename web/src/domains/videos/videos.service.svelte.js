@@ -84,12 +84,12 @@ class VideosService {
      * at once and get their titles as they load.
      * Resolves to true when at least one video was added.
      */
-    async addFromText(text, playlistId) {
+    async addFromText(text, playlistId, { wholePlaylists = false } = {}) {
         if (!playlistId) {
             notify('Create a playlist first', { tone: 'error' });
             return false;
         }
-        const { ids, playlistIds, invalid } = extractYouTubeIds(text);
+        const { ids, playlistIds, invalid } = extractYouTubeIds(text, { wholePlaylists });
         if (!ids.length && !playlistIds.length) {
             notify('That doesn’t look like a YouTube link', { tone: 'error' });
             return false;

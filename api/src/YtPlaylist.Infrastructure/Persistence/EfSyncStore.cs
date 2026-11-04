@@ -52,14 +52,13 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
 
         var playlistIds = changes.Playlists.Select(p => p.Id).Distinct().ToList();
         var playlists = await db.Playlists
-            .Where(p => playlistIds.Contains(p.Id))
+            .Where(p => p.ChainId == chainId && playlistIds.Contains(p.Id))
             .ToDictionaryAsync(p => p.Id, cancellationToken);
         foreach (var change in changes.Playlists)
         {
             if (playlists.TryGetValue(change.Id, out var row))
             {
-                // A row of another chain is never read or changed, even if a device guesses its ID.
-                if (row.ChainId != chainId || change.UpdatedAt <= row.UpdatedAt)
+                if (change.UpdatedAt <= row.UpdatedAt)
                 {
                     continue;
                 }
@@ -86,13 +85,13 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
 
         var videoIds = changes.Videos.Select(v => v.Id).Distinct().ToList();
         var videos = await db.Videos
-            .Where(v => videoIds.Contains(v.Id))
+            .Where(v => v.ChainId == chainId && videoIds.Contains(v.Id))
             .ToDictionaryAsync(v => v.Id, cancellationToken);
         foreach (var change in changes.Videos)
         {
             if (videos.TryGetValue(change.Id, out var row))
             {
-                if (row.ChainId != chainId || change.UpdatedAt <= row.UpdatedAt)
+                if (change.UpdatedAt <= row.UpdatedAt)
                 {
                     continue;
                 }

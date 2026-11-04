@@ -11,7 +11,7 @@ public sealed class PlaylistConfiguration : IEntityTypeConfiguration<Playlist>
     {
         ArgumentNullException.ThrowIfNull(builder);
         builder.ToTable("playlists");
-        builder.HasKey(p => p.Id);
+        builder.HasKey(p => new { p.ChainId, p.Id });
         builder.Property(p => p.Id).HasColumnName("id").HasMaxLength(SyncLimits.MaxIdLength);
         // Rows from before sync chains (synced with SYNC_TOKEN) belong to the legacy chain.
         builder.Property(p => p.ChainId)
