@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import initSqlJs from 'sql.js';
-import { Database } from '../../core/db/database.js';
-import { setDatabase } from '../../core/db/index.js';
+import { Database } from '@ytpm/core/db/database';
+import { setDatabase } from '@ytpm/core/db/index';
 import { playlists } from '../playlists/playlists.service.svelte.js';
 import { videos } from '../videos/videos.service.svelte.js';
 import { ui } from '../ui/ui.service.svelte.js';

@@ -1,4 +1,4 @@
-import { getDatabase } from '../../core/db/index.js';
+import { getDatabase } from '@ytpm/core/db/index';
 import { setApiBase } from '../../core/config.js';
 import { onDataChanged } from '../../core/events.js';
 import { notify } from '../ui/ui.service.svelte.js';

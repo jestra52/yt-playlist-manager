@@ -31,17 +31,18 @@ jobs:
           npm run lint
           npm run format:check
           npm test
+      - name: Migrations match tables.ts
+        working-directory: packages/core
+        run: |
+          npm run db:generate
+          if [ -n "$(git status --porcelain -- src/db/migrations)" ]; then
+            echo "::error file=packages/core/src/db/tables.ts::tables.ts changed without a migration. Run 'npm run db:generate -w packages/core' and commit the new files."
+            git status --porcelain -- src/db/migrations
+            exit 1
+          fi
       - run: npm run lint
       - run: npm run format:check
       - run: npm test
-      - name: Migrations match tables.js
-        run: |
-          npm run db:generate
-          if [ -n "$(git status --porcelain -- src/core/db/migrations)" ]; then
-            echo "::error file=web/src/core/db/tables.js::tables.js changed without a migration. Run 'npm run db:generate' in web/ and commit the new files."
-            git status --porcelain -- src/core/db/migrations
-            exit 1
-          fi
       - run: npm run build
 
   web-react:

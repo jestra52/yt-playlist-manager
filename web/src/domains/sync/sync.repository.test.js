@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import initSqlJs from 'sql.js';
-import { Database } from '../../core/db/database.js';
-import { meta } from '../../core/db/tables.js';
+import { Database } from '@ytpm/core/db/database';
+import { meta } from '@ytpm/core/db/tables';
 import * as playlists from '../playlists/playlists.repository.js';
 import * as videos from '../videos/videos.repository.js';
 import * as sync from './sync.repository.js';
