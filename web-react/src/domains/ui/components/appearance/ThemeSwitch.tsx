@@ -5,8 +5,8 @@ import { useColorScheme } from '@mui/material/styles';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useEffect } from 'react';
-import { useAppDispatch, useAppSelector } from '../../../app/store';
-import { setTheme, type ThemeChoice } from '../ui.slice';
+import { useAppDispatch, useAppSelector } from '../../../../app/store';
+import { setTheme, type ThemeChoice } from '../../ui.slice';
 import styles from './ThemeSwitch.module.scss';
 
 const CHOICES: { value: ThemeChoice; label: string; icon: React.ReactNode }[] = [

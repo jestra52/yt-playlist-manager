@@ -4,7 +4,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 import { Provider } from 'react-redux';
 import type { AppStore } from './app/store';
-import { AppShell } from './domains/ui/components/AppShell';
+import { AppShell } from './domains/ui/components/layout/AppShell';
 import { theme } from './domains/ui/theme';
 import styles from './App.module.scss';
 

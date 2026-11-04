@@ -2,8 +2,8 @@ import MenuIcon from '@mui/icons-material/Menu';
 import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { useAppDispatch, useAppSelector } from '../../../app/store';
-import { toggleSidebar } from '../ui.slice';
+import { useAppDispatch, useAppSelector } from '../../../../app/store';
+import { toggleSidebar } from '../../ui.slice';
 import styles from './AppShell.module.scss';
 import { Sidebar } from './Sidebar';
 

@@ -1,7 +1,7 @@
 import Link from '@mui/material/Link';
 import { Brand } from './Brand';
 import styles from './Sidebar.module.scss';
-import { ThemeSwitch } from './ThemeSwitch';
+import { ThemeSwitch } from '../appearance/ThemeSwitch';
 
 const SOURCE_URL = 'https://github.com/jestra52/yt-playlist-manager';
 
