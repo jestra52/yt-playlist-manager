@@ -1,5 +1,5 @@
 import { and, asc, count, eq, gt, sql } from 'drizzle-orm';
-import { meta, playlists, videos } from '../../core/db/tables.js';
+import { meta, playlists, videos } from '@ytpm/core/db/tables';
 
 /**
  * Sync bookkeeping in the local SQLite database: settings, this device's sync

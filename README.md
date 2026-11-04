@@ -85,13 +85,13 @@ api/                         .NET 10 solution (YtPlaylist.slnx)
 packages/core/                shared logic in TypeScript, no UI (also for the React app, #23)
   src/videos/                 youtube.ts (parsing YouTube links), artist.ts (guessing artists)
   src/playlists/              report.ts, report-compare.ts (reports), youtube-sync.ts (YouTube comparison)
+  src/db/                     SQLite wrapper (sql.js + Drizzle), tables.ts, generated migrations, IndexedDB persistence
 web/
   scripts/write-redirects.mjs  writes the Netlify /api proxy rule from API_ORIGIN
   public/_headers            security headers (CSP) for Netlify
   src/
     app/bootstrap.js         opens the database and loads every domain
     core/
-      db/                    SQLite wrapper, Drizzle tables (tables.js), generated migrations, IndexedDB persistence
       events.js              "data changed" signal (decouples domains from sync)
       config.js              API base address
     domains/
@@ -236,13 +236,13 @@ Without installing the tool, .NET 10 can run it once at the version the project 
 
 A test (`MigrationsMatchTheModel`) fails if the model changes without a migration. The API applies pending migrations when it starts.
 
-The browser database works the same way with Drizzle ORM: edit the tables in `web/src/core/db/tables.js`, then generate a migration from `web/`:
+The browser database works the same way with Drizzle ORM: edit the tables in `packages/core/src/db/tables.ts`, then generate a migration:
 
 ```bash
-npm run db:generate   # writes src/core/db/migrations/NNNN_*.sql and its snapshot; commit them
+npm run db:generate -w packages/core   # writes packages/core/src/db/migrations/NNNN_*.sql and its snapshot; commit them
 ```
 
-The app applies new migrations when it opens the database, and CI fails if `tables.js` changes without a migration.
+The app applies new migrations when it opens the database, and CI fails if `tables.ts` changes without a migration.
 
 Linting and formatting (in `web/` and in `packages/core`):
 

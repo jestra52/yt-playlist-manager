@@ -1,6 +1,6 @@
 import { and, asc, eq, max, ne } from 'drizzle-orm';
-import { now, newId } from '../../core/db/index.js';
-import { videos } from '../../core/db/tables.js';
+import { now, newId } from '@ytpm/core/db/index';
+import { videos } from '@ytpm/core/db/tables';
 import { thumbnailFor } from '@ytpm/core/videos/youtube';
 
 const fields = {

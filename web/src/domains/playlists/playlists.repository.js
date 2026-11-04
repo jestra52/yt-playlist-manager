@@ -1,6 +1,6 @@
 import { and, asc, eq, max } from 'drizzle-orm';
-import { now, newId } from '../../core/db/index.js';
-import { playlists, videos } from '../../core/db/tables.js';
+import { now, newId } from '@ytpm/core/db/index';
+import { playlists, videos } from '@ytpm/core/db/tables';
 
 /** The playlist shape used by stores and views. */
 const fields = {

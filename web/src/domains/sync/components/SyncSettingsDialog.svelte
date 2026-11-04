@@ -2,7 +2,7 @@
     import { untrack } from 'svelte';
     import Dialog from '../../../shared/components/Dialog.svelte';
     import Icon from '../../../shared/components/Icon.svelte';
-    import { getDatabase } from '../../../core/db/index.js';
+    import { getDatabase } from '@ytpm/core/db/index';
     import { sync } from '../sync.service.svelte.js';
     import { ui } from '../../ui/ui.service.svelte.js';
     import { ChainCodeError, WORD_COUNT, defaultDeviceName, splitWords, wordsToSecret } from '../chain-code.js';

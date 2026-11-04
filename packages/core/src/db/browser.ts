@@ -1,12 +1,12 @@
-import initSqlJs from 'sql.js';
+import initSqlJs, { type SqlJsStatic } from 'sql.js';
 import wasmUrl from 'sql.js/dist/sql-wasm-browser.wasm?url';
-import { Database } from './database.js';
+import { Database, type Persistence } from './database';
 
 const DB_NAME = 'yt-playlist-manager';
 const STORE = 'files';
 const KEY = 'main.sqlite';
 
-const openIdb = () => {
+const openIdb = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
         const req = indexedDB.open(DB_NAME, 1);
         req.onupgradeneeded = () => req.result.createObjectStore(STORE);
@@ -15,7 +15,7 @@ const openIdb = () => {
     });
 };
 
-const idbRequest = (mode, fn) => {
+const idbRequest = <T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> => {
     return openIdb().then(
         (idb) =>
             new Promise((resolve, reject) => {
@@ -34,19 +34,21 @@ const idbRequest = (mode, fn) => {
 };
 
 /** Stores the SQLite file as a single blob in IndexedDB. */
-export const indexedDbPersistence = {
-    load: () => idbRequest('readonly', (s) => s.get(KEY)),
-    save: (bytes) => idbRequest('readwrite', (s) => s.put(bytes, KEY)),
+export const indexedDbPersistence: Persistence = {
+    load: () => idbRequest<ArrayBuffer | Uint8Array | undefined>('readonly', (s) => s.get(KEY)),
+    save: async (bytes) => {
+        await idbRequest('readwrite', (s) => s.put(bytes, KEY));
+    },
 };
 
-let sqlPromise;
-const loadSql = () => {
+let sqlPromise: Promise<SqlJsStatic> | undefined;
+const loadSql = (): Promise<SqlJsStatic> => {
     sqlPromise ??= initSqlJs({ locateFile: () => wasmUrl });
     return sqlPromise;
 };
 
 /** Opens the app database, restoring the last saved copy from IndexedDB. */
-export const openBrowserDatabase = async () => {
+export const openBrowserDatabase = async (): Promise<Database> => {
     const SQL = await loadSql();
     const saved = await indexedDbPersistence.load();
     const sqlDb = saved ? new SQL.Database(new Uint8Array(saved)) : new SQL.Database();
@@ -60,7 +62,6 @@ export const openBrowserDatabase = async () => {
     });
     if (!saved) await db.flush();
 
-    /** Re-reads the copy in IndexedDB (written by another tab). */
     db.reload = async () => {
         const bytes = await indexedDbPersistence.load();
         if (bytes) db.replace(new SQL.Database(new Uint8Array(bytes)));

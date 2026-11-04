@@ -46,7 +46,7 @@ export const videos = sqliteTable(
         title: text('title').notNull().default(''),
         // The YouTube channel that uploaded the video, which is often not the artist.
         author: text('author').notNull().default(''),
-        // Empty when unknown. artistSource says where it came from (see videos/artist.js),
+        // Empty when unknown. artistSource says where it came from (see videos/artist.ts),
         // so a better source can replace a guess but never a hand edit.
         artist: text('artist').notNull().default(''),
         artistSource: text('artist_source').notNull().default(''),
@@ -64,3 +64,9 @@ export const videos = sqliteTable(
     },
     (t) => [index('idx_videos_playlist').on(t.playlistId, t.position), index('idx_videos_dirty').on(t.dirty)],
 );
+
+export type MetaRow = typeof meta.$inferSelect;
+export type PlaylistRow = typeof playlists.$inferSelect;
+export type NewPlaylistRow = typeof playlists.$inferInsert;
+export type VideoRow = typeof videos.$inferSelect;
+export type NewVideoRow = typeof videos.$inferInsert;

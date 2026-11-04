@@ -151,7 +151,7 @@ flowchart LR
 | Application | `web/src/domains/*/*.service.svelte.js` | Reactive state (`$state`, `$derived`) and use cases such as `videos.addFromText` or `sync.syncNow` |
 | Domain rules | `packages/core/src` (TypeScript): `videos/youtube.ts`, `videos/artist.ts`, `playlists/report.ts`, `playlists/report-compare.ts`, `playlists/youtube-sync.ts` | Plain functions with no state or I/O: parsing links, guessing artists, writing and reading reports, comparing a playlist with YouTube. Shared with the React app (#23) |
 | Data access | `*.repository.js`, `*.client.js` | Drizzle ORM queries against the local database; HTTP calls to the API |
-| Core | `web/src/core` | SQLite wrapper, Drizzle table definitions and migrations, persistence, the data-changed signal, the API address |
+| Core | `packages/core/src/db`, `web/src/core` | SQLite wrapper (sql.js + Drizzle), table definitions and migrations, and IndexedDB persistence behind a `Persistence` interface, in TypeScript and shared with the React app; the data-changed signal and the API address in `web/src/core` |
 | API | `api/src/YtPlaylist.*` | Endpoints and auth (Api), use cases and ports (Application), entities and DTOs (Models), ID rules and limits (Domain), EF Core and YouTube clients (Infrastructure) |
 
 **The recovery hook.** Every way of replacing a chain's code goes through one step, `ChainService.RunRecoveryHookAsync`: recovering with a recovery code, **Generate a new code**, and later the cleanup of abandoned chains. It makes a new secret and new recovery codes, and `IChainStore.ResetAccessAsync` writes everything in one transaction:
