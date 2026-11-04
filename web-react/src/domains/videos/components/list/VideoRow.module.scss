@@ -1,0 +1,55 @@
+.row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--mui-palette-divider);
+
+    &:last-child {
+        border-bottom: 0;
+    }
+}
+
+.watched .title {
+    color: var(--mui-palette-text-secondary);
+}
+
+.number {
+    width: 2ch;
+    font-weight: 700;
+    text-align: right;
+}
+
+.thumb {
+    width: 120px;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 6px;
+
+    @media (max-width: 599px) {
+        width: 80px;
+    }
+}
+
+.text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.title {
+    color: inherit;
+    font-weight: 600;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+.meta {
+    color: var(--mui-palette-text-secondary);
+    font-size: 0.875rem;
+}

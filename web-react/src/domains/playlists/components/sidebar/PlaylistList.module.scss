@@ -1,0 +1,51 @@
+@use '../../../../styles/tokens' as *;
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.item {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 8px 12px;
+    color: inherit;
+    font: inherit;
+    font-size: 0.875rem;
+    text-align: left;
+    background: none;
+    border: 0;
+    border-left: 3px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+
+    &:hover {
+        background-color: rgba(231, 236, 245, 0.08);
+    }
+}
+
+.active {
+    font-weight: 600;
+    background-color: $sidebar-selected;
+    border-left-color: #ff5a4f;
+}
+
+.name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.count {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    opacity: 0.8;
+}

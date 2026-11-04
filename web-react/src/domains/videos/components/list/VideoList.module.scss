@@ -1,0 +1,12 @@
+.list {
+    margin: 24px 0 0;
+    padding: 0;
+    list-style: none;
+    background-color: var(--mui-palette-background-paper);
+    border-radius: 10px;
+}
+
+.empty {
+    margin-top: 32px;
+    color: var(--mui-palette-text-secondary);
+}

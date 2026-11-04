@@ -1,12 +1,10 @@
 import CssBaseline from '@mui/material/CssBaseline';
-import { StyledEngineProvider } from '@mui/material/styles';
-import { ThemeProvider } from '@mui/material/styles';
-import Typography from '@mui/material/Typography';
+import { StyledEngineProvider, ThemeProvider } from '@mui/material/styles';
 import { Provider } from 'react-redux';
 import type { AppStore } from './app/store';
 import { AppShell } from './domains/ui/components/layout/AppShell';
 import { theme } from './domains/ui/theme';
-import styles from './App.module.scss';
+import { PlaylistPage } from './domains/playlists/components/page/PlaylistPage';
 
 export const App = ({ store }: { store: AppStore }) => (
     <Provider store={store}>
@@ -14,13 +12,7 @@ export const App = ({ store }: { store: AppStore }) => (
             <ThemeProvider theme={theme} defaultMode="system">
                 <CssBaseline enableColorScheme />
                 <AppShell>
-                    <Typography variant="h3" component="h1" className={styles.title}>
-                        React beta
-                    </Typography>
-                    <Typography className={styles.intro}>
-                        The React version of Yuzu Tapes Playlist Manager. It runs only on this computer while it catches
-                        up with the current app; playlists and videos come next.
-                    </Typography>
+                    <PlaylistPage />
                 </AppShell>
             </ThemeProvider>
         </StyledEngineProvider>
