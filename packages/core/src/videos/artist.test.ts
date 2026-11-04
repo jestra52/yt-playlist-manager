@@ -6,12 +6,17 @@ import {
     guessedArtistPatch,
     knownArtists,
     matchKnownArtist,
-} from './artist.js';
+} from './artist';
 
 describe('guessArtist', () => {
     it('takes the artist from an auto-generated "Artist - Topic" channel first', () => {
         expect(guessArtist({ title: 'Windy Summer', author: 'Anri - Topic' })).toBe('Anri');
-        expect(guessArtist({ title: 'Someone Else - Song', author: '杏里 - Topic' })).toBe('杏里');
+        expect(
+            guessArtist({
+                title: 'Someone Else - Song',
+                author: '杏里 - Topic',
+            }),
+        ).toBe('杏里');
     });
 
     it.each([
@@ -32,7 +37,12 @@ describe('guessArtist', () => {
     });
 
     it('leaves it empty rather than guess', () => {
-        expect(guessArtist({ title: 'Untitled live recording', author: 'Jim Gutierrez' })).toBe('');
+        expect(
+            guessArtist({
+                title: 'Untitled live recording',
+                author: 'Jim Gutierrez',
+            }),
+        ).toBe('');
         expect(guessArtist({ title: 'AC/DC Back in Black', author: '' })).toBe('');
         expect(guessArtist({ title: 'Song - ', author: '' })).toBe('');
         expect(guessArtist({ title: '- Song', author: '' })).toBe('');
@@ -56,7 +66,14 @@ describe('canReplaceArtist', () => {
 
 describe('guessedArtistPatch', () => {
     it('returns the guess with its source', () => {
-        expect(guessedArtistPatch({ title: 'Anri - Windy Summer', author: '', artist: '', artistSource: '' })).toEqual({
+        expect(
+            guessedArtistPatch({
+                title: 'Anri - Windy Summer',
+                author: '',
+                artist: '',
+                artistSource: '',
+            }),
+        ).toEqual({
             artist: 'Anri',
             artistSource: 'guess',
         });
@@ -64,14 +81,24 @@ describe('guessedArtistPatch', () => {
 
     it('guesses from new metadata when given', () => {
         const video = { title: '', author: '', artist: '', artistSource: '' };
-        expect(guessedArtistPatch(video, { title: 'Song', author: 'Anri - Topic' })).toEqual({
+        expect(
+            guessedArtistPatch(video, {
+                title: 'Song',
+                author: 'Anri - Topic',
+            }),
+        ).toEqual({
             artist: 'Anri',
             artistSource: 'guess',
         });
     });
 
     it('keeps a hand edit, even an empty one', () => {
-        const video = { title: 'Anri - Windy Summer', author: '', artist: '', artistSource: 'user' };
+        const video = {
+            title: 'Anri - Windy Summer',
+            author: '',
+            artist: '',
+            artistSource: 'user',
+        };
         expect(guessedArtistPatch(video)).toEqual({});
     });
 });

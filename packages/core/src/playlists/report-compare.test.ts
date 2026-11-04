@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { compareReport, parseReport, titleKey } from './report-compare.js';
-import { buildPlaylistReport } from './report.js';
+import { compareReport, parseReport, titleKey, type ComparedVideo, type ReportComparison } from './report-compare';
+import { buildPlaylistReport } from './report';
 
 describe('parseReport', () => {
     it('reads a legacy report: numbered lines, skipping the total, blank lines and a BOM', () => {
@@ -9,9 +9,19 @@ describe('parseReport', () => {
         expect(parseReport(text)).toEqual({
             format: 'legacy',
             entries: [
-                { number: 1, title: 'Anri - Windy Summer', artist: '', youtubeId: null },
+                {
+                    number: 1,
+                    title: 'Anri - Windy Summer',
+                    artist: '',
+                    youtubeId: null,
+                },
                 { number: 2, title: '4:00 A.M.', artist: '', youtubeId: null },
-                { number: 3, title: 'https://youtu.be/dQw4w9WgXcQ', artist: '', youtubeId: 'dQw4w9WgXcQ' },
+                {
+                    number: 3,
+                    title: 'https://youtu.be/dQw4w9WgXcQ',
+                    artist: '',
+                    youtubeId: 'dQw4w9WgXcQ',
+                },
             ],
         });
     });
@@ -46,7 +56,11 @@ describe('parseReport', () => {
 
     it('reads what buildPlaylistReport writes', () => {
         const videos = [
-            { youtubeId: 'dQw4w9WgXcQ', title: '竹内まりや - Plastic Love', artist: '竹内まりや' },
+            {
+                youtubeId: 'dQw4w9WgXcQ',
+                title: '竹内まりや - Plastic Love',
+                artist: '竹内まりや',
+            },
             { youtubeId: '9bZkp7q19f0', title: '' },
             { youtubeId: 'kJQP7kiw5Fk', title: 'A | B', artist: '' },
         ];
@@ -73,8 +87,13 @@ describe('titleKey', () => {
 });
 
 describe('compareReport', () => {
-    const video = (id, title, artist = '', youtubeId = `${id}`.padEnd(11, 'x')) => ({ id, title, artist, youtubeId });
-    const compare = (text, videos) => compareReport(parseReport(text), videos);
+    const video = (id: string, title: string, artist = '', youtubeId = `${id}`.padEnd(11, 'x')) => ({
+        id,
+        title,
+        artist,
+        youtubeId,
+    });
+    const compare = (text: string, videos: ComparedVideo[]) => compareReport(parseReport(text), videos);
 
     it('finds missing entries and the video each one followed', () => {
         const result = compare('1: One\n2: Two\n3: Three\n4: Four\n5: Five', [
@@ -84,14 +103,34 @@ describe('compareReport', () => {
         ]);
         expect(result).toMatchObject({ format: 'legacy', total: 5, found: 3 });
         expect(result.missing).toEqual([
-            { number: 2, title: 'Two', artist: '', youtubeId: null, afterId: 'a' },
-            { number: 4, title: 'Four', artist: '', youtubeId: null, afterId: 'c' },
+            {
+                number: 2,
+                title: 'Two',
+                artist: '',
+                youtubeId: null,
+                afterId: 'a',
+            },
+            {
+                number: 4,
+                title: 'Four',
+                artist: '',
+                youtubeId: null,
+                afterId: 'c',
+            },
         ]);
     });
 
     it('puts entries before the first match at the start', () => {
         const result = compare('1: Gone\n2: Kept', [video('k', 'Kept')]);
-        expect(result.missing).toEqual([{ number: 1, title: 'Gone', artist: '', youtubeId: null, afterId: null }]);
+        expect(result.missing).toEqual([
+            {
+                number: 1,
+                title: 'Gone',
+                artist: '',
+                youtubeId: null,
+                afterId: null,
+            },
+        ]);
     });
 
     it('matches each video once, so repeated titles need repeated videos', () => {
@@ -103,12 +142,28 @@ describe('compareReport', () => {
         const result = compare(
             '1: https://youtu.be/dQw4w9WgXcQ\n2: Restored earlier\n3: https://youtu.be/9bZkp7q19f0',
             [
-                { id: 'r', youtubeId: 'dQw4w9WgXcQ', title: 'Never Gonna Give You Up', artist: '' },
-                { id: 'p', youtubeId: '', title: 'Restored earlier', artist: '' },
+                {
+                    id: 'r',
+                    youtubeId: 'dQw4w9WgXcQ',
+                    title: 'Never Gonna Give You Up',
+                    artist: '',
+                },
+                {
+                    id: 'p',
+                    youtubeId: '',
+                    title: 'Restored earlier',
+                    artist: '',
+                },
             ],
         );
         expect(result.missing).toEqual([
-            { number: 3, title: 'https://youtu.be/9bZkp7q19f0', artist: '', youtubeId: '9bZkp7q19f0', afterId: 'p' },
+            {
+                number: 3,
+                title: 'https://youtu.be/9bZkp7q19f0',
+                artist: '',
+                youtubeId: '9bZkp7q19f0',
+                afterId: 'p',
+            },
         ]);
     });
 
@@ -128,7 +183,13 @@ describe('compareReport', () => {
 
         const onlyAnri = compare(text, [video('a', 'Summer', 'Anri')]);
         expect(onlyAnri.missing).toEqual([
-            { number: 2, title: 'Summer', artist: 'Someone Else', youtubeId: null, afterId: 'a' },
+            {
+                number: 2,
+                title: 'Summer',
+                artist: 'Someone Else',
+                youtubeId: null,
+                afterId: 'a',
+            },
         ]);
     });
 
@@ -153,10 +214,15 @@ describe('compareReport', () => {
             '4: https://youtu.be/9bZkp7q19f0 |',
         ].join('\r\n');
 
-        const strip = ({ missing }) =>
-            missing.map(({ number, title, youtubeId, afterId }) => ({ number, title, youtubeId, afterId }));
+        const strip = ({ missing }: ReportComparison) =>
+            missing.map(({ number, title, youtubeId, afterId }) => ({
+                number,
+                title,
+                youtubeId,
+                afterId,
+            }));
         expect(strip(compare(legacy, playlist))).toEqual(strip(compare(withArtists, playlist)));
         expect(strip(compare(legacy, playlist)).map((m) => m.number)).toEqual([2, 4]);
-        expect(compare(withArtists, playlist).missing[0].artist).toBe('Miki Matsubara');
+        expect(compare(withArtists, playlist).missing[0]!.artist).toBe('Miki Matsubara');
     });
 });

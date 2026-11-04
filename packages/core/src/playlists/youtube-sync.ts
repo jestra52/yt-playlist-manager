@@ -16,19 +16,51 @@
  * Deleted videos the playlist doesn't have yet are only `added` with
  * `includeUnavailable`, as Missing items.
  */
-export const diffWithYouTube = (videos, source, { includeUnavailable = false } = {}) => {
-    const local = new Map();
+export interface LocalVideo {
+    id: string;
+    youtubeId: string;
+    unavailable?: boolean;
+}
+
+export interface SourceVideo {
+    youtubeId: string;
+    title?: string;
+    author?: string;
+    thumbnailUrl?: string;
+    unavailable?: boolean;
+}
+
+export interface SourcePlaylist {
+    source?: string;
+    partial?: boolean;
+    videos: SourceVideo[];
+}
+
+export interface YouTubeDiff<V extends LocalVideo = LocalVideo> {
+    complete: boolean;
+    added: (SourceVideo & { unavailable: boolean; afterId: string | null })[];
+    nowUnavailable: V[];
+    availableAgain: V[];
+    removed: V[];
+}
+
+export const diffWithYouTube = <V extends LocalVideo>(
+    videos: readonly V[],
+    source: SourcePlaylist,
+    { includeUnavailable = false } = {},
+): YouTubeDiff<V> => {
+    const local = new Map<string, V>();
     for (const video of videos) {
         if (video.youtubeId && !local.has(video.youtubeId)) local.set(video.youtubeId, video);
     }
     const onYouTube = new Set(source.videos.map((item) => item.youtubeId));
     const complete = source.source === 'api' && !source.partial;
 
-    const added = [];
-    const nowUnavailable = [];
-    const availableAgain = [];
-    const seen = new Set();
-    let afterId = null;
+    const added: YouTubeDiff<V>['added'] = [];
+    const nowUnavailable: V[] = [];
+    const availableAgain: V[] = [];
+    const seen = new Set<string>();
+    let afterId: string | null = null;
     for (const item of source.videos) {
         if (seen.has(item.youtubeId)) continue;
         seen.add(item.youtubeId);
@@ -40,7 +72,11 @@ export const diffWithYouTube = (videos, source, { includeUnavailable = false } =
             continue;
         }
         if (item.unavailable && !includeUnavailable) continue;
-        added.push({ ...item, unavailable: Boolean(item.unavailable), afterId });
+        added.push({
+            ...item,
+            unavailable: Boolean(item.unavailable),
+            afterId,
+        });
     }
 
     const removed = complete ? [...local.values()].filter((video) => !onYouTube.has(video.youtubeId)) : [];
@@ -48,7 +84,7 @@ export const diffWithYouTube = (videos, source, { includeUnavailable = false } =
 };
 
 /** True when applying the comparison would change something. */
-export const hasChanges = (diff, { removeMissing = false } = {}) => {
+export const hasChanges = (diff: YouTubeDiff, { removeMissing = false } = {}): boolean => {
     return (
         diff.added.length > 0 ||
         diff.nowUnavailable.length > 0 ||

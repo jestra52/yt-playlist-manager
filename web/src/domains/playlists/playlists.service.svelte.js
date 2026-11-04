@@ -3,13 +3,19 @@ import { dataChanged } from '../../core/events.js';
 import { notify } from '../ui/ui.service.svelte.js';
 import { getApiBase } from '../../core/config.js';
 import { videos, PARTIAL_IMPORT_NOTE } from '../videos/videos.service.svelte.js';
-import { listProblem, parsePlaylistId, parseYouTubeId, parseYouTubeList, videoInPlaylist } from '../videos/youtube.js';
+import {
+    listProblem,
+    parsePlaylistId,
+    parseYouTubeId,
+    parseYouTubeList,
+    videoInPlaylist,
+} from '@ytpm/core/videos/youtube';
 import { fetchYouTubePlaylist } from '../videos/playlist.client.js';
 import { fetchVideoMetadata } from '../videos/metadata.client.js';
 import { downloadTextFile } from '../../shared/download.js';
-import { buildPlaylistReport, reportFileName } from './report.js';
-import { compareReport, parseReport } from './report-compare.js';
-import { diffWithYouTube } from './youtube-sync.js';
+import { buildPlaylistReport, reportFileName } from '@ytpm/core/playlists/report';
+import { compareReport, parseReport } from '@ytpm/core/playlists/report-compare';
+import { diffWithYouTube } from '@ytpm/core/playlists/youtube-sync';
 import * as repo from './playlists.repository.js';
 
 const LAST_SELECTED_KEY = 'ytpm:selectedPlaylist';

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildPlaylistReport, reportFileName, slugify } from './report.js';
+import { buildPlaylistReport, reportFileName, slugify } from './report';
 
 describe('buildPlaylistReport', () => {
     it('lists the total, the format and every video with its artist, with CRLF line endings', () => {
@@ -10,7 +10,11 @@ describe('buildPlaylistReport', () => {
                 artist: '竹内まりや',
             },
             { youtubeId: '9bZkp7q19f0', title: 'Windy Summer', artist: 'Anri' },
-            { youtubeId: 'kJQP7kiw5Fk', title: 'Untitled live recording', artist: '' },
+            {
+                youtubeId: 'kJQP7kiw5Fk',
+                title: 'Untitled live recording',
+                artist: '',
+            },
         ]);
         expect(report).toBe(
             [
@@ -26,7 +30,11 @@ describe('buildPlaylistReport', () => {
     it('uses the link for videos without a title and keeps each video on one line', () => {
         const report = buildPlaylistReport([
             { youtubeId: 'dQw4w9WgXcQ', title: '' },
-            { youtubeId: '9bZkp7q19f0', title: 'Two\nlines', artist: 'Three\nlines | here' },
+            {
+                youtubeId: '9bZkp7q19f0',
+                title: 'Two\nlines',
+                artist: 'Three\nlines | here',
+            },
         ]);
         expect(report.split('\r\n').slice(2)).toEqual([
             '1: https://youtu.be/dQw4w9WgXcQ |',

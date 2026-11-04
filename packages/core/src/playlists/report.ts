@@ -14,21 +14,27 @@
  * read by report-compare.js.
  */
 
-import { cleanArtist } from '../videos/artist.js';
+import { cleanArtist } from '../videos/artist';
+
+export interface ReportVideo {
+    title?: string;
+    youtubeId: string;
+    artist?: string;
+}
 
 const EOL = '\r\n';
 
 /** The header line that marks a report with artists. */
 export const FORMAT_LINE = 'Format: number: title | artist';
 
-const pad = (n) => String(n).padStart(2, '0');
+const pad = (n: number): string => String(n).padStart(2, '0');
 
-const oneLine = (text) => {
+const oneLine = (text: string | null | undefined): string => {
     return (text ?? '').replace(/\s*[\r\n]+\s*/g, ' ').trim();
 };
 
 /** Builds the report text for videos already in playlist order. */
-export const buildPlaylistReport = (videos) => {
+export const buildPlaylistReport = (videos: readonly ReportVideo[]): string => {
     const lines = videos.map((video, i) => {
         const title = oneLine(video.title) || `https://youtu.be/${video.youtubeId}`;
         const artist = cleanArtist(video.artist);
@@ -42,7 +48,7 @@ export const buildPlaylistReport = (videos) => {
  * and digits of any script are kept and Latin accents are dropped, so
  * "City Pop" is "city-pop" and Japanese names stay readable.
  */
-export const slugify = (name) =>
+export const slugify = (name: string | null | undefined): string =>
     (name ?? '')
         // NFKD turns full-width letters into plain ones and splits off accents;
         // NFC puts back the marks other scripts need (e.g. the dakuten in ポ).
@@ -56,7 +62,7 @@ export const slugify = (name) =>
         .replace(/-+$/, '') || 'playlist';
 
 /** `city-pop-report-2023-06-06__00-52-33.txt`, in local time. */
-export const reportFileName = (playlistName, date = new Date()) => {
+export const reportFileName = (playlistName: string, date: Date = new Date()): string => {
     const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
     const time = `${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}`;
     return `${slugify(playlistName)}-report-${day}__${time}.txt`;

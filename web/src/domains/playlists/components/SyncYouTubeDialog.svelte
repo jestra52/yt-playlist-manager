@@ -3,8 +3,8 @@
     import Dialog from '../../../shared/components/Dialog.svelte';
     import Icon from '../../../shared/components/Icon.svelte';
     import { playlists } from '../playlists.service.svelte.js';
-    import { hasChanges } from '../youtube-sync.js';
-    import { listProblem, parsePlaylistId } from '../../videos/youtube.js';
+    import { hasChanges } from '@ytpm/core/playlists/youtube-sync';
+    import { listProblem, parsePlaylistId } from '@ytpm/core/videos/youtube';
 
     /**
      * Everything about a playlist's YouTube playlist in one place: linking it

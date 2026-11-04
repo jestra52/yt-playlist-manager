@@ -1,15 +1,26 @@
 import { describe, it, expect } from 'vitest';
-import { diffWithYouTube, hasChanges } from './youtube-sync.js';
+import { diffWithYouTube, hasChanges, type SourceVideo, type YouTubeDiff } from './youtube-sync';
 
-const video = (id, youtubeId, extra = {}) => ({ id, youtubeId, title: id, unavailable: false, ...extra });
-const item = (youtubeId, extra = {}) => ({
+const video = (id: string, youtubeId: string, extra = {}) => ({
+    id,
+    youtubeId,
+    title: id,
+    unavailable: false,
+    ...extra,
+});
+const item = (youtubeId: string, extra = {}) => ({
     youtubeId,
     title: `Title ${youtubeId}`,
     author: 'A',
     thumbnailUrl: '',
     ...extra,
 });
-const fromApi = (videos, extra = {}) => ({ source: 'api', partial: false, videos, ...extra });
+const fromApi = (videos: SourceVideo[], extra = {}) => ({
+    source: 'api',
+    partial: false,
+    videos,
+    ...extra,
+});
 
 describe('diffWithYouTube', () => {
     it('adds new videos in YouTube’s order, after the video that precedes them there', () => {
@@ -29,14 +40,25 @@ describe('diffWithYouTube', () => {
             ['bbbbbbbbbbb', 'a'],
             ['bbbbbbbbbb2', 'a'],
         ]);
-        expect(diff).toMatchObject({ complete: true, nowUnavailable: [], availableAgain: [], removed: [] });
+        expect(diff).toMatchObject({
+            complete: true,
+            nowUnavailable: [],
+            availableAgain: [],
+            removed: [],
+        });
     });
 
     it('marks videos deleted on YouTube, and clears the mark when they come back', () => {
         const playlist = [video('a', 'aaaaaaaaaaa'), video('b', 'bbbbbbbbbbb', { unavailable: true })];
         const diff = diffWithYouTube(
             playlist,
-            fromApi([item('aaaaaaaaaaa', { title: 'Deleted video', unavailable: true }), item('bbbbbbbbbbb')]),
+            fromApi([
+                item('aaaaaaaaaaa', {
+                    title: 'Deleted video',
+                    unavailable: true,
+                }),
+                item('bbbbbbbbbbb'),
+            ]),
         );
         expect(diff.nowUnavailable.map((v) => v.id)).toEqual(['a']);
         expect(diff.availableAgain.map((v) => v.id)).toEqual(['b']);
@@ -72,12 +94,18 @@ describe('diffWithYouTube', () => {
         const playlist = [video('a', 'aaaaaaaaaaa'), video('o', 'ooooooooooo')];
         const partial = diffWithYouTube(
             playlist,
-            fromApi([item('aaaaaaaaaaa'), item('nnnnnnnnnnn')], { partial: true }),
+            fromApi([item('aaaaaaaaaaa'), item('nnnnnnnnnnn')], {
+                partial: true,
+            }),
         );
         expect(partial).toMatchObject({ complete: false, removed: [] });
         expect(partial.added.map((a) => a.youtubeId)).toEqual(['nnnnnnnnnnn']);
 
-        const feed = diffWithYouTube(playlist, { source: 'feed', partial: false, videos: [item('aaaaaaaaaaa')] });
+        const feed = diffWithYouTube(playlist, {
+            source: 'feed',
+            partial: false,
+            videos: [item('aaaaaaaaaaa')],
+        });
         expect(feed).toMatchObject({ complete: false, removed: [] });
     });
 
@@ -88,12 +116,23 @@ describe('diffWithYouTube', () => {
 });
 
 describe('hasChanges', () => {
-    const empty = { added: [], nowUnavailable: [], availableAgain: [], removed: [] };
+    const empty: YouTubeDiff = {
+        complete: false,
+        added: [],
+        nowUnavailable: [],
+        availableAgain: [],
+        removed: [],
+    };
 
     it('counts removals only when they will be applied', () => {
         expect(hasChanges(empty)).toBe(false);
         expect(hasChanges({ ...empty, removed: [video('r', 'rrrrrrrrrrr')] })).toBe(false);
         expect(hasChanges({ ...empty, removed: [video('r', 'rrrrrrrrrrr')] }, { removeMissing: true })).toBe(true);
-        expect(hasChanges({ ...empty, nowUnavailable: [video('a', 'aaaaaaaaaaa')] })).toBe(true);
+        expect(
+            hasChanges({
+                ...empty,
+                nowUnavailable: [video('a', 'aaaaaaaaaaa')],
+            }),
+        ).toBe(true);
     });
 });

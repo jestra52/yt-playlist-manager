@@ -1,4 +1,4 @@
-import { thumbnailFor, watchUrl } from './youtube.js';
+import { thumbnailFor, watchUrl } from '@ytpm/core/videos/youtube';
 
 const fetchJson = async (url, timeoutMs) => {
     const ctrl = new AbortController();

@@ -64,6 +64,9 @@ api/                         .NET 10 solution (YtPlaylist.slnx)
                                 HTTP clients for YouTube oEmbed, Data API and playlist feed
     YtPlaylist.Api/             ASP.NET Core minimal API: endpoints, bearer-token auth, CORS
   tests/YtPlaylist.Tests/       xUnit: validation, sync store (SQLite + PostgreSQL), YouTube clients, endpoints
+packages/core/                shared logic in TypeScript, no UI (also for the React app, #23)
+  src/videos/                 youtube.ts (parsing YouTube links), artist.ts (guessing artists)
+  src/playlists/              report.ts, report-compare.ts (reports), youtube-sync.ts (YouTube comparison)
 web/
   scripts/write-redirects.mjs  writes the Netlify /api proxy rule from API_ORIGIN
   public/_headers            security headers (CSP) for Netlify
@@ -78,17 +81,12 @@ web/
         components/                  presentation (Svelte + daisyUI)
         playlists.service.svelte.js  application: reactive state + use cases
         playlists.repository.js      data access (Drizzle ORM queries)
-        report.js                    writes the .txt report (format with artists)
-        report-compare.js            reads reports (both formats) and finds what's missing
-        youtube-sync.js              compares a playlist with its YouTube playlist
       videos/
         components/
         videos.service.svelte.js
         videos.repository.js
         metadata.client.js           external HTTP (oEmbed through /api)
         playlist.client.js           external HTTP (YouTube playlists through /api)
-        youtube.js                   domain rules: parsing YouTube links
-        artist.js                    domain rules: guessing artists, where an artist came from
       sync/
         components/
         sync.service.svelte.js       two-way sync use case + auto-sync
@@ -165,8 +163,9 @@ cp ../web/.env.example ../web/.env         # web/.env: API_URL for the dev proxy
 # 3. API on http://localhost:8787. Reads appsettings.Local.json and applies the EF Core migrations on start
 dotnet run --project src/YtPlaylist.Api
 
-# 4. web app: Vite proxies /api to API_URL (http://localhost:8787 by default)
-cd ../web && npm install && npm run dev    # http://localhost:5173
+# 4. web app: npm workspaces (web/ and packages/core) install from the repository root;
+#    Vite proxies /api to API_URL (http://localhost:8787 by default)
+cd .. && npm install && npm run dev -w web    # http://localhost:5173
 ```
 
 In the app, open the sync settings at the bottom of the sidebar and choose **Create a sync chain**. To try a second device, open the app in another browser (or a private window) and **Join with a code**. The app works without steps 1 to 3; it just stays on one device.
@@ -191,7 +190,9 @@ Tests:
 ```bash
 cd api && dotnet test                     # validation, sync store on SQLite, YouTube clients, endpoints
 TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ytplaylist dotnet test   # also on PostgreSQL
-cd web && npm test                        # services, URL parsing, SQLite repositories, sync rules
+npm test -w packages/core                 # shared logic (TypeScript): link parsing, artists, reports, YouTube sync comparison
+npm run typecheck -w packages/core        # TypeScript types of the shared logic
+cd web && npm test                        # services, SQLite repositories, sync rules
 ```
 
 Database changes: edit the entity configurations in `YtPlaylist.Infrastructure/Persistence/Configurations`, then add a migration from `api/`:
@@ -213,7 +214,7 @@ npm run db:generate   # writes src/core/db/migrations/NNNN_*.sql and its snapsho
 
 The app applies new migrations when it opens the database, and CI fails if `tables.js` changes without a migration.
 
-Linting and formatting (in `web/`):
+Linting and formatting (in `web/` and in `packages/core`):
 
 ```bash
 npm run lint          # ESLint: errors for likely bugs, warnings for clean-up
@@ -222,7 +223,7 @@ npm run format        # Prettier, using .editorconfig (4-space indent, 120 colum
 npm run format:check
 ```
 
-Rules live in `web/eslint.config.js`. In VS Code (or VSCodium), install the recommended extensions from `.vscode/extensions.json` to see ESLint errors and warnings underlined as you type.
+Rules live in `web/eslint.config.js` and `packages/core/eslint.config.js`. In VS Code (or VSCodium), install the recommended extensions from `.vscode/extensions.json` to see ESLint errors and warnings underlined as you type.
 
 ## Deploy
 

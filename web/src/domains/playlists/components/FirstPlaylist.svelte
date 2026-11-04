@@ -2,7 +2,7 @@
     import { playlists } from '../playlists.service.svelte.js';
     import { ui } from '../../ui/ui.service.svelte.js';
     import Icon from '../../../shared/components/Icon.svelte';
-    import { parsePlaylistId, videoInPlaylist } from '../../videos/youtube.js';
+    import { parsePlaylistId, videoInPlaylist } from '@ytpm/core/videos/youtube';
     import LinkChoice from '../../videos/components/LinkChoice.svelte';
 
     let name = $state('Watch later');
