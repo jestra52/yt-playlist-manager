@@ -2,6 +2,24 @@
 
 Keep your own playlists of videos (music, talks, recipes, anything you want to watch), put them in order, mark what you've watched, keep notes, and play them in place. YouTube is the first source. Each video shows its artist, guessed from YouTube and editable, and a playlist imported from YouTube can be synced with it again later. Everything is stored in a **SQLite database inside your browser**, so the app works offline. An **ASP.NET Core API** with **Entity Framework Core** syncs that database with **PostgreSQL** (Neon) so your phone and laptop stay in step. The web app is hosted on **Netlify**; the API runs as a Docker container on **Render**, and Netlify forwards `/api` to it.
 
+## Contents
+
+- [Screenshots](#screenshots)
+- [How it fits together](#how-it-fits-together)
+- [Project layout](#project-layout)
+  - [Layers](#layers) · [Styles](#styles) · [How sync works](#how-sync-works)
+- [Run it locally](#run-it-locally)
+  - [Local settings](#local-settings)
+- [Deploy](#deploy)
+  - [1. Neon](#1-create-the-database-on-neon) · [2. Render](#2-deploy-the-api-on-render) · [3. Netlify](#3-deploy-the-web-app-on-netlify) · [4. Connect your devices](#4-connect-your-devices) · [Automatic deploys](#automatic-deploys-only-what-changed)
+- [Importing YouTube playlists](#importing-youtube-playlists)
+  - [Syncing a playlist from YouTube](#syncing-a-playlist-from-youtube)
+- [Reports and Compare](#reports-and-compare)
+- [Notes and limits](#notes-and-limits)
+- [License](#license)
+- [Trademark](#trademark)
+- [Architecture](docs/architecture.md) (separate page)
+
 ## Screenshots
 
 | Light | Dark |
