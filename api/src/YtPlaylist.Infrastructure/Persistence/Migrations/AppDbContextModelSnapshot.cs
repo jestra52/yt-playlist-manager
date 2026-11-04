@@ -23,18 +23,17 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("YtPlaylist.Models.Entities.Playlist", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("id");
-
                     b.Property<string>("ChainId")
-                        .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasDefaultValue("legacy")
                         .HasColumnName("chain_id");
+
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("id");
 
                     b.Property<long>("CreatedAt")
                         .HasColumnType("bigint")
@@ -80,7 +79,7 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("updated_at");
 
-                    b.HasKey("Id");
+                    b.HasKey("ChainId", "Id");
 
                     b.HasIndex("ChainId", "Seq");
 
@@ -333,6 +332,13 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("YtPlaylist.Models.Entities.Video", b =>
                 {
+                    b.Property<string>("ChainId")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasDefaultValue("legacy")
+                        .HasColumnName("chain_id");
+
                     b.Property<string>("Id")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
@@ -355,14 +361,6 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("author");
-
-                    b.Property<string>("ChainId")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasDefaultValue("legacy")
-                        .HasColumnName("chain_id");
 
                     b.Property<long>("CreatedAt")
                         .HasColumnType("bigint")
@@ -422,9 +420,9 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(11)")
                         .HasColumnName("youtube_id");
 
-                    b.HasKey("Id");
+                    b.HasKey("ChainId", "Id");
 
-                    b.HasIndex("PlaylistId");
+                    b.HasIndex("ChainId", "PlaylistId");
 
                     b.HasIndex("ChainId", "Seq");
 

@@ -202,12 +202,48 @@ public abstract class SyncStoreTests
 
         await store.ApplyAsync(mine, new ChangeSet { Playlists = [new() { Id = id, Name = "Mine", CreatedAt = 1, UpdatedAt = 1 }] }, null, CancellationToken.None);
 
-        // Another chain can't read the row, nor overwrite it by sending the same ID with a newer time.
         Assert.Equal(0, (await store.GetChangesAsync(theirs, 0, 1000, CancellationToken.None)).Changes.Count);
-        var hijack = new ChangeSet { Playlists = [new() { Id = id, Name = "Theirs", CreatedAt = 1, UpdatedAt = 99 }] };
-        Assert.Equal(0, await store.ApplyAsync(theirs, hijack, null, CancellationToken.None));
+        var sameId = new ChangeSet { Playlists = [new() { Id = id, Name = "Theirs", CreatedAt = 1, UpdatedAt = 99 }] };
+        Assert.Equal(1, await store.ApplyAsync(theirs, sameId, null, CancellationToken.None));
         Assert.Equal("Mine", Assert.Single((await store.GetChangesAsync(mine, 0, 1000, CancellationToken.None)).Changes.Playlists).Name);
-        Assert.Equal(0, (await store.GetChangesAsync(theirs, 0, 1000, CancellationToken.None)).Changes.Count);
+        Assert.Equal("Theirs", Assert.Single((await store.GetChangesAsync(theirs, 0, 1000, CancellationToken.None)).Changes.Playlists).Name);
+    }
+
+    [Fact]
+    public async Task ALibrarySyncedInOneChainCanBeSyncedIntoAnother()
+    {
+        await using var db = this.CreateContext();
+        if (db is null)
+        {
+            return;
+        }
+        var store = new EfSyncStore(db);
+        var (old, _) = await NewChainAsync(db);
+        var (next, _) = await NewChainAsync(db);
+        var playlist = new PlaylistChange { Id = NewId("p"), Name = "City Pop", CreatedAt = 1, UpdatedAt = 5 };
+        var video = new VideoChange
+        {
+            Id = NewId("v"),
+            PlaylistId = playlist.Id,
+            YouTubeId = "dQw4w9WgXcQ",
+            Title = "Midnight Pretenders",
+            Artist = "Tomoko Aran",
+            ArtistSource = "user",
+            CreatedAt = 1,
+            UpdatedAt = 5,
+        };
+        var library = new ChangeSet { Playlists = [playlist], Videos = [video] };
+
+        Assert.Equal(2, await store.ApplyAsync(old, library, null, CancellationToken.None));
+        Assert.Equal(2, await store.ApplyAsync(next, library, null, CancellationToken.None));
+
+        var copy = (await store.GetChangesAsync(next, 0, 1000, CancellationToken.None)).Changes;
+        Assert.Equal("City Pop", Assert.Single(copy.Playlists).Name);
+        Assert.Equal("Tomoko Aran", Assert.Single(copy.Videos).Artist);
+
+        var renamed = new ChangeSet { Playlists = [playlist with { Name = "City Pop 2", UpdatedAt = 6 }] };
+        Assert.Equal(1, await store.ApplyAsync(next, renamed, null, CancellationToken.None));
+        Assert.Equal("City Pop", Assert.Single((await store.GetChangesAsync(old, 0, 1000, CancellationToken.None)).Changes.Playlists).Name);
     }
 
     [Fact]

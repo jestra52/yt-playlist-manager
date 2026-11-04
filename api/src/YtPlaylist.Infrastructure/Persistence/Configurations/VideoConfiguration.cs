@@ -11,7 +11,7 @@ public sealed class VideoConfiguration : IEntityTypeConfiguration<Video>
     {
         ArgumentNullException.ThrowIfNull(builder);
         builder.ToTable("videos");
-        builder.HasKey(v => v.Id);
+        builder.HasKey(v => new { v.ChainId, v.Id });
         builder.Property(v => v.Id).HasColumnName("id").HasMaxLength(SyncLimits.MaxIdLength);
         // Rows from before sync chains (synced with SYNC_TOKEN) belong to the legacy chain.
         builder.Property(v => v.ChainId)
@@ -44,7 +44,7 @@ public sealed class VideoConfiguration : IEntityTypeConfiguration<Video>
         builder.Property(v => v.Deleted).HasColumnName("deleted");
         builder.Property(v => v.Seq).HasColumnName("seq");
         builder.HasIndex(v => new { v.ChainId, v.Seq });
-        builder.HasIndex(v => v.PlaylistId);
+        builder.HasIndex(v => new { v.ChainId, v.PlaylistId });
         builder.HasOne<SyncChain>().WithMany().HasForeignKey(v => v.ChainId).OnDelete(DeleteBehavior.Cascade);
     }
 }
