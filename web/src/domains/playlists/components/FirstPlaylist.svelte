@@ -80,7 +80,7 @@
         Type a name, or paste a link to a YouTube playlist to bring in its videos.
     </p>
     <p class="text-sm text-base-content/65">
-        Already using YouTube Playlist Manager on another device?
+        Already using Yuzu Tapes on another device?
         <button class="link font-semibold text-base-content" type="button" onclick={() => ui.openSettings()}
             >Connect sync</button
         >

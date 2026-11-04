@@ -84,7 +84,7 @@ export const confirmationPositions = (count = 3, random = Math.random) => {
  * recovery codes aren't numbered, so pasting the whole file to join still only
  * reads the 24 words.
  */
-export const chainCodeFileText = ({ words = [], recoveryCodes = [] }, appName = 'YouTube Playlist Manager') => {
+export const chainCodeFileText = ({ words = [], recoveryCodes = [] }, appName = 'Yuzu Tapes Playlist Manager') => {
     const lines = [`${appName}: ${words.length ? 'sync chain code' : 'recovery codes'}`, ''];
     if (words.length) {
         lines.push(
