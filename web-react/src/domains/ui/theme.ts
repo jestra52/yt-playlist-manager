@@ -40,5 +40,3 @@ export const theme = createTheme({
         button: { textTransform: 'none', fontWeight: 600 },
     },
 });
-
-export const sidebar = { width: 288, background: '#16213a', backgroundDark: '#0a101c', text: '#e7ecf5' };

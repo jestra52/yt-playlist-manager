@@ -1,0 +1,13 @@
+@use '../../../styles/tokens' as *;
+
+.group :global(.MuiToggleButton-root) {
+    padding-block: 2px;
+    color: inherit;
+    border-color: $sidebar-line;
+
+    &:global(.Mui-selected),
+    &:global(.Mui-selected:hover) {
+        color: inherit;
+        background-color: $sidebar-selected;
+    }
+}

@@ -7,6 +7,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../app/store';
 import { setTheme, type ThemeChoice } from '../ui.slice';
+import styles from './ThemeSwitch.module.scss';
 
 const CHOICES: { value: ThemeChoice; label: string; icon: React.ReactNode }[] = [
     { value: 'system', label: 'Match the system', icon: <DesktopWindowsOutlined fontSize="small" /> },
@@ -30,17 +31,7 @@ export const ThemeSwitch = () => {
             value={theme}
             onChange={(_, value: ThemeChoice | null) => value && dispatch(setTheme(value))}
             aria-label="Appearance"
-            sx={{
-                '& .MuiToggleButton-root': {
-                    color: 'inherit',
-                    borderColor: 'rgba(231, 236, 245, 0.2)',
-                    py: 0.25,
-                    '&.Mui-selected, &.Mui-selected:hover': {
-                        color: 'inherit',
-                        backgroundColor: 'rgba(231, 236, 245, 0.18)',
-                    },
-                },
-            }}
+            className={styles.group}
         >
             {CHOICES.map(({ value, label, icon }) => (
                 <ToggleButton key={value} value={value} aria-label={label} title={label}>
