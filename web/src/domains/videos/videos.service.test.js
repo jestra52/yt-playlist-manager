@@ -6,7 +6,7 @@ import { onDataChanged } from '../../core/events.js';
 import { playlists } from '../playlists/playlists.service.svelte.js';
 import { ui } from '../ui/ui.service.svelte.js';
 import { videos } from './videos.service.svelte.js';
-import * as repo from './videos.repository.js';
+import * as repo from '@ytpm/core/videos/videos.repository';
 
 let SQL;
 beforeAll(async () => {
