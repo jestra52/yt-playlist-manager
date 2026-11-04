@@ -223,7 +223,7 @@ npm run format        # Prettier, using .editorconfig (4-space indent, 120 colum
 npm run format:check
 ```
 
-Rules live in `web/eslint.config.js` and `packages/core/eslint.config.js`. In VS Code (or VSCodium), install the recommended extensions from `.vscode/extensions.json` to see ESLint errors and warnings underlined as you type.
+Rules live in `packages/eslint-config` (`@ytpm/eslint-config`): `base` for JavaScript, plus `typescript`, `svelte` and `react` (JSX and hooks) parts that each package picks in its own `eslint.config.js`. In VS Code (or VSCodium), install the recommended extensions from `.vscode/extensions.json` to see ESLint errors and warnings underlined as you type.
 
 Debugging (VS Code or VSCodium, **Run and Debug**): **Web app (Edge)** or **Web app (Chrome)** starts the dev server and opens the app with breakpoints in `web/` and `packages/core` (TypeScript, through source maps); **Core: all tests** and **Core: current test file** run the shared package's Vitest tests under the debugger. The configurations are in `.vscode/launch.json` and `.vscode/tasks.json`.
 
