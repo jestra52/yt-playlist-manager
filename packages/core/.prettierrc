@@ -1,4 +1,4 @@
 {
-  "$schema": "https://json.schemastore.org/prettierrc",
-  "singleQuote": true
+    "$schema": "https://json.schemastore.org/prettierrc",
+    "singleQuote": true
 }
