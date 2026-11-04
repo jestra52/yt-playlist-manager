@@ -1,0 +1,25 @@
+{
+  "name": "@ytpm/core",
+  "private": true,
+  "version": "1.0.0",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@ytpm/eslint-config": "*",
+    "eslint": "^10.13.0",
+    "prettier": "^3.9.10",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.5"
+  }
+}

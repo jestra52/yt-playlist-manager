@@ -16,15 +16,12 @@
     "db:generate": "drizzle-kit generate"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tailwindcss/vite": "^4.3.3",
+    "@ytpm/eslint-config": "*",
     "daisyui": "^5.7.50",
     "drizzle-kit": "^0.31.11",
     "eslint": "^10.13.0",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-svelte": "^3.23.1",
-    "globals": "^17.13.0",
     "prettier": "^3.9.10",
     "prettier-plugin-svelte": "^4.1.1",
     "sass": "^1.107.0",
@@ -34,6 +31,7 @@
     "vitest": "^5.0.5"
   },
   "dependencies": {
+    "@ytpm/core": "*",
     "@scure/bip39": "^1.6.0",
     "drizzle-orm": "^0.45.4",
     "jsqr": "^1.4.0",

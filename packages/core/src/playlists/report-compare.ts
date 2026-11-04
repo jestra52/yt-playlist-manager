@@ -1,4 +1,4 @@
-import { parseYouTubeId } from '../videos/youtube.js';
+import { parseYouTubeId } from '../videos/youtube';
 
 /**
  * Report formats (see report.js). Reports without a `Format:` line are legacy
@@ -8,7 +8,39 @@ import { parseYouTubeId } from '../videos/youtube.js';
 export const FORMATS = {
     legacy: 'legacy',
     artists: 'artists',
-};
+} as const;
+
+export type ReportFormat = (typeof FORMATS)[keyof typeof FORMATS];
+
+export interface ReportEntry {
+    number: number;
+    title: string;
+    artist: string;
+    youtubeId: string | null;
+}
+
+export interface ParsedReport {
+    format: ReportFormat;
+    entries: ReportEntry[];
+}
+
+export interface ComparedVideo {
+    id: string;
+    title?: string;
+    artist?: string;
+    youtubeId?: string;
+}
+
+export interface MissingEntry extends ReportEntry {
+    afterId: string | null;
+}
+
+export interface ReportComparison {
+    format: ReportFormat;
+    total: number;
+    found: number;
+    missing: MissingEntry[];
+}
 
 const NUMBERED = /^\s*(\d+)\s*[:.)]\s*(.*\S)\s*$/u;
 const FORMAT = /^\s*Format\s*:/iu;
@@ -24,18 +56,18 @@ const WITH_ARTIST = /^(.*)\s\|(?:\s+(.*))?$/u;
  * Returns { format, entries: [{ number, title, artist, youtubeId }] }; `artist`
  * is '' in legacy reports and when the report doesn't know it.
  */
-export const parseReport = (text) => {
+export const parseReport = (text: string | null | undefined): ParsedReport => {
     const lines = (text ?? '').replace(/^\uFEFF/, '').split(/\r?\n/);
     const format = lines.some((line) => FORMAT.test(line)) ? FORMATS.artists : FORMATS.legacy;
-    const entries = [];
+    const entries: ReportEntry[] = [];
     for (const line of lines) {
         const match = line.match(NUMBERED);
         if (!match) continue;
-        let title = match[2];
+        let title = match[2]!;
         let artist = '';
         const split = format === FORMATS.artists ? title.match(WITH_ARTIST) : null;
-        if (split && split[1].trim()) {
-            title = split[1].trim();
+        if (split && split[1]!.trim()) {
+            title = split[1]!.trim();
             artist = (split[2] ?? '').trim();
         }
         const youtubeId = /^https?:\/\//i.test(title) ? parseYouTubeId(title) : null;
@@ -48,13 +80,13 @@ export const parseReport = (text) => {
  * Key two titles share when they only differ in case, spacing, punctuation or
  * full-width characters, e.g. "MAKOTO MATUSHITA FIRST LIGHT" and "Makoto Matushita - First Light".
  */
-export const titleKey = (title) =>
+export const titleKey = (title: string | null | undefined): string =>
     (title ?? '')
         .normalize('NFKC')
         .toLowerCase()
         .replace(/[^\p{L}\p{N}]+/gu, '');
 
-const push = (map, key, id) => {
+const push = (map: Map<string, string[]>, key: string | undefined, id: string): void => {
     if (key) map.set(key, [...(map.get(key) ?? []), id]);
 };
 
@@ -73,11 +105,14 @@ const push = (map, key, id) => {
  *
  * Returns { format, total, found, missing: [{ number, title, artist, youtubeId, afterId }] }.
  */
-export const compareReport = ({ format, entries }, videos) => {
-    const byTitle = new Map();
-    const byArtistAndTitle = new Map();
-    const byYouTubeId = new Map();
-    const artistOf = new Map();
+export const compareReport = (
+    { format, entries }: ParsedReport,
+    videos: readonly ComparedVideo[],
+): ReportComparison => {
+    const byTitle = new Map<string, string[]>();
+    const byArtistAndTitle = new Map<string, string[]>();
+    const byYouTubeId = new Map<string, string[]>();
+    const artistOf = new Map<string, string>();
     for (const video of videos) {
         push(byTitle, titleKey(video.title), video.id);
         push(byYouTubeId, video.youtubeId, video.id);
@@ -89,15 +124,19 @@ export const compareReport = ({ format, entries }, videos) => {
         }
     }
 
-    const used = new Set();
-    const take = (map, key, prefer = () => false) => {
+    const used = new Set<string>();
+    const take = (
+        map: Map<string, string[]>,
+        key: string | null,
+        prefer: (id: string) => boolean = () => false,
+    ): string | null => {
         const free = (key ? map.get(key) : undefined)?.filter((id) => !used.has(id)) ?? [];
         const id = free.find(prefer) ?? free[0] ?? null;
         if (id) used.add(id);
         return id;
     };
 
-    const match = (entry) => {
+    const match = (entry: ReportEntry): string | null => {
         if (entry.youtubeId) return take(byYouTubeId, entry.youtubeId);
         const key = titleKey(entry.title);
         if (format === FORMATS.artists) {
@@ -107,12 +146,17 @@ export const compareReport = ({ format, entries }, videos) => {
         return take(byTitle, key) ?? take(byArtistAndTitle, key);
     };
 
-    const missing = [];
-    let afterId = null;
+    const missing: MissingEntry[] = [];
+    let afterId: string | null = null;
     for (const entry of entries) {
         const matchId = match(entry);
         if (matchId) afterId = matchId;
         else missing.push({ ...entry, afterId });
     }
-    return { format, total: entries.length, found: entries.length - missing.length, missing };
+    return {
+        format,
+        total: entries.length,
+        found: entries.length - missing.length,
+        missing,
+    };
 };

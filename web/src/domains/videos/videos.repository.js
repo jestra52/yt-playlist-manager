@@ -1,7 +1,7 @@
 import { and, asc, eq, max, ne } from 'drizzle-orm';
 import { now, newId } from '../../core/db/index.js';
 import { videos } from '../../core/db/tables.js';
-import { thumbnailFor } from './youtube.js';
+import { thumbnailFor } from '@ytpm/core/videos/youtube';
 
 const fields = {
     id: videos.id,

@@ -1,6 +1,6 @@
 <script>
     import Icon from '../../../shared/components/Icon.svelte';
-    import { embedUrl } from '../youtube.js';
+    import { embedUrl } from '@ytpm/core/videos/youtube';
     import { videos } from '../videos.service.svelte.js';
 </script>
 

@@ -7,7 +7,7 @@ import {
     listProblem,
     parseYouTubeList,
     videoInPlaylist,
-} from './youtube.js';
+} from './youtube';
 
 describe('parseYouTubeId', () => {
     it.each([
@@ -106,7 +106,10 @@ describe('parseYouTubeList', () => {
 
     it('reads a playlist a video is played from', () => {
         expect(parseYouTubeList('www.youtube.com/watch?v=QicgfPt_k6M&list=PLsPETV9bmUbpSAj-kxXP4vzUvumC8TZUG')).toEqual(
-            { id: 'PLsPETV9bmUbpSAj-kxXP4vzUvumC8TZUG', kind: 'playlist' },
+            {
+                id: 'PLsPETV9bmUbpSAj-kxXP4vzUvumC8TZUG',
+                kind: 'playlist',
+            },
         );
     });
 
@@ -165,15 +168,27 @@ describe('watch links played from a playlist', () => {
     const link = `www.youtube.com/watch?v=QicgfPt_k6M&list=${list}`;
 
     it('name both the video and the playlist', () => {
-        expect(videoInPlaylist(link)).toEqual({ id: 'QicgfPt_k6M', listId: list });
+        expect(videoInPlaylist(link)).toEqual({
+            id: 'QicgfPt_k6M',
+            listId: list,
+        });
         expect(videoInPlaylist(`https://www.youtube.com/playlist?list=${list}`)).toBeNull();
         expect(videoInPlaylist('https://youtu.be/dQw4w9WgXcQ')).toBeNull();
         expect(videoInPlaylist('https://www.youtube.com/watch?v=CMZRJb1jxzE&list=RDCMZRJb1jxzE')).toBeNull();
     });
 
     it('add the video, or the whole playlist when asked', () => {
-        expect(extractYouTubeIds(link)).toEqual({ ids: ['QicgfPt_k6M'], playlistIds: [], invalid: [], inPlaylist: 1 });
-        expect(extractYouTubeIds(`${link} https://youtu.be/dQw4w9WgXcQ`, { wholePlaylists: true })).toEqual({
+        expect(extractYouTubeIds(link)).toEqual({
+            ids: ['QicgfPt_k6M'],
+            playlistIds: [],
+            invalid: [],
+            inPlaylist: 1,
+        });
+        expect(
+            extractYouTubeIds(`${link} https://youtu.be/dQw4w9WgXcQ`, {
+                wholePlaylists: true,
+            }),
+        ).toEqual({
             ids: ['dQw4w9WgXcQ'],
             playlistIds: [list],
             invalid: [],

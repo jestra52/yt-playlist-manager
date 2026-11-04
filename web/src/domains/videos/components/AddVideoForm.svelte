@@ -2,7 +2,7 @@
     import Icon from '../../../shared/components/Icon.svelte';
     import LinkChoice from './LinkChoice.svelte';
     import { videos } from '../videos.service.svelte.js';
-    import { extractYouTubeIds } from '../youtube.js';
+    import { extractYouTubeIds } from '@ytpm/core/videos/youtube';
 
     let { playlistId } = $props();
     let text = $state('');
