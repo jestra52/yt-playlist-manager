@@ -9,7 +9,7 @@ Keep your own playlists of videos (music, talks, recipes, anything you want to w
 - [Project layout](#project-layout)
   - [Layers](#layers) · [Styles](#styles) · [How sync works](#how-sync-works)
 - [Run it locally](#run-it-locally)
-  - [Local settings](#local-settings)
+  - [React beta (web-react)](#react-beta-web-react) · [Local settings](#local-settings)
 - [Deploy](#deploy)
   - [1. Neon](#1-create-the-database-on-neon) · [2. Render](#2-deploy-the-api-on-render) · [3. Netlify](#3-deploy-the-web-app-on-netlify) · [4. Connect your devices](#4-connect-your-devices) · [Automatic deploys](#automatic-deploys-only-what-changed)
 - [Importing YouTube playlists](#importing-youtube-playlists)
@@ -189,6 +189,18 @@ cd .. && npm install && npm run dev -w web    # http://localhost:5173
 In the app, open the sync settings at the bottom of the sidebar and choose **Create a sync chain**. To try a second device, open the app in another browser (or a private window) and **Join with a code**. The app works without steps 1 to 3; it just stays on one device.
 
 **Using a hosted database locally:** if `DATABASE_URL` in `appsettings.Local.json` points at a hosted database instead of the local one, the API applies its pending migrations there when it starts. To try a branch that changes the database without touching production, point the API at a copy instead: on Neon, create a branch of the database and set `DATABASE_URL` to its connection string for that run (an environment variable wins over the settings file). Delete the branch when you're done. A Neon branch inherits its parent's roles **and passwords**, so its connection string carries the production password: keep it out of anything shared or committed, or create a separate role on the branch for testing.
+
+### React beta (web-react)
+
+The app is being rewritten in React with Material UI, Redux Toolkit and TypeScript (#23), in `web-react/`, next to the Svelte app. It runs only locally and is never deployed: Netlify builds `web/`, and its build-skip check ignores `web-react/`.
+
+```bash
+cp web-react/.env.example web-react/.env   # optional: API_URL for the dev proxy (defaults to http://localhost:8787)
+npm install && npm run dev -w web-react    # http://localhost:5174
+npm test -w web-react                      # Vitest + React Testing Library
+```
+
+It shares `packages/core` with the Svelte app and uses the `react` part of the shared lint rules. CI checks it in its own **Web app (React beta)** job, which isn't a required check.
 
 ### Local settings
 
