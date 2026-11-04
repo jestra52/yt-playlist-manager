@@ -53,7 +53,10 @@
             <rect x="5" y="20.6" width="9" height="3.4" rx="1.7" fill="currentColor" />
             <path d="M20.5 17.5v8.5l7-4.25z" fill="var(--color-primary)" />
         </svg>
-        <span>YouTube Playlist Manager</span>
+        <span class="flex flex-col">
+            <span>Yuzu Tapes</span>
+            <span class="brand-sub">Playlist Manager</span>
+        </span>
     </div>
 
     <ul class="menu playlist-menu w-full gap-0.5 p-0">
@@ -151,8 +154,16 @@
 
     // The name is long for the 18rem sidebar: smaller type, two lines if needed.
     .brand {
-        @include display(1.1rem);
-        line-height: 1.15;
+        @include display(1.25rem);
+        line-height: 1.1;
+    }
+
+    .brand-sub {
+        font-family: inherit;
+        font-size: 0.75rem;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        opacity: 0.7;
     }
 
     // daisyUI's menu-active uses the neutral color, which is this panel's

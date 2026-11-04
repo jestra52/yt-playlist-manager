@@ -35,7 +35,7 @@ describe('chain code words', () => {
         expect(wordsToSecret(text)).toBe(SECRET);
 
         const codesOnly = chainCodeFileText({ recoveryCodes });
-        expect(codesOnly).toMatch(/^YouTube Playlist Manager: recovery codes/);
+        expect(codesOnly).toMatch(/^Yuzu Tapes Playlist Manager: recovery codes/);
         expect(codesOnly).not.toContain('24 words');
     });
 
