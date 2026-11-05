@@ -6,7 +6,6 @@ import { PlayerPanel } from '../../../videos/components/player/PlayerPanel';
 import { VideoToolbar } from '../../../videos/components/toolbar/VideoToolbar';
 import { selectSelectedPlaylist } from '../../playlists.selectors';
 import { FirstPlaylist } from './FirstPlaylist';
-import styles from './PlaylistPage.module.scss';
 import { PlaylistHeader } from './PlaylistHeader';
 
 export const PlaylistPage = () => {
@@ -15,7 +14,7 @@ export const PlaylistPage = () => {
     if (!playlist) return <FirstPlaylist />;
 
     return (
-        <section className={styles.page}>
+        <section>
             <PlayerPanel />
             <Fragment key={playlist.id}>
                 <PlaylistHeader playlist={playlist} />
