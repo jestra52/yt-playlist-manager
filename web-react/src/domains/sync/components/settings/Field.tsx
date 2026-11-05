@@ -12,7 +12,9 @@ export const Field = ({ label, hint, problem, children }: FieldProps) => (
         <span className="fieldset-legend">{label}</span>
         {children}
         {(problem || hint) && (
-            <span className={`label whitespace-normal ${problem ? 'text-error' : ''}`}>{problem || hint}</span>
+            <span className={`label whitespace-normal ${problem ? 'text-error' : ''}`}>
+                <span>{problem || hint}</span>
+            </span>
         )}
     </label>
 );

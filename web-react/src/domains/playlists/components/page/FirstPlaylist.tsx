@@ -90,7 +90,7 @@ export const FirstPlaylist = () => {
             <p className="text-base-content/65 m-0 text-sm">
                 Already using Yuzu Tapes on another device?{' '}
                 <button
-                    className={`link text-base-content ${styles.connect}`}
+                    className="link text-base-content font-semibold"
                     type="button"
                     onClick={() => dispatch(openSettings())}
                 >

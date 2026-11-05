@@ -1,7 +1,6 @@
 import { type ReactNode, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../../shared/components/Icon';
-import styles from './AppDialog.module.scss';
 import { trackDialog } from './openDialogs';
 import type { DialogControls } from './useDialog';
 
@@ -42,7 +41,7 @@ export const AppDialog = ({ open, onClose, onExited, title, actions, children }:
     return createPortal(
         <dialog
             ref={dialogRef}
-            className={`modal modal-bottom sm:modal-middle ${styles.dialog}`}
+            className="modal modal-bottom sm:modal-middle"
             aria-labelledby={titleId}
             onCancel={(event) => {
                 event.preventDefault();
@@ -52,7 +51,7 @@ export const AppDialog = ({ open, onClose, onExited, title, actions, children }:
                 if (open && !event.currentTarget.open) onClose();
             }}
         >
-            <div className={`modal-box ${styles.box}`}>
+            <div className="modal-box">
                 <button
                     className="btn btn-sm btn-circle btn-ghost absolute top-3 right-3"
                     type="button"
@@ -61,13 +60,13 @@ export const AppDialog = ({ open, onClose, onExited, title, actions, children }:
                 >
                     <Icon name="close" size={16} />
                 </button>
-                <h2 id={titleId} className={`font-display text-2xl font-bold tracking-tight ${styles.title}`}>
+                <h2 id={titleId} className="font-display mb-2 pr-10 text-2xl font-bold tracking-tight">
                     {title}
                 </h2>
                 <div className="min-w-0">{children}</div>
                 {actions && <div className="modal-action">{actions}</div>}
             </div>
-            <div className={`modal-backdrop ${styles.backdrop}`} aria-hidden="true">
+            <div className="modal-backdrop" aria-hidden="true">
                 <button type="button" tabIndex={-1} onClick={onClose}>
                     Close
                 </button>

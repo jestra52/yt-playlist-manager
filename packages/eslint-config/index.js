@@ -139,13 +139,13 @@ export const react = [
         },
         rules: {
             '@eslint-react/rules-of-hooks': 'off',
-            // Styles live in *.module.scss files and the Material UI theme, not in components.
+            // Styles live in class names and *.module.scss files, not in components.
             'no-restricted-syntax': [
                 'error',
                 ...sqlSafety,
                 {
-                    selector: 'JSXAttribute[name.name=/^(sx|style)$/]',
-                    message: 'Move these styles into a *.module.scss file (className) or the Material UI theme.',
+                    selector: 'JSXAttribute[name.name=/^style$/]',
+                    message: 'Use class names or a *.module.scss file instead.',
                 },
             ],
         },
