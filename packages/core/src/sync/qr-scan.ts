@@ -31,8 +31,21 @@ export const readScannedCode = (text: string | null | undefined): ScannedCode | 
     return null;
 };
 
-/** True when this browser can show the camera at all (it may still be refused). */
-export const canScan = (): boolean => typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia);
+/** True on phones and tablets. Chrome reports tablets as not mobile, so the pointer counts too. */
+const isHandheld = (): boolean => {
+    const { userAgentData } = navigator as Navigator & { userAgentData?: { mobile?: boolean } };
+    return (
+        Boolean(userAgentData?.mobile) ||
+        Boolean(globalThis.matchMedia?.('(pointer: coarse) and (hover: none)').matches)
+    );
+};
+
+/**
+ * True when scanning makes sense here: a phone or tablet that can show the camera (it
+ * may still be refused). On a computer, typing or pasting the code is easier.
+ */
+export const canScan = (): boolean =>
+    typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia) && isHandheld();
 
 /** A function that reads the text of a QR code in a video frame, or null when there's none. */
 const createDecoder = async (): Promise<Decoder> => {
