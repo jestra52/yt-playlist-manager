@@ -1,6 +1,7 @@
 import Link from '@mui/material/Link';
 import { NewPlaylistForm } from '../../../playlists/components/sidebar/NewPlaylistForm';
 import { PlaylistList } from '../../../playlists/components/sidebar/PlaylistList';
+import { SyncStatus } from '../../../sync/components/status/SyncStatus';
 import { Brand } from './Brand';
 import styles from './Sidebar.module.scss';
 import { ThemeSwitch } from '../appearance/ThemeSwitch';
@@ -13,6 +14,7 @@ export const Sidebar = () => (
         <PlaylistList />
         <NewPlaylistForm />
         <div className={styles.footer}>
+            <SyncStatus />
             <div className={styles.footerRow}>
                 <span>Appearance</span>
                 <ThemeSwitch />

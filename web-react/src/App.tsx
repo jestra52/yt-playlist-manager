@@ -7,6 +7,7 @@ import { AppShell } from './domains/ui/components/layout/AppShell';
 import { ThemeSync } from './domains/ui/components/appearance/ThemeSync';
 import { theme } from './domains/ui/theme';
 import { PlaylistPage } from './domains/playlists/components/page/PlaylistPage';
+import { SyncSettingsDialog } from './domains/sync/components/settings/SyncSettingsDialog';
 
 export const App = ({ store }: { store: AppStore }) => (
     <Provider store={store}>
@@ -17,6 +18,7 @@ export const App = ({ store }: { store: AppStore }) => (
                 <AppShell>
                     <PlaylistPage />
                 </AppShell>
+                <SyncSettingsDialog />
                 <Notices />
             </ThemeProvider>
         </StyledEngineProvider>

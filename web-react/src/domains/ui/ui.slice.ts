@@ -14,6 +14,7 @@ export interface UiState {
     theme: ThemeChoice;
     sidebarOpen: boolean;
     importing: boolean;
+    settingsOpen: boolean;
     notices: Notice[];
 }
 
@@ -37,7 +38,13 @@ export const saveTheme = (theme: ThemeChoice): void => {
     }
 };
 
-const initialState: UiState = { theme: 'system', sidebarOpen: false, importing: false, notices: [] };
+const initialState: UiState = {
+    theme: 'system',
+    sidebarOpen: false,
+    importing: false,
+    settingsOpen: false,
+    notices: [],
+};
 
 export const uiSlice = createSlice({
     name: 'ui',
@@ -51,6 +58,12 @@ export const uiSlice = createSlice({
         },
         setImporting: (state, { payload }: PayloadAction<boolean>) => {
             state.importing = payload;
+        },
+        openSettings: (state) => {
+            state.settingsOpen = true;
+        },
+        closeSettings: (state) => {
+            state.settingsOpen = false;
         },
         notify: {
             reducer: (state, { payload }: PayloadAction<Notice>) => {
@@ -69,4 +82,5 @@ export const uiSlice = createSlice({
     },
 });
 
-export const { setTheme, toggleSidebar, setImporting, notify, dismissNotice } = uiSlice.actions;
+export const { setTheme, toggleSidebar, setImporting, openSettings, closeSettings, notify, dismissNotice } =
+    uiSlice.actions;
