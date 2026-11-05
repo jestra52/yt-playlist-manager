@@ -1,0 +1,26 @@
+@use '../../../../styles/tokens' as *;
+
+.screen {
+    display: grid;
+    place-content: center;
+    min-height: 100vh;
+    padding: 32px;
+    font-family: 'Figtree', system-ui, sans-serif;
+}
+
+.alert {
+    max-width: 32rem;
+    padding: 16px 20px;
+    border: 1px solid #d0312c;
+    border-radius: 12px;
+
+    p {
+        margin: 8px 0 0;
+    }
+}
+
+.title {
+    margin: 0;
+    font-family: $font-display;
+    font-size: 1.25rem;
+}
