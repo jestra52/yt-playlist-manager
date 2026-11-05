@@ -51,7 +51,7 @@ describe('App', () => {
         const store = createStore({ ui: { theme: 'system', sidebarOpen: true } });
         render(<App store={store} />);
         expect(screen.getAllByText('Yuzu Tapes').length).toBeGreaterThan(0);
-        fireEvent.click(screen.getAllByRole('button', { name: 'Dark' })[0]!);
+        fireEvent.click(screen.getAllByRole('radio', { name: 'Dark' })[0]!);
         expect(store.getState().ui.theme).toBe('dark');
     });
 });

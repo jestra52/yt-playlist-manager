@@ -1,16 +1,12 @@
-import DarkModeOutlined from '@mui/icons-material/DarkModeOutlined';
-import DesktopWindowsOutlined from '@mui/icons-material/DesktopWindowsOutlined';
-import LightModeOutlined from '@mui/icons-material/LightModeOutlined';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
+import { Icon, type IconName } from '../../../../shared/components/Icon';
 import { setTheme, type ThemeChoice } from '../../ui.slice';
 import styles from './ThemeSwitch.module.scss';
 
-const CHOICES: { value: ThemeChoice; label: string; icon: React.ReactNode }[] = [
-    { value: 'system', label: 'Match the system', icon: <DesktopWindowsOutlined fontSize="small" /> },
-    { value: 'light', label: 'Light', icon: <LightModeOutlined fontSize="small" /> },
-    { value: 'dark', label: 'Dark', icon: <DarkModeOutlined fontSize="small" /> },
+const CHOICES: { value: ThemeChoice; label: string; icon: IconName }[] = [
+    { value: 'system', label: 'Match system', icon: 'monitor' },
+    { value: 'light', label: 'Light', icon: 'sun' },
+    { value: 'dark', label: 'Dark', icon: 'moon' },
 ];
 
 export const ThemeSwitch = () => {
@@ -18,19 +14,21 @@ export const ThemeSwitch = () => {
     const dispatch = useAppDispatch();
 
     return (
-        <ToggleButtonGroup
-            size="small"
-            exclusive
-            value={theme}
-            onChange={(_, value: ThemeChoice | null) => value && dispatch(setTheme(value))}
-            aria-label="Appearance"
-            className={styles.group}
-        >
+        <div className="join" role="radiogroup" aria-label="Appearance">
             {CHOICES.map(({ value, label, icon }) => (
-                <ToggleButton key={value} value={value} aria-label={label} title={label}>
-                    {icon}
-                </ToggleButton>
+                <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={theme === value}
+                    aria-label={label}
+                    title={label}
+                    className={`btn btn-xs btn-square join-item ${styles.choice}`}
+                    onClick={() => dispatch(setTheme(value))}
+                >
+                    <Icon name={icon} size={14} />
+                </button>
             ))}
-        </ToggleButtonGroup>
+        </div>
     );
 };
