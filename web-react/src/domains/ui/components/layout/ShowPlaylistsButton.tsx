@@ -8,7 +8,7 @@ export const ShowPlaylistsButton = ({ className = '' }: { className?: string }) 
     return (
         <button
             type="button"
-            className={`btn btn-ghost btn-square -ml-2 md:hidden ${className}`}
+            className={`btn btn-ghost btn-square -ml-2 lg:hidden ${className}`}
             aria-label="Show playlists"
             onClick={() => dispatch(toggleSidebar(true))}
         >

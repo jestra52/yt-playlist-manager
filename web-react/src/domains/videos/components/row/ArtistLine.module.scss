@@ -1,54 +1,62 @@
-.line {
+$text: var(--color-base-content);
+
+.byline {
     margin: 2px 0 0;
-    color: var(--mui-palette-text-secondary);
-    font-size: 0.875rem;
-}
-
-.label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-}
-
-.input {
-    width: 100%;
-    max-width: 320px;
-    padding: 2px 6px;
-    color: var(--mui-palette-text-primary);
-    font: inherit;
-    background-color: var(--mui-palette-background-default);
-    border: 1px solid var(--mui-palette-divider);
-    border-radius: 6px;
+    overflow-wrap: anywhere;
 }
 
 .artist,
-.add,
-.guessed {
+.guessed,
+.add {
     padding: 0;
     color: inherit;
     font: inherit;
     background: none;
     border: 0;
-    cursor: pointer;
 }
 
 .artist {
-    color: var(--mui-palette-text-primary);
+    color: color-mix(in srgb, $text 85%, transparent);
     font-weight: 600;
+    text-align: left;
+    cursor: text;
 
     &:hover {
-        text-decoration: underline;
+        text-decoration: underline dotted;
     }
 }
 
-.add {
-    text-decoration: underline;
+.guessed {
+    display: inline-grid;
+    place-items: center;
+    margin-left: 0.25em;
+    color: color-mix(in srgb, $text 45%, transparent);
+    vertical-align: -0.1em;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+        color: $text;
+    }
 }
 
-.guessed {
-    margin-left: 4px;
-    font-size: 0.8125rem;
-    vertical-align: -1px;
+.separator {
+    margin-inline: 0.35em;
+}
+
+.add {
+    text-decoration: underline dotted;
+    cursor: text;
+    opacity: 0;
+    transition: opacity 150ms ease;
+
+    :global(.list-row):hover &,
+    &:focus-visible {
+        opacity: 1;
+    }
+
+    // No hover on phones, so it always shows there.
+    @media (max-width: 767px) {
+        opacity: 1;
+    }
 }

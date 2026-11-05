@@ -1,9 +1,7 @@
-import Button from '@mui/material/Button';
 import type { Video } from '@ytpm/core/videos/videos.repository';
 import { useState } from 'react';
 import { useAppDispatch } from '../../../../app/store';
 import { completeVideo } from '../../videos.thunks';
-import styles from './CompleteLinkForm.module.scss';
 
 export const CompleteLinkForm = ({ video, title }: { video: Video; title: string }) => {
     const [link, setLink] = useState('');
@@ -12,7 +10,7 @@ export const CompleteLinkForm = ({ video, title }: { video: Video; title: string
 
     return (
         <form
-            className={styles.form}
+            className="join mt-2 w-full max-w-xl"
             onSubmit={async (event) => {
                 event.preventDefault();
                 if (!link.trim() || saving) return;
@@ -24,12 +22,12 @@ export const CompleteLinkForm = ({ video, title }: { video: Video; title: string
                 }
             }}
         >
-            <label className={styles.label} htmlFor={`link-${video.id}`}>
+            <label className="sr-only" htmlFor={`link-${video.id}`}>
                 YouTube link for {title}
             </label>
             <input
                 id={`link-${video.id}`}
-                className={styles.input}
+                className="input input-sm join-item min-w-0 flex-1"
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
                 placeholder={
@@ -42,9 +40,10 @@ export const CompleteLinkForm = ({ video, title }: { video: Video; title: string
                 inputMode="url"
                 disabled={saving}
             />
-            <Button type="submit" variant="contained" size="small" disabled={!link.trim() || saving}>
+            <button className="btn btn-sm btn-primary join-item" type="submit" disabled={!link.trim() || saving}>
+                {saving && <span className="loading loading-spinner loading-xs" />}
                 Save
-            </Button>
+            </button>
         </form>
     );
 };

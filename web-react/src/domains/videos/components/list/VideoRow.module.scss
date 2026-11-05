@@ -1,76 +1,36 @@
 .row {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--mui-palette-divider);
+    padding-inline: 0.75rem;
     content-visibility: auto;
     contain-intrinsic-size: auto 96px;
 
-    &:last-child {
-        border-bottom: 0;
+    // Painting stays inside the row otherwise, which would cut off the move menu.
+    &:has(details[open]) {
+        content-visibility: visible;
     }
-}
 
-.playing {
-    box-shadow: inset 3px 0 0 var(--mui-palette-primary-main);
-}
-
-.thumbButton {
-    flex-shrink: 0;
-    padding: 0;
-    background: none;
-    border: 0;
-    cursor: pointer;
-}
-
-.plainTitle {
-    margin: 0;
-    font-weight: 600;
-    overflow-wrap: anywhere;
-}
-
-.watched .title {
-    color: var(--mui-palette-text-secondary);
-}
-
-.number {
-    width: 2ch;
-    font-weight: 700;
-    text-align: right;
-}
-
-.thumb {
-    display: block;
-    width: 120px;
-    aspect-ratio: 16 / 9;
-    object-fit: cover;
-    border-radius: 6px;
-
-    @media (max-width: 599px) {
-        width: 80px;
+    &[data-playing] {
+        box-shadow: inset 3px 0 0 var(--color-primary);
     }
-}
-
-.text {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
 }
 
 .title {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
     color: inherit;
+    font-size: 1.125rem;
     font-weight: 600;
-    text-decoration: none;
-    overflow-wrap: anywhere;
+    line-height: 1.3;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
 
-    &:hover {
-        text-decoration: underline;
+    @media (max-width: 767px) {
+        font-size: 1rem;
     }
 }
 
-.meta {
-    color: var(--mui-palette-text-secondary);
-    font-size: 0.875rem;
+.watched .title,
+.watched img {
+    opacity: 0.55;
 }

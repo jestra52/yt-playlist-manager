@@ -22,7 +22,7 @@ export const VideoNotes = ({ video, editing, onEditingChange }: VideoNotesProps)
     if (editing) {
         return (
             <textarea
-                className={styles.field}
+                className="textarea textarea-sm mt-2 w-full"
                 aria-label={`Notes for ${video.title || video.youtubeId}`}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}

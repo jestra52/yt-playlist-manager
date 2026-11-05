@@ -1,7 +1,7 @@
-import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import type { Video } from '@ytpm/core/videos/videos.repository';
 import { useState } from 'react';
 import { useAppDispatch } from '../../../../app/store';
+import { Icon } from '../../../../shared/components/Icon';
 import { saveArtist } from '../../videos.thunks';
 import styles from './ArtistLine.module.scss';
 
@@ -30,13 +30,13 @@ export const ArtistLine = ({ video, title }: { video: Video; title: string }) =>
 
     if (editing) {
         return (
-            <p className={styles.line}>
-                <label className={styles.label} htmlFor={`artist-${video.id}`}>
+            <p className={`text-base-content/65 text-sm ${styles.byline}`}>
+                <label className="sr-only" htmlFor={`artist-${video.id}`}>
                     Artist of {title}
                 </label>
                 <input
                     id={`artist-${video.id}`}
-                    className={styles.input}
+                    className="input input-xs w-full max-w-xs text-sm"
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     onBlur={close}
@@ -60,8 +60,15 @@ export const ArtistLine = ({ video, title }: { video: Video; title: string }) =>
 
     if (!video.artist) {
         return (
-            <p className={styles.line}>
-                {video.author && <span>{video.author} · </span>}
+            <p className={`text-base-content/65 text-sm ${styles.byline}`}>
+                {video.author && (
+                    <>
+                        {video.author}
+                        <span className={styles.separator} aria-hidden="true">
+                            ·
+                        </span>
+                    </>
+                )}
                 <button type="button" className={styles.add} onClick={open}>
                     Add artist
                 </button>
@@ -71,7 +78,7 @@ export const ArtistLine = ({ video, title }: { video: Video; title: string }) =>
 
     const showChannel = Boolean(video.author) && channelName(video.author) !== video.artist.toLowerCase();
     return (
-        <p className={styles.line}>
+        <p className={`text-base-content/65 text-sm ${styles.byline}`}>
             <button type="button" className={styles.artist} title="Edit the artist" onClick={open}>
                 {video.artist}
             </button>
@@ -83,10 +90,17 @@ export const ArtistLine = ({ video, title }: { video: Video; title: string }) =>
                     aria-label="Artist guessed from YouTube, may be wrong. Correct it"
                     onClick={open}
                 >
-                    <InfoOutlined fontSize="inherit" />
+                    <Icon name="info" size={13} />
                 </button>
             )}
-            {showChannel && <span> · uploaded by {video.author}</span>}
+            {showChannel && (
+                <>
+                    <span className={styles.separator} aria-hidden="true">
+                        ·
+                    </span>
+                    uploaded by {video.author}
+                </>
+            )}
         </p>
     );
 };

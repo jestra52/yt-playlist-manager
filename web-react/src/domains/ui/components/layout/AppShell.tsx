@@ -9,7 +9,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
     const dispatch = useAppDispatch();
 
     return (
-        <div className="drawer md:drawer-open min-h-screen">
+        <div className="drawer lg:drawer-open min-h-screen">
             <input
                 id={TOGGLE_ID}
                 type="checkbox"
