@@ -20,21 +20,22 @@ import {
 } from '@ytpm/core/videos/videos.repository';
 import { extractYouTubeIds, parseYouTubeId, thumbnailFor } from '@ytpm/core/videos/youtube';
 import type { AppThunk } from '../../app/store';
+import { selectApiUrl } from '../sync/sync.selectors';
 import { notify, setImporting } from '../ui/ui.slice';
 import { selectAllVideos, selectPlaying } from './videos.selectors';
-import { changed, loaded, played, playerClosed, removed, upserted } from './videos.slice';
+import { changed, played, playerClosed, removed, replaced, upserted } from './videos.slice';
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** Fetches titles for videos that don't have one yet, three at a time. */
 export const enrichMetadata =
     (videos: readonly Video[]): AppThunk<Promise<void>> =>
-    async (dispatch) => {
+    async (dispatch, getState) => {
         const queue = [...videos];
         const worker = async () => {
             while (queue.length) {
                 const video = queue.shift()!;
-                const meta = await fetchVideoMetadata(video.youtubeId);
+                const meta = await fetchVideoMetadata(video.youtubeId, selectApiUrl(getState()));
                 if (!meta || meta.unavailable) continue;
                 const db = getDatabase();
                 const current = getVideo(db, video.id);
@@ -223,7 +224,7 @@ export const completeVideo =
         }
         const linked = updateVideo(db, id, { youtubeId, thumbnailUrl: thumbnailFor(youtubeId), unavailable: false });
         if (linked) dispatch(changed(linked));
-        const meta = await fetchVideoMetadata(youtubeId);
+        const meta = await fetchVideoMetadata(youtubeId, selectApiUrl(getState()));
         const current = getVideo(getDatabase(), id);
         if (meta && !meta.unavailable && current?.youtubeId === youtubeId) {
             const updated = updateVideo(getDatabase(), id, { ...meta, ...guessedArtistPatch(current, meta) });
@@ -286,7 +287,7 @@ export const applyYouTubeDiff =
             return inserted;
         });
         // Reloading also stops the player when the video playing was removed.
-        dispatch(loaded(listVideos(db)));
+        dispatch(replaced(listVideos(db)));
         return {
             added: added.filter((v) => !v.unavailable).length,
             addedMissing: added.filter((v) => v.unavailable).length,
