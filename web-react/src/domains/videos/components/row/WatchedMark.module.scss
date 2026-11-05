@@ -1,0 +1,62 @@
+$compact: 767px;
+
+.mark {
+    margin-top: 0.15rem;
+
+    // daisyUI styles aria-pressed buttons as active; the check mark is enough.
+    &[aria-pressed='true'] {
+        background: transparent;
+        border-color: transparent;
+        box-shadow: none;
+    }
+
+    &:hover {
+        background: color-mix(in srgb, var(--color-success) 12%, transparent);
+        border-color: transparent;
+    }
+}
+
+.number {
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    letter-spacing: -0.025em;
+    white-space: nowrap;
+
+    .mark:hover & {
+        color: var(--color-success);
+    }
+
+    @media (max-width: $compact) {
+        font-size: 1.4rem;
+    }
+}
+
+// Three and four digits still fit the square button.
+.long {
+    font-size: 1.3rem;
+
+    @media (max-width: $compact) {
+        font-size: 1.05rem;
+    }
+}
+
+.longer {
+    font-size: 1rem;
+
+    @media (max-width: $compact) {
+        font-size: 0.8rem;
+    }
+}
+
+.check {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    color: var(--color-success-content);
+    background: var(--color-success);
+    border-radius: 50%;
+}

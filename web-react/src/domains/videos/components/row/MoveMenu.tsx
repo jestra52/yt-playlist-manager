@@ -1,43 +1,43 @@
-import DriveFileMoveOutlined from '@mui/icons-material/DriveFileMoveOutlined';
-import IconButton from '@mui/material/IconButton';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
 import type { Video } from '@ytpm/core/videos/videos.repository';
-import { useState } from 'react';
+import { useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
+import { Icon } from '../../../../shared/components/Icon';
 import { selectPlaylists } from '../../../playlists/playlists.selectors';
 import { moveToPlaylist } from '../../videos.thunks';
 
 export const MoveMenu = ({ video }: { video: Video }) => {
-    const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+    const menuRef = useRef<HTMLDetailsElement>(null);
     const playlists = useAppSelector(selectPlaylists);
     const dispatch = useAppDispatch();
     const others = playlists.filter((p) => p.id !== video.playlistId);
 
     if (!others.length) return null;
     return (
-        <>
-            <IconButton
-                size="small"
+        <details ref={menuRef} className="dropdown dropdown-end">
+            <summary
+                className="btn btn-ghost btn-square btn-sm"
+                role="button"
                 title="Move to another playlist"
                 aria-label="Move to playlist"
-                onClick={(e) => setAnchor(e.currentTarget)}
             >
-                <DriveFileMoveOutlined fontSize="small" />
-            </IconButton>
-            <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}>
+                <Icon name="move" size={17} />
+            </summary>
+            <ul className="menu dropdown-content rounded-box bg-base-100 z-10 m-0 w-56 p-2 shadow-lg">
+                <li className="menu-title">Move to</li>
                 {others.map((playlist) => (
-                    <MenuItem
-                        key={playlist.id}
-                        onClick={() => {
-                            setAnchor(null);
-                            dispatch(moveToPlaylist(video.id, playlist));
-                        }}
-                    >
-                        {playlist.name}
-                    </MenuItem>
+                    <li key={playlist.id}>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (menuRef.current) menuRef.current.open = false;
+                                dispatch(moveToPlaylist(video.id, playlist));
+                            }}
+                        >
+                            {playlist.name}
+                        </button>
+                    </li>
                 ))}
-            </Menu>
-        </>
+            </ul>
+        </details>
     );
 };
