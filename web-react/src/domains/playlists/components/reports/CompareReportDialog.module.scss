@@ -12,6 +12,10 @@
     margin-top: 16px;
 }
 
+.choose {
+    background-color: var(--mui-palette-background-default);
+}
+
 .hidden {
     display: none;
 }
@@ -40,9 +44,9 @@
     color: var(--mui-palette-text-primary);
     font-family: ui-monospace, monospace;
     font-size: 0.875rem;
-    background-color: var(--mui-palette-background-default);
+    background: none;
     border: 1px solid var(--mui-palette-divider);
-    border-radius: 6px;
+    border-radius: 8px;
     resize: vertical;
 }
 

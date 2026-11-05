@@ -1,0 +1,57 @@
+@use '../../../../styles/tokens' as *;
+
+$sheet: 640px;
+
+.container {
+    align-items: flex-end;
+
+    @include up($sheet) {
+        align-items: center;
+    }
+}
+
+.paper {
+    position: relative;
+    width: 100%;
+    max-width: none;
+    max-height: calc(100vh - 5em);
+    margin: 0;
+    padding: 24px;
+    overflow-y: auto;
+    background-image: none;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
+
+    @include up($sheet) {
+        max-width: 32rem;
+        border-radius: 16px;
+    }
+}
+
+.close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    color: inherit;
+}
+
+.title {
+    margin-bottom: 8px;
+    padding: 0 40px 0 0;
+    font-family: $font-display;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.33;
+    letter-spacing: -0.025em;
+}
+
+.content {
+    min-width: 0;
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 24px;
+}

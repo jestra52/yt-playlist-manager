@@ -1,6 +1,7 @@
 import { getDatabase } from '@ytpm/core/db/index';
 import type { Playlist } from '@ytpm/core/playlists/playlists.repository';
 import type { MissingEntry } from '@ytpm/core/playlists/report-compare';
+import type { YouTubeDiff } from '@ytpm/core/playlists/youtube-sync';
 import { cleanArtist, guessedArtistPatch, knownArtists, matchKnownArtist } from '@ytpm/core/videos/artist';
 import { fetchVideoMetadata } from '@ytpm/core/videos/metadata.client';
 import { fetchYouTubePlaylist, PARTIAL_IMPORT_NOTE } from '@ytpm/core/videos/playlist.client';
@@ -9,6 +10,7 @@ import {
     deleteVideo,
     getVideo,
     insertVideosAfter,
+    listVideos,
     moveVideoToPlaylist,
     reorderVideo,
     restoreVideo as restoreVideoRow,
@@ -20,7 +22,7 @@ import { extractYouTubeIds, parseYouTubeId, thumbnailFor } from '@ytpm/core/vide
 import type { AppThunk } from '../../app/store';
 import { notify, setImporting } from '../ui/ui.slice';
 import { selectAllVideos, selectPlaying } from './videos.selectors';
-import { changed, played, playerClosed, removed, upserted } from './videos.slice';
+import { changed, loaded, played, playerClosed, removed, upserted } from './videos.slice';
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -251,4 +253,45 @@ export const addFromReport =
         if (added.length) dispatch(upserted(added));
         dispatch(enrichMetadata(added.filter((v) => !v.missing && !v.title)));
         return added;
+    };
+
+export interface YouTubeSyncCounts {
+    added: number;
+    addedMissing: number;
+    nowUnavailable: number;
+    availableAgain: number;
+    removed: number;
+}
+
+/**
+ * Applies a comparison with the playlist's YouTube playlist in one transaction:
+ * adds the new videos in YouTube's order, marks or unmarks videos deleted on
+ * YouTube, and, with `removeMissing`, removes the videos no longer in the
+ * YouTube playlist. Returns how many of each changed.
+ */
+export const applyYouTubeDiff =
+    (playlistId: string, diff: YouTubeDiff<Video>, { removeMissing = false } = {}): AppThunk<YouTubeSyncCounts> =>
+    (dispatch) => {
+        const db = getDatabase();
+        const gone = removeMissing ? diff.removed : [];
+        const added = db.transaction(() => {
+            const inserted = insertVideosAfter(
+                db,
+                playlistId,
+                diff.added.map((entry) => ({ ...entry, ...guessedArtistPatch(entry) })),
+            );
+            for (const video of diff.nowUnavailable) updateVideo(db, video.id, { unavailable: true });
+            for (const video of diff.availableAgain) updateVideo(db, video.id, { unavailable: false });
+            for (const video of gone) deleteVideo(db, video.id);
+            return inserted;
+        });
+        // Reloading also stops the player when the video playing was removed.
+        dispatch(loaded(listVideos(db)));
+        return {
+            added: added.filter((v) => !v.unavailable).length,
+            addedMissing: added.filter((v) => v.unavailable).length,
+            nowUnavailable: diff.nowUnavailable.length,
+            availableAgain: diff.availableAgain.length,
+            removed: gone.length,
+        };
     };

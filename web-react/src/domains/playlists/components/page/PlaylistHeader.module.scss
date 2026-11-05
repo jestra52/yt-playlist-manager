@@ -1,52 +1,7 @@
-@use '../../../../styles/tokens' as *;
-
 .top {
     display: flex;
     gap: 12px;
     align-items: center;
-}
-
-.label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-}
-
-.name,
-.description {
-    width: 100%;
-    min-width: 0;
-    padding: 2px 4px;
-    color: inherit;
-    background: none;
-    border: 1px solid transparent;
-    border-radius: 6px;
-
-    &:hover,
-    &:focus {
-        border-color: var(--mui-palette-divider);
-        outline: none;
-    }
-}
-
-.name {
-    flex: 1;
-    font-family: $font-display;
-    font-size: 3rem;
-    font-weight: 800;
-    letter-spacing: -0.025em;
-
-    @media (max-width: 599px) {
-        font-size: 2rem;
-    }
-}
-
-.description {
-    margin-top: 4px;
-    color: var(--mui-palette-text-secondary);
-    font: inherit;
 }
 
 .progress {

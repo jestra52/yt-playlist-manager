@@ -39,4 +39,7 @@ export const theme = createTheme({
         h6: { fontFamily: display, fontWeight: 700 },
         button: { textTransform: 'none', fontWeight: 600 },
     },
+    components: {
+        MuiButton: { defaultProps: { disableElevation: true } },
+    },
 });
