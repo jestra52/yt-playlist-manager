@@ -1,11 +1,8 @@
-import FileDownloadOutlined from '@mui/icons-material/FileDownloadOutlined';
-import Button from '@mui/material/Button';
 import { chainCodeFileText } from '@ytpm/core/sync/chain-code';
 import { useAppDispatch } from '../../../../app/store';
+import { Icon } from '../../../../shared/components/Icon';
 import { downloadTextFile } from '../../../../shared/download';
 import { notify } from '../../../ui/ui.slice';
-import fields from '../settings/Field.module.scss';
-import styles from './CodeActions.module.scss';
 import { useQrCode } from './useQrCode';
 
 export const CodeActions = ({ words, recoveryCodes }: { words: string[]; recoveryCodes: string[] }) => {
@@ -23,25 +20,28 @@ export const CodeActions = ({ words, recoveryCodes }: { words: string[]; recover
         }
     };
 
-    const button = { variant: 'contained', color: 'inherit', size: 'small', className: fields.soft } as const;
-
     return (
-        <div className={styles.row}>
-            {qr && <img className={styles.qr} src={qr} alt="The code as a QR code" width={132} height={132} />}
-            <div className={qr ? styles.column : styles.buttons}>
-                <Button
-                    {...button}
-                    startIcon={<FileDownloadOutlined />}
-                    onClick={() => downloadTextFile(fileName, text())}
-                >
+        <div className="mt-3 flex flex-wrap items-center gap-4">
+            {qr && (
+                <img
+                    className="rounded-box flex-none bg-white p-1"
+                    src={qr}
+                    alt="The code as a QR code"
+                    width={132}
+                    height={132}
+                />
+            )}
+            <div className={`flex flex-wrap gap-2 print:hidden ${qr ? 'flex-col' : ''}`}>
+                <button className="btn btn-sm" type="button" onClick={() => downloadTextFile(fileName, text())}>
+                    <Icon name="download" size={16} />
                     Download as .txt
-                </Button>
-                <Button {...button} onClick={copy}>
+                </button>
+                <button className="btn btn-sm" type="button" onClick={copy}>
                     Copy
-                </Button>
-                <Button {...button} onClick={() => window.print()}>
+                </button>
+                <button className="btn btn-sm" type="button" onClick={() => window.print()}>
                     Print
-                </Button>
+                </button>
             </div>
         </div>
     );

@@ -1,16 +1,9 @@
-import Alert from '@mui/material/Alert';
-import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Switch from '@mui/material/Switch';
 import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
 import { selectSyncSettings } from '../../sync.selectors';
 import { saveSyncSettings, testConnection } from '../../sync.thunks';
 import { Collapsible } from '../settings/Collapsible';
 import { Field } from '../settings/Field';
-import fields from '../settings/Field.module.scss';
-import styles from './ConnectionPanel.module.scss';
 
 export const ConnectionPanel = () => {
     const settings = useAppSelector(selectSyncSettings);
@@ -45,7 +38,7 @@ export const ConnectionPanel = () => {
                     }
                 >
                     <input
-                        className={fields.input}
+                        className="input w-full"
                         value={apiUrl}
                         onChange={(e) => setApiUrl(e.target.value)}
                         placeholder="/api"
@@ -53,31 +46,32 @@ export const ConnectionPanel = () => {
                         spellCheck={false}
                     />
                 </Field>
-                <FormControlLabel
-                    className={styles.auto}
-                    label="Sync automatically after changes and every minute"
-                    control={<Switch size="small" checked={autoSync} onChange={(e) => setAutoSync(e.target.checked)} />}
-                />
+                <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm">
+                    <input
+                        type="checkbox"
+                        role="switch"
+                        className="toggle toggle-sm"
+                        checked={autoSync}
+                        onChange={(e) => setAutoSync(e.target.checked)}
+                    />
+                    Sync automatically after changes and every minute
+                </label>
                 {result && (
-                    <Alert severity={result.ok ? 'success' : 'error'} role="status" className={styles.result}>
-                        {result.message}
-                    </Alert>
-                )}
-                <div className={fields.buttons}>
-                    <Button
-                        variant="contained"
-                        color="inherit"
-                        size="small"
-                        className={fields.soft}
-                        disabled={testing}
-                        startIcon={testing ? <CircularProgress size={14} color="inherit" /> : undefined}
-                        onClick={test}
+                    <div
+                        role="status"
+                        className={`alert alert-soft mt-3 text-sm ${result.ok ? 'alert-success' : 'alert-error'}`}
                     >
+                        {result.message}
+                    </div>
+                )}
+                <div className="mt-3 flex flex-wrap justify-end gap-2">
+                    <button className="btn btn-sm" type="button" disabled={testing} onClick={test}>
+                        {testing && <span className="loading loading-spinner loading-xs" />}
                         {testing ? 'Checking…' : 'Test connection'}
-                    </Button>
-                    <Button type="submit" variant="contained" size="small">
+                    </button>
+                    <button className="btn btn-primary btn-sm" type="submit">
                         Save
-                    </Button>
+                    </button>
                 </div>
             </form>
         </Collapsible>

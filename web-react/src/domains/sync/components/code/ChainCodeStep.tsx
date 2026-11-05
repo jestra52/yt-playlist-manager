@@ -1,6 +1,3 @@
-import Button from '@mui/material/Button';
-import Checkbox from '@mui/material/Checkbox';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import { confirmationPositions } from '@ytpm/core/sync/chain-code';
 import { useState } from 'react';
 import type { NewCode } from '../../sync.slice';
@@ -28,24 +25,24 @@ export const ChainCodeStep = ({ code, onDone }: { code: NewCode; onDone: () => v
         : codesSaved;
 
     return (
-        <section className={styles.step} aria-labelledby="chain-code-title">
-            <h3 id="chain-code-title" className={styles.title}>
+        <section className={`text-sm ${styles.step}`} aria-labelledby="chain-code-title">
+            <h3 id="chain-code-title" className="mt-0 mb-1 text-base font-semibold">
                 {words.length ? 'Save your sync chain code' : 'Save your recovery codes'}
             </h3>
-            <p className={styles.muted}>{INTROS[code.reason]}</p>
+            <p className="text-base-content/65 m-0">{INTROS[code.reason]}</p>
 
             {words.length > 0 && (
                 <>
-                    <p className={styles.warning}>
+                    <p className="mt-2 mb-0 font-medium">
                         Anyone with these words can see and change your playlists. Keep them somewhere safe and private,
                         like a password manager. They won't be shown again.
                     </p>
-                    <ol className={styles.words}>
+                    <ol className="rounded-box bg-base-200 mt-3 mb-0 grid list-none grid-cols-2 gap-x-3 gap-y-1 p-3 font-mono whitespace-nowrap sm:grid-cols-4">
                         {words.map((word, position) => (
                             // Words can repeat, and the list never changes.
                             // eslint-disable-next-line @eslint-react/no-array-index-key
                             <li key={position}>
-                                <span className={styles.number}>{position + 1}.</span> {word}
+                                <span className="text-base-content/50">{position + 1}.</span> {word}
                             </li>
                         ))}
                     </ol>
@@ -54,12 +51,12 @@ export const ChainCodeStep = ({ code, onDone }: { code: NewCode; onDone: () => v
 
             {recoveryCodes.length > 0 && (
                 <>
-                    <h4 className={styles.subtitle}>Recovery codes</h4>
-                    <p className={styles.muted}>
+                    <h4 className="mt-4 mb-0 text-sm font-semibold">Recovery codes</h4>
+                    <p className="text-base-content/65 m-0">
                         If every device is gone and the code is lost, any one of these gets the chain back. Each works
                         once. Keep them apart from the code, for example printed at home.
                     </p>
-                    <ul className={styles.codes}>
+                    <ul className="rounded-box bg-base-200 mt-2 mb-0 grid list-none grid-cols-1 gap-x-3 gap-y-1 p-3 font-mono whitespace-nowrap sm:grid-cols-2">
                         {recoveryCodes.map((recoveryCode) => (
                             <li key={recoveryCode}>{recoveryCode}</li>
                         ))}
@@ -70,35 +67,39 @@ export const ChainCodeStep = ({ code, onDone }: { code: NewCode; onDone: () => v
             <CodeActions words={words} recoveryCodes={recoveryCodes} />
 
             {words.length > 0 ? (
-                <fieldset className={`${styles.check} ${styles.noPrint}`}>
-                    <legend className={styles.legend}>Check that you saved it</legend>
-                    {positions.map((position, i) => (
-                        <label key={position} className={styles.answer}>
-                            <span>Word {position}</span>
-                            <input
-                                value={answers[i]}
-                                onChange={(e) => setAnswers(answers.map((a, n) => (n === i ? e.target.value : a)))}
-                                autoComplete="off"
-                                autoCapitalize="off"
-                                spellCheck={false}
-                            />
-                        </label>
-                    ))}
+                <fieldset className={`fieldset mt-4 ${styles.noPrint}`}>
+                    <legend className="fieldset-legend">Check that you saved it</legend>
+                    <div className="flex flex-wrap gap-2">
+                        {positions.map((position, i) => (
+                            <label key={position} className="input input-sm w-36">
+                                <span className="label">Word {position}</span>
+                                <input
+                                    value={answers[i]}
+                                    onChange={(e) => setAnswers(answers.map((a, n) => (n === i ? e.target.value : a)))}
+                                    autoComplete="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
+                                />
+                            </label>
+                        ))}
+                    </div>
                 </fieldset>
             ) : (
-                <FormControlLabel
-                    className={styles.noPrint}
-                    label="I've saved the recovery codes"
-                    control={
-                        <Checkbox size="small" checked={codesSaved} onChange={(e) => setCodesSaved(e.target.checked)} />
-                    }
-                />
+                <label className={`label text-base-content mt-4 cursor-pointer gap-3 text-sm ${styles.noPrint}`}>
+                    <input
+                        type="checkbox"
+                        className="checkbox checkbox-sm"
+                        checked={codesSaved}
+                        onChange={(e) => setCodesSaved(e.target.checked)}
+                    />
+                    I've saved the recovery codes
+                </label>
             )}
 
-            <div className={`${styles.done} ${styles.noPrint}`}>
-                <Button variant="contained" disabled={!confirmed} onClick={onDone}>
+            <div className={`mt-4 flex justify-end ${styles.noPrint}`}>
+                <button className="btn btn-primary" type="button" disabled={!confirmed} onClick={onDone}>
                     {words.length ? "I've saved the code" : 'Done'}
-                </Button>
+                </button>
             </div>
         </section>
     );
