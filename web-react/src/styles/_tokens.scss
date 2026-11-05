@@ -1,0 +1,23 @@
+$font-display: 'Bricolage Grotesque', 'Figtree', system-ui, sans-serif;
+
+$sidebar-width: 288px;
+$sidebar-bg: #16213a;
+$sidebar-bg-dark: #0a101c;
+$sidebar-text: #e7ecf5;
+$sidebar-line: rgba(231, 236, 245, 0.2);
+$sidebar-selected: rgba(231, 236, 245, 0.18);
+
+// Material UI's md breakpoint, where the sidebar stops being a drawer.
+$md: 900px;
+
+@mixin up($width) {
+    @media (min-width: $width) {
+        @content;
+    }
+}
+
+@mixin dark {
+    :global([data-theme='dark']) & {
+        @content;
+    }
+}

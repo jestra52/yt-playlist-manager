@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import initSqlJs from 'sql.js';
 import { getTableConfig } from 'drizzle-orm/sqlite-core';
-import { Database } from './database.js';
-import { migrations } from './schema.js';
-import * as tables from './tables.js';
-import * as playlists from '../../domains/playlists/playlists.repository.js';
-import * as videos from '../../domains/videos/videos.repository.js';
-import * as sync from '../../domains/sync/sync.repository.js';
+import { Database } from '@ytpm/core/db/database';
+import { migrations } from '@ytpm/core/db/schema';
+import * as tables from '@ytpm/core/db/tables';
+import * as playlists from '@ytpm/core/playlists/playlists.repository';
+import * as videos from '@ytpm/core/videos/videos.repository';
+import * as sync from '@ytpm/core/sync/sync.repository';
 
 let SQL;
 beforeAll(async () => {

@@ -2,6 +2,24 @@
 
 Keep your own playlists of videos (music, talks, recipes, anything you want to watch), put them in order, mark what you've watched, keep notes, and play them in place. YouTube is the first source. Each video shows its artist, guessed from YouTube and editable, and a playlist imported from YouTube can be synced with it again later. Everything is stored in a **SQLite database inside your browser**, so the app works offline. An **ASP.NET Core API** with **Entity Framework Core** syncs that database with **PostgreSQL** (Neon) so your phone and laptop stay in step. The web app is hosted on **Netlify**; the API runs as a Docker container on **Render**, and Netlify forwards `/api` to it.
 
+## Contents
+
+- [Screenshots](#screenshots)
+- [How it fits together](#how-it-fits-together)
+- [Project layout](#project-layout)
+  - [Layers](#layers) · [Styles](#styles) · [How sync works](#how-sync-works)
+- [Run it locally](#run-it-locally)
+  - [The React app (web-react)](#the-react-app-web-react) · [Local settings](#local-settings)
+- [Deploy](#deploy)
+  - [1. Neon](#1-create-the-database-on-neon) · [2. Render](#2-deploy-the-api-on-render) · [3. Netlify](#3-deploy-the-web-app-on-netlify) · [4. Connect your devices](#4-connect-your-devices) · [Automatic deploys](#automatic-deploys-only-what-changed)
+- [Importing YouTube playlists](#importing-youtube-playlists)
+  - [Syncing a playlist from YouTube](#syncing-a-playlist-from-youtube)
+- [Reports and Compare](#reports-and-compare)
+- [Notes and limits](#notes-and-limits)
+- [License](#license)
+- [Trademark](#trademark)
+- [Architecture](docs/architecture.md) (separate page)
+
 ## Screenshots
 
 | Light | Dark |
@@ -32,7 +50,7 @@ The screenshots use sample data and placeholder thumbnails.
 
 ```
 ┌──────────── Browser ────────────┐       ┌── Netlify ──┐       ┌────── Render ───────┐      ┌──── Neon ────┐
-│ Svelte components (daisyUI)     │       │ web app     │       │ ASP.NET Core API    │      │ PostgreSQL   │
+│ React components (Material UI)  │       │ web app     │       │ ASP.NET Core API    │      │ PostgreSQL   │
 │ ↓ call                          │ HTTPS │             │ HTTPS │  POST /api/sync     │ EF   │ playlists    │
 │ Domain services ($state)        │──────►│ /api/* proxy│──────►│  GET  /api/oembed   │─────►│ videos       │
 │ ↓ read / write                  │       └─────────────┘       │  GET  /api/playlist │ Core │ sync_counter │
@@ -64,31 +82,29 @@ api/                         .NET 10 solution (YtPlaylist.slnx)
                                 HTTP clients for YouTube oEmbed, Data API and playlist feed
     YtPlaylist.Api/             ASP.NET Core minimal API: endpoints, bearer-token auth, CORS
   tests/YtPlaylist.Tests/       xUnit: validation, sync store (SQLite + PostgreSQL), YouTube clients, endpoints
-web/
+packages/core/                shared logic in TypeScript, no UI (also for the React app, #23)
+  src/videos/                 youtube.ts (parsing YouTube links), artist.ts (guessing artists)
+  src/playlists/              report.ts, report-compare.ts (reports), youtube-sync.ts (YouTube comparison)
+  src/db/                     SQLite wrapper (sql.js + Drizzle), tables.ts, generated migrations, IndexedDB persistence
+  src/*/…repository.ts        playlists and videos data access (Drizzle ORM queries)
+web-react/                   the deployed web app (React, Material UI, Redux Toolkit)
   scripts/write-redirects.mjs  writes the Netlify /api proxy rule from API_ORIGIN
   public/_headers            security headers (CSP) for Netlify
+web/                         the previous Svelte app, not deployed; removed in #92
   src/
     app/bootstrap.js         opens the database and loads every domain
     core/
-      db/                    SQLite wrapper, Drizzle tables (tables.js), generated migrations, IndexedDB persistence
       events.js              "data changed" signal (decouples domains from sync)
       config.js              API base address
     domains/
       playlists/
         components/                  presentation (Svelte + daisyUI)
         playlists.service.svelte.js  application: reactive state + use cases
-        playlists.repository.js      data access (Drizzle ORM queries)
-        report.js                    writes the .txt report (format with artists)
-        report-compare.js            reads reports (both formats) and finds what's missing
-        youtube-sync.js              compares a playlist with its YouTube playlist
       videos/
         components/
         videos.service.svelte.js
-        videos.repository.js
         metadata.client.js           external HTTP (oEmbed through /api)
         playlist.client.js           external HTTP (YouTube playlists through /api)
-        youtube.js                   domain rules: parsing YouTube links
-        artist.js                    domain rules: guessing artists, where an artist came from
       sync/
         components/
         sync.service.svelte.js       two-way sync use case + auto-sync
@@ -165,13 +181,26 @@ cp ../web/.env.example ../web/.env         # web/.env: API_URL for the dev proxy
 # 3. API on http://localhost:8787. Reads appsettings.Local.json and applies the EF Core migrations on start
 dotnet run --project src/YtPlaylist.Api
 
-# 4. web app: Vite proxies /api to API_URL (http://localhost:8787 by default)
-cd ../web && npm install && npm run dev    # http://localhost:5173
+# 4. web app: npm workspaces (web/ and packages/core) install from the repository root;
+#    Vite proxies /api to API_URL (http://localhost:8787 by default)
+cd .. && npm install && npm run dev -w web    # http://localhost:5173
 ```
 
 In the app, open the sync settings at the bottom of the sidebar and choose **Create a sync chain**. To try a second device, open the app in another browser (or a private window) and **Join with a code**. The app works without steps 1 to 3; it just stays on one device.
 
 **Using a hosted database locally:** if `DATABASE_URL` in `appsettings.Local.json` points at a hosted database instead of the local one, the API applies its pending migrations there when it starts. To try a branch that changes the database without touching production, point the API at a copy instead: on Neon, create a branch of the database and set `DATABASE_URL` to its connection string for that run (an environment variable wins over the settings file). Delete the branch when you're done. A Neon branch inherits its parent's roles **and passwords**, so its connection string carries the production password: keep it out of anything shared or committed, or create a separate role on the branch for testing.
+
+### The React app (web-react)
+
+The deployed app is the React rewrite (#23) in `web-react/`, with Material UI, Redux Toolkit and TypeScript. The Svelte app in `web/` is no longer deployed and stays here until #92 removes it, so the layers described above for `web/` map to the same domains in `web-react/src/domains`.
+
+```bash
+cp web-react/.env.example web-react/.env   # optional: API_URL for the dev proxy (defaults to http://localhost:8787)
+npm install && npm run dev -w web-react    # http://localhost:5174
+npm test -w web-react                      # Vitest + React Testing Library
+```
+
+It uses `packages/core` and the `react` part of the shared lint rules, and CI checks it in its own job. `npm run build -w web-react && npm run preview -w web-react` serves the production build with the real security headers.
 
 ### Local settings
 
@@ -191,7 +220,9 @@ Tests:
 ```bash
 cd api && dotnet test                     # validation, sync store on SQLite, YouTube clients, endpoints
 TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ytplaylist dotnet test   # also on PostgreSQL
-cd web && npm test                        # services, URL parsing, SQLite repositories, sync rules
+npm test -w packages/core                 # shared logic (TypeScript): link parsing, artists, reports, YouTube sync comparison
+npm run typecheck -w packages/core        # TypeScript types of the shared logic
+cd web && npm test                        # services, SQLite repositories, sync rules
 ```
 
 Database changes: edit the entity configurations in `YtPlaylist.Infrastructure/Persistence/Configurations`, then add a migration from `api/`:
@@ -205,15 +236,15 @@ Without installing the tool, .NET 10 can run it once at the version the project 
 
 A test (`MigrationsMatchTheModel`) fails if the model changes without a migration. The API applies pending migrations when it starts.
 
-The browser database works the same way with Drizzle ORM: edit the tables in `web/src/core/db/tables.js`, then generate a migration from `web/`:
+The browser database works the same way with Drizzle ORM: edit the tables in `packages/core/src/db/tables.ts`, then generate a migration:
 
 ```bash
-npm run db:generate   # writes src/core/db/migrations/NNNN_*.sql and its snapshot; commit them
+npm run db:generate -w packages/core   # writes packages/core/src/db/migrations/NNNN_*.sql and its snapshot; commit them
 ```
 
-The app applies new migrations when it opens the database, and CI fails if `tables.js` changes without a migration.
+The app applies new migrations when it opens the database, and CI fails if `tables.ts` changes without a migration.
 
-Linting and formatting (in `web/`):
+Linting and formatting (in `web/` and in `packages/core`):
 
 ```bash
 npm run lint          # ESLint: errors for likely bugs, warnings for clean-up
@@ -222,7 +253,9 @@ npm run format        # Prettier, using .editorconfig (4-space indent, 120 colum
 npm run format:check
 ```
 
-Rules live in `web/eslint.config.js`. In VS Code (or VSCodium), install the recommended extensions from `.vscode/extensions.json` to see ESLint errors and warnings underlined as you type.
+Rules live in `packages/eslint-config` (`@ytpm/eslint-config`): `base` for JavaScript, plus `typescript`, `svelte` and `react` (JSX and hooks) parts that each package picks in its own `eslint.config.js`. In VS Code (or VSCodium), install the recommended extensions from `.vscode/extensions.json` to see ESLint errors and warnings underlined as you type.
+
+Debugging (VS Code or VSCodium, **Run and Debug**): **Web app (Edge)** or **Web app (Chrome)** starts the dev server and opens the app with breakpoints in `web/` and `packages/core` (TypeScript, through source maps); **Core: all tests** and **Core: current test file** run the shared package's Vitest tests under the debugger. The configurations are in `.vscode/launch.json` and `.vscode/tasks.json`.
 
 ## Deploy
 

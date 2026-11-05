@@ -49,7 +49,7 @@ max_line_length = off
 
 # Web Files (repository): the web app keeps 4-space indentation, so Rehan Saeed's
 # `indent_size = 2` for web files is not applied. HTML and TOML use 2 spaces.
-[*.{js,mjs,cjs,svelte}]
+[*.{js,mjs,cjs,jsx,ts,mts,cts,tsx,svelte}]
 quote_type = single
 max_line_length = 120
 
@@ -437,7 +437,7 @@ generated_code = true
 csharp_style_namespace_declarations = block_scoped:none
 
 # Netlify _headers: indentation is meaningful, keep it as written
-[web/public/_headers]
+[{web,web-react}/public/_headers]
 indent_size = 2
 
 ##########################################

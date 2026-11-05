@@ -2,14 +2,20 @@
     import { untrack } from 'svelte';
     import Dialog from '../../../shared/components/Dialog.svelte';
     import Icon from '../../../shared/components/Icon.svelte';
-    import { getDatabase } from '../../../core/db/index.js';
+    import { getDatabase } from '@ytpm/core/db/index';
     import { sync } from '../sync.service.svelte.js';
     import { ui } from '../../ui/ui.service.svelte.js';
-    import { ChainCodeError, WORD_COUNT, defaultDeviceName, splitWords, wordsToSecret } from '../chain-code.js';
-    import { RECOVERY_CODE_LENGTH, isRecoveryCode, recoveryCodeProblem } from '../recovery-code.js';
-    import { isPairingCode, pairingCodeProblem } from '../pairing-code.js';
-    import { countdown } from '../pairing.js';
-    import { canScan } from '../qr-scan.js';
+    import {
+        ChainCodeError,
+        WORD_COUNT,
+        defaultDeviceName,
+        splitWords,
+        wordsToSecret,
+    } from '@ytpm/core/sync/chain-code';
+    import { RECOVERY_CODE_LENGTH, isRecoveryCode, recoveryCodeProblem } from '@ytpm/core/sync/recovery-code';
+    import { isPairingCode, pairingCodeProblem } from '@ytpm/core/sync/pairing-code';
+    import { countdown } from '@ytpm/core/sync/pairing';
+    import { canScan } from '@ytpm/core/sync/qr-scan';
     import AddDevice from './AddDevice.svelte';
     import ChainActivity from './ChainActivity.svelte';
     import ChainCodeStep from './ChainCodeStep.svelte';
@@ -97,7 +103,7 @@
             wordsToSecret(codeText);
             return '';
         } catch (err) {
-            return err instanceof ChainCodeError ? err.message : 'That code can’t be read.';
+            return err instanceof ChainCodeError ? err.message : "That code can't be read.";
         }
     });
 
@@ -156,7 +162,7 @@
             <div class="alert alert-warning alert-soft mb-4 items-start text-sm" role="status">
                 <Icon name="info" size={18} />
                 <div>
-                    <p class="font-semibold">Add another device or recovery codes so you don’t lose access</p>
+                    <p class="font-semibold">Add another device or recovery codes so you don't lose access</p>
                     <p class="mt-1">
                         This is the only device in the chain, and the chain has no recovery codes. If you lose this
                         device and the code, nobody can get the chain back.
@@ -202,7 +208,7 @@
                             </button>
                         </div>
                     {:else}
-                        <p class="mt-1">Without them, a lost device can’t get back into the chain.</p>
+                        <p class="mt-1">Without them, a lost device can't get back into the chain.</p>
                         <div class="mt-2 flex flex-wrap gap-2">
                             <button class="btn btn-sm" type="button" onclick={() => sync.confirmCodeCheckIn()}>
                                 Yes, I have them
@@ -273,7 +279,7 @@
             </p>
         {:else if confirming === 'delete'}
             <p class="mt-2 text-sm text-error" role="alert">
-                Deletes the chain and the server’s copy of its playlists, and removes every device. Playlists on each
+                Deletes the chain and the server's copy of its playlists, and removes every device. Playlists on each
                 device stay on that device.
             </p>
         {/if}
@@ -282,12 +288,12 @@
     {:else}
         <p class="mb-4 text-sm text-base-content/65">
             Your playlists are saved in a SQLite database in this browser. A <strong>sync chain</strong> keeps your devices
-            in step: create one here, then add your other devices with a pairing code from this one, or with the chain’s 24-word
+            in step: create one here, then add your other devices with a pairing code from this one, or with the chain's 24-word
             code. No account or password needed.
         </p>
 
         <label class="fieldset mb-3">
-            <span class="fieldset-legend">This device’s name</span>
+            <span class="fieldset-legend">This device's name</span>
             <input class="input w-full" bind:value={deviceName} maxlength="100" autocomplete="off" />
         </label>
 
@@ -298,7 +304,7 @@
                     <p class="font-semibold">Your synced playlists can become a sync chain</p>
                     <p class="mt-1">
                         This device synced with the old shared sync token. Turn that library into a sync chain to keep
-                        syncing it; you’ll get its code to add your other devices.
+                        syncing it; you'll get its code to add your other devices.
                     </p>
                     <button
                         class="btn btn-primary btn-sm mt-2"
@@ -414,7 +420,7 @@
                         />
                         <span class="label whitespace-normal" class:text-error={pairProblem}>
                             {pairProblem ||
-                                'On a device that’s already in the chain, open sync settings and choose Show a pairing code.'}
+                                "On a device that's already in the chain, open sync settings and choose Show a pairing code."}
                         </span>
                     </label>
                     <div class="mt-3 flex flex-wrap justify-end gap-2">

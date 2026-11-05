@@ -1,0 +1,20 @@
+@use '../../../../styles/tokens' as *;
+
+.ways {
+    display: grid;
+    gap: 12px;
+
+    @include up(640px) {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.note {
+    margin: 12px 0 0;
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+.muted {
+    color: var(--mui-palette-text-secondary);
+}

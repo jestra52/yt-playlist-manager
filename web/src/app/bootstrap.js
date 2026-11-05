@@ -1,5 +1,5 @@
-import { setDatabase } from '../core/db/index.js';
-import { openBrowserDatabase } from '../core/db/browser.js';
+import { setDatabase } from '@ytpm/core/db/index';
+import { openBrowserDatabase } from '@ytpm/core/db/browser';
 import { playlists } from '../domains/playlists/playlists.service.svelte.js';
 import { videos } from '../domains/videos/videos.service.svelte.js';
 import { sync } from '../domains/sync/sync.service.svelte.js';

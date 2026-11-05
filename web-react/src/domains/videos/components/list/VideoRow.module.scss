@@ -1,0 +1,76 @@
+.row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--mui-palette-divider);
+    content-visibility: auto;
+    contain-intrinsic-size: auto 96px;
+
+    &:last-child {
+        border-bottom: 0;
+    }
+}
+
+.playing {
+    box-shadow: inset 3px 0 0 var(--mui-palette-primary-main);
+}
+
+.thumbButton {
+    flex-shrink: 0;
+    padding: 0;
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.plainTitle {
+    margin: 0;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.watched .title {
+    color: var(--mui-palette-text-secondary);
+}
+
+.number {
+    width: 2ch;
+    font-weight: 700;
+    text-align: right;
+}
+
+.thumb {
+    display: block;
+    width: 120px;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 6px;
+
+    @media (max-width: 599px) {
+        width: 80px;
+    }
+}
+
+.text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.title {
+    color: inherit;
+    font-weight: 600;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+.meta {
+    color: var(--mui-palette-text-secondary);
+    font-size: 0.875rem;
+}

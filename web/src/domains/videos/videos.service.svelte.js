@@ -1,12 +1,12 @@
-import { getDatabase } from '../../core/db/index.js';
+import { getDatabase } from '@ytpm/core/db/index';
 import { getApiBase } from '../../core/config.js';
 import { dataChanged } from '../../core/events.js';
 import { notify } from '../ui/ui.service.svelte.js';
-import { extractYouTubeIds, parseYouTubeId, thumbnailFor } from './youtube.js';
-import { cleanArtist, guessedArtistPatch, knownArtists, matchKnownArtist } from './artist.js';
-import { fetchVideoMetadata } from './metadata.client.js';
-import { fetchYouTubePlaylist } from './playlist.client.js';
-import * as repo from './videos.repository.js';
+import { extractYouTubeIds, parseYouTubeId, thumbnailFor } from '@ytpm/core/videos/youtube';
+import { cleanArtist, guessedArtistPatch, knownArtists, matchKnownArtist } from '@ytpm/core/videos/artist';
+import { fetchVideoMetadata } from '@ytpm/core/videos/metadata.client';
+import { fetchYouTubePlaylist } from '@ytpm/core/videos/playlist.client';
+import * as repo from '@ytpm/core/videos/videos.repository';
 
 const byPosition = (a, b) => a.position - b.position;
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -91,7 +91,7 @@ class VideosService {
         }
         const { ids, playlistIds, invalid } = extractYouTubeIds(text, { wholePlaylists });
         if (!ids.length && !playlistIds.length) {
-            notify('That doesn’t look like a YouTube link', { tone: 'error' });
+            notify("That doesn't look like a YouTube link", { tone: 'error' });
             return false;
         }
 
@@ -341,7 +341,7 @@ class VideosService {
         if (next) this.play(next.id);
         else {
             this.closePlayer();
-            notify('You’ve watched everything in this playlist');
+            notify("You've watched everything in this playlist");
         }
     }
 

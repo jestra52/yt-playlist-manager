@@ -1,0 +1,27 @@
+.form {
+    margin-top: 24px;
+}
+
+.row {
+    display: flex;
+    gap: 8px;
+}
+
+.label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+}
+
+.input {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 14px;
+    color: var(--mui-palette-text-primary);
+    font: inherit;
+    background-color: var(--mui-palette-background-paper);
+    border: 1px solid var(--mui-palette-divider);
+    border-radius: 10px;
+}

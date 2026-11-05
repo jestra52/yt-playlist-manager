@@ -1,0 +1,12 @@
+.auto {
+    margin-top: 8px;
+
+    :global(.MuiFormControlLabel-label) {
+        font-size: 0.875rem;
+    }
+}
+
+.result {
+    margin-top: 12px;
+    font-size: 0.875rem;
+}

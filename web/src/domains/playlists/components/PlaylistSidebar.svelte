@@ -5,7 +5,7 @@
     import { playlists } from '../playlists.service.svelte.js';
     import { videos } from '../../videos/videos.service.svelte.js';
     import { ui } from '../../ui/ui.service.svelte.js';
-    import { parsePlaylistId, videoInPlaylist } from '../../videos/youtube.js';
+    import { parsePlaylistId, videoInPlaylist } from '@ytpm/core/videos/youtube';
     import LinkChoice from '../../videos/components/LinkChoice.svelte';
     import { SOURCE_URL } from '../../../core/config.js';
 

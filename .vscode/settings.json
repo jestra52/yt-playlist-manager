@@ -1,12 +1,12 @@
 {
-  // ESLint lives in web/: underline errors (red) and warnings (yellow) in JS and Svelte files.
-  "eslint.workingDirectories": ["web"],
-  "eslint.validate": ["javascript", "svelte"],
+  // ESLint lives in web/ and packages/core: underline errors (red) and warnings (yellow) in JS, TS and Svelte files.
+  "eslint.workingDirectories": ["web", "packages/core"],
+  "eslint.validate": ["javascript", "typescript", "svelte"],
   "eslint.run": "onType",
 
-  // Format with Prettier, which follows .editorconfig and web/.prettierrc.json.
+  // Format with Prettier, which follows .editorconfig and each package's .prettierrc.
   "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "prettier.prettierPath": "web/node_modules/prettier",
+  "prettier.prettierPath": "node_modules/prettier",
   "[svelte]": { "editor.defaultFormatter": "svelte.svelte-vscode" },
   // C# formatting comes from the C# extension and .editorconfig.
   "[csharp]": { "editor.defaultFormatter": "muhammad-sammy.csharp" },

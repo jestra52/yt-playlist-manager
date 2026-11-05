@@ -1,16 +1,16 @@
-import { getDatabase } from '../../core/db/index.js';
+import { getDatabase } from '@ytpm/core/db/index';
 import { setApiBase } from '../../core/config.js';
 import { onDataChanged } from '../../core/events.js';
 import { notify } from '../ui/ui.service.svelte.js';
 import { playlists } from '../playlists/playlists.service.svelte.js';
 import { videos } from '../videos/videos.service.svelte.js';
-import * as client from './sync.client.js';
-import { secretToWords, wordsToSecret } from './chain-code.js';
-import { isCheckInDue, needsRecoveryNotice, pairingPausedUntil } from './chain-reminders.js';
-import * as pairingFlow from './pairing.js';
-import { formatPairingCode, isPairingCode, pairingCodeProblem } from './pairing-code.js';
-import { recoveryCodeProblem } from './recovery-code.js';
-import * as repo from './sync.repository.js';
+import * as client from '@ytpm/core/sync/sync.client';
+import { secretToWords, wordsToSecret } from '@ytpm/core/sync/chain-code';
+import { isCheckInDue, needsRecoveryNotice, pairingPausedUntil } from '@ytpm/core/sync/chain-reminders';
+import * as pairingFlow from '@ytpm/core/sync/pairing';
+import { formatPairingCode, isPairingCode, pairingCodeProblem } from '@ytpm/core/sync/pairing-code';
+import { recoveryCodeProblem } from '@ytpm/core/sync/recovery-code';
+import * as repo from '@ytpm/core/sync/sync.repository';
 
 const PUSH_DELAY_MS = 2500;
 const POLL_INTERVAL_MS = 60_000;

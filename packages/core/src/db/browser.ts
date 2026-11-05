@@ -1,0 +1,70 @@
+import initSqlJs, { type SqlJsStatic } from 'sql.js';
+import wasmUrl from 'sql.js/dist/sql-wasm-browser.wasm?url';
+import { Database, type Persistence } from './database';
+
+const DB_NAME = 'yt-playlist-manager';
+const STORE = 'files';
+const KEY = 'main.sqlite';
+
+const openIdb = (): Promise<IDBDatabase> => {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+};
+
+const idbRequest = <T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> => {
+    return openIdb().then(
+        (idb) =>
+            new Promise((resolve, reject) => {
+                const tx = idb.transaction(STORE, mode);
+                const req = fn(tx.objectStore(STORE));
+                tx.oncomplete = () => {
+                    idb.close();
+                    resolve(req.result);
+                };
+                tx.onerror = tx.onabort = () => {
+                    idb.close();
+                    reject(tx.error);
+                };
+            }),
+    );
+};
+
+/** Stores the SQLite file as a single blob in IndexedDB. */
+export const indexedDbPersistence: Persistence = {
+    load: () => idbRequest<ArrayBuffer | Uint8Array | undefined>('readonly', (s) => s.get(KEY)),
+    save: async (bytes) => {
+        await idbRequest('readwrite', (s) => s.put(bytes, KEY));
+    },
+};
+
+let sqlPromise: Promise<SqlJsStatic> | undefined;
+const loadSql = (): Promise<SqlJsStatic> => {
+    sqlPromise ??= initSqlJs({ locateFile: () => wasmUrl });
+    return sqlPromise;
+};
+
+/** Opens the app database, restoring the last saved copy from IndexedDB. */
+export const openBrowserDatabase = async (): Promise<Database> => {
+    const SQL = await loadSql();
+    const saved = await indexedDbPersistence.load();
+    const sqlDb = saved ? new SQL.Database(new Uint8Array(saved)) : new SQL.Database();
+    const db = new Database(sqlDb, indexedDbPersistence);
+
+    // Save right away when the tab is hidden or closed.
+    const flush = () => db.flush().catch(() => {});
+    addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') flush();
+    });
+    if (!saved) await db.flush();
+
+    db.reload = async () => {
+        const bytes = await indexedDbPersistence.load();
+        if (bytes) db.replace(new SQL.Database(new Uint8Array(bytes)));
+    };
+    return db;
+};

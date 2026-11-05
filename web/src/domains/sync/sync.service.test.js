@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import initSqlJs from 'sql.js';
-import { Database } from '../../core/db/database.js';
-import { setDatabase } from '../../core/db/index.js';
+import { Database } from '@ytpm/core/db/database';
+import { setDatabase } from '@ytpm/core/db/index';
 import { playlists } from '../playlists/playlists.service.svelte.js';
 import { videos } from '../videos/videos.service.svelte.js';
 import { ui } from '../ui/ui.service.svelte.js';
-import { secretToWords } from './chain-code.js';
+import { secretToWords } from '@ytpm/core/sync/chain-code';
 import { sync } from './sync.service.svelte.js';
 
 const SECRET = 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8';
@@ -43,7 +43,7 @@ beforeAll(async () => {
         if (path.endsWith('/chains/pair'))
             return body.code === PAIRING_CODE
                 ? reply(202, { requestToken: REQUEST_TOKEN, expiresAt: Date.now() + 300_000 })
-                : reply(401, { error: 'that pairing code doesn’t match, has expired or was already used' });
+                : reply(401, { error: "that pairing code doesn't match, has expired or was already used" });
         if (path.endsWith('/pairing/status')) return reply(200, pairingAnswer);
         if (path.endsWith('/chains')) return reply(201, { ...access, secret: SECRET, recoveryCodes: CODES });
         if (path.endsWith('/chains/join'))
@@ -53,7 +53,7 @@ beforeAll(async () => {
         if (path.endsWith('/chains/recover'))
             return body.recoveryCode === CODES[0]
                 ? reply(200, { ...access, secret: SECRET, recoveryCodes: NEW_CODES })
-                : reply(401, { error: 'that recovery code doesn’t match any sync chain, or it was already used' });
+                : reply(401, { error: "that recovery code doesn't match any sync chain, or it was already used" });
         if (path.endsWith('/chain/recovery-codes')) return reply(200, { codes: NEW_CODES });
         if (path.endsWith('/chain/replace')) return reply(200, { secret: SECRET, recoveryCodes: NEW_CODES });
         if (path.includes('/chain/events'))
@@ -62,7 +62,7 @@ beforeAll(async () => {
             return reply(200, { ...access, devices: [device], recoveryCodesLeft, pairingLockedUntil });
         if (path.endsWith('/sync'))
             return rejectSync
-                ? reply(401, { error: 'this device isn’t in a sync chain' })
+                ? reply(401, { error: "this device isn't in a sync chain" })
                 : reply(200, { cursor: 7, hasMore: false, applied: 0, changes: {} });
         return reply(404, { error: 'not found' });
     };
@@ -131,7 +131,7 @@ describe('sync chains', () => {
 });
 
 describe('recovery', () => {
-    it('recovers with a recovery code, shows the new codes once and merges this device’s library', async () => {
+    it("recovers with a recovery code, shows the new codes once and merges this device's library", async () => {
         playlists.create('Kept here');
         expect(await sync.recoverChain('aaaaa bbbbb', 'New phone')).toBe(false);
         expect(calls).toHaveLength(0);

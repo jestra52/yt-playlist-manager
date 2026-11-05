@@ -3,7 +3,7 @@
     import Icon from '../../../shared/components/Icon.svelte';
     import { downloadTextFile } from '../../../shared/download.js';
     import { notify } from '../../ui/ui.service.svelte.js';
-    import { chainCodeFileText, confirmationPositions } from '../chain-code.js';
+    import { chainCodeFileText, confirmationPositions } from '@ytpm/core/sync/chain-code';
 
     /**
      * Shows new codes once and makes sure they were saved: the chain code's 24 words with
@@ -18,7 +18,7 @@
         replaced:
             'The chain has a new code and new recovery codes. The old ones no longer work, and your other devices were removed.',
         recovered:
-            'You’re back in your sync chain, with your playlists. It has a new code and new recovery codes: the old ones no longer work, and every other device was removed.',
+            "You're back in your sync chain, with your playlists. It has a new code and new recovery codes: the old ones no longer work, and every other device was removed.",
         'recovery-codes': 'These are your new recovery codes. The old ones no longer work.',
     };
 
@@ -55,7 +55,7 @@
             await navigator.clipboard.writeText(fileText());
             notify('Copied. Paste it somewhere safe, like a password manager.');
         } catch {
-            notify('Couldn’t copy; download the codes instead', { tone: 'error' });
+            notify("Couldn't copy; download the codes instead", { tone: 'error' });
         }
     };
 
@@ -72,7 +72,7 @@
     {#if words.length}
         <p class="mt-2 text-sm font-medium">
             Anyone with these words can see and change your playlists. Keep them somewhere safe and private, like a
-            password manager. They won’t be shown again.
+            password manager. They won't be shown again.
         </p>
 
         <ol
@@ -127,13 +127,13 @@
     {:else}
         <label class="no-print label mt-4 cursor-pointer gap-3 text-sm text-base-content">
             <input type="checkbox" class="checkbox checkbox-sm" bind:checked={codesSaved} />
-            I’ve saved the recovery codes
+            I've saved the recovery codes
         </label>
     {/if}
 
     <div class="no-print mt-4 flex justify-end">
         <button class="btn btn-primary" type="button" disabled={!confirmed} onclick={() => ondone?.()}>
-            {words.length ? 'I’ve saved the code' : 'Done'}
+            {words.length ? "I've saved the code" : 'Done'}
         </button>
     </div>
 </section>

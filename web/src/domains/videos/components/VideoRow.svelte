@@ -1,6 +1,6 @@
 <script>
     import Icon from '../../../shared/components/Icon.svelte';
-    import { watchUrl } from '../youtube.js';
+    import { watchUrl } from '@ytpm/core/videos/youtube';
     import { videos } from '../videos.service.svelte.js';
 
     let { video, number, orderIndex, total, playing = false, otherPlaylists = [] } = $props();

@@ -2,6 +2,13 @@
 
 Two views of Yuzu Tapes Playlist Manager: how the code is split into components, and where each part runs once deployed. GitHub renders both diagrams from the Mermaid source below.
 
+## Contents
+
+- [Components](#components)
+  - [Web app](#web-app) · [.NET API](#net-api)
+- [Deployment](#deployment)
+- [Back to the README](../README.md)
+
 ## Components
 
 ### Web app
@@ -142,9 +149,9 @@ flowchart LR
 | --- | --- | --- |
 | Presentation | `web/src/domains/*/components`, `web/src/shared/components` | Svelte views styled with daisyUI; read service state, call service methods |
 | Application | `web/src/domains/*/*.service.svelte.js` | Reactive state (`$state`, `$derived`) and use cases such as `videos.addFromText` or `sync.syncNow` |
-| Domain rules | `youtube.js`, `artist.js`, `report.js`, `report-compare.js`, `youtube-sync.js` | Plain functions with no state or I/O: parsing links, guessing artists, writing and reading reports, comparing a playlist with YouTube |
+| Domain rules | `packages/core/src` (TypeScript): `videos/youtube.ts`, `videos/artist.ts`, `playlists/report.ts`, `playlists/report-compare.ts`, `playlists/youtube-sync.ts` | Plain functions with no state or I/O: parsing links, guessing artists, writing and reading reports, comparing a playlist with YouTube. Shared with the React app (#23) |
 | Data access | `*.repository.js`, `*.client.js` | Drizzle ORM queries against the local database; HTTP calls to the API |
-| Core | `web/src/core` | SQLite wrapper, Drizzle table definitions and migrations, persistence, the data-changed signal, the API address |
+| Core | `packages/core/src/db`, `web/src/core` | SQLite wrapper (sql.js + Drizzle), table definitions and migrations, and IndexedDB persistence behind a `Persistence` interface, in TypeScript and shared with the React app; the data-changed signal and the API address in `web/src/core` |
 | API | `api/src/YtPlaylist.*` | Endpoints and auth (Api), use cases and ports (Application), entities and DTOs (Models), ID rules and limits (Domain), EF Core and YouTube clients (Infrastructure) |
 
 **The recovery hook.** Every way of replacing a chain's code goes through one step, `ChainService.RunRecoveryHookAsync`: recovering with a recovery code, **Generate a new code**, and later the cleanup of abandoned chains. It makes a new secret and new recovery codes, and `IChainStore.ResetAccessAsync` writes everything in one transaction:
@@ -212,7 +219,7 @@ flowchart LR
 
     subgraph netlify["Netlify"]
         direction TB
-        cdn["CDN<br/>web/dist + _headers (CSP)"]
+        cdn["CDN<br/>web-react/dist + _headers (CSP)"]
         redirect{{"/api/* proxy<br/>(from API_ORIGIN)"}}
     end
 
@@ -248,7 +255,7 @@ Not shown: the browser also loads Google Fonts, and falls back to noembed.com fo
 | Node | What runs there | Notes |
 | --- | --- | --- |
 | User device | The web app, SQLite (sql.js) and IndexedDB | Works offline; every browser keeps its own copy of the data |
-| Netlify CDN | `web/dist` with the headers from `web/public/_headers` | Content-Security-Policy limits connections to the app's own API and noembed.com |
+| Netlify CDN | `web-react/dist` with the headers from `web-react/public/_headers` | Content-Security-Policy limits connections to the app's own API and noembed.com |
 | Netlify proxy | `/api/*` forwarded to the Render service | Written at build time from `API_ORIGIN`; requests time out after 26 seconds |
 | Render | The .NET API in a Docker container (`api/Dockerfile`, `render.yaml`) | Applies EF Core migrations on start; the free plan sleeps when idle |
 | Neon | The shared PostgreSQL database | One library per sync chain: playlists and videos are keyed by `chain_id` and ID, so each chain keeps its own copy of a row even when another chain has the same ID, and a device only reads and writes its own chain's rows. Chain codes, recovery codes, pairing codes and device credentials are stored only as HMACs keyed with `SYNC_PEPPER`; each chain has an audit log without secrets. Last-write-wins sync; each row has a `seq` the clients use as a cursor. It pauses when idle and closes its connections, and the API retries on a new one |

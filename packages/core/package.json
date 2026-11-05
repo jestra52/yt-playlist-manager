@@ -1,0 +1,35 @@
+{
+  "name": "@ytpm/core",
+  "private": true,
+  "version": "1.0.0",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "@scure/bip39": "^1.6.0",
+    "drizzle-orm": "^0.45.4",
+    "jsqr": "^1.4.0",
+    "sql.js": "^1.15.2"
+  },
+  "devDependencies": {
+    "@types/sql.js": "^1.4.11",
+    "@ytpm/eslint-config": "*",
+    "drizzle-kit": "^0.31.11",
+    "eslint": "^10.13.0",
+    "prettier": "^3.9.10",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}
