@@ -19,7 +19,13 @@ export const Sidebar = () => (
                 <span>Appearance</span>
                 <ThemeSwitch />
             </div>
-            <Link href={SOURCE_URL} target="_blank" rel="noopener noreferrer" className={styles.sourceLink}>
+            <Link
+                href={SOURCE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                underline="none"
+                className={styles.sourceLink}
+            >
                 Source code · AGPL-3.0
             </Link>
         </div>
