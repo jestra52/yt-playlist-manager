@@ -10,6 +10,22 @@
     }
 }
 
+.playing {
+    box-shadow: inset 3px 0 0 var(--mui-palette-primary-main);
+}
+
+.thumbButton {
+    flex-shrink: 0;
+    padding: 0;
+    background: none;
+    border: 0;
+    cursor: pointer;
+
+    &:disabled {
+        cursor: default;
+    }
+}
+
 .watched .title {
     color: var(--mui-palette-text-secondary);
 }
@@ -21,6 +37,7 @@
 }
 
 .thumb {
+    display: block;
     width: 120px;
     aspect-ratio: 16 / 9;
     object-fit: cover;

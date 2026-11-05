@@ -3,6 +3,7 @@ import { watchUrl } from '@ytpm/core/videos/youtube';
 import { memo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
 import { selectVideoById } from '../../videos.selectors';
+import { played } from '../../videos.slice';
 import { setWatched } from '../../videos.thunks';
 import { ArtistLine } from '../row/ArtistLine';
 import { VideoActions } from '../row/VideoActions';
@@ -11,20 +12,35 @@ import styles from './VideoRow.module.scss';
 
 export const VideoRow = memo(({ id, index, total }: { id: string; index: number; total: number }) => {
     const video = useAppSelector((state) => selectVideoById(state, id));
+    const playing = useAppSelector((state) => state.videos.playingId === id);
     const [editingNotes, setEditingNotes] = useState(false);
     const dispatch = useAppDispatch();
     if (!video) return null;
     const title = video.title || video.youtubeId;
 
     return (
-        <li className={video.watched ? `${styles.row} ${styles.watched}` : styles.row}>
+        <li
+            className={[styles.row, video.watched && styles.watched, playing && styles.playing]
+                .filter(Boolean)
+                .join(' ')}
+        >
             <Checkbox
                 checked={video.watched}
                 onChange={(e) => dispatch(setWatched(id, e.target.checked))}
                 slotProps={{ input: { 'aria-label': `Watched: ${title}` } }}
             />
             <span className={styles.number}>{index + 1}</span>
-            {video.thumbnailUrl && <img className={styles.thumb} src={video.thumbnailUrl} alt="" loading="lazy" />}
+            {video.thumbnailUrl && (
+                <button
+                    type="button"
+                    className={styles.thumbButton}
+                    aria-label={`Play ${title}`}
+                    disabled={video.missing}
+                    onClick={() => dispatch(played(id))}
+                >
+                    <img className={styles.thumb} src={video.thumbnailUrl} alt="" loading="lazy" />
+                </button>
+            )}
             <div className={styles.text}>
                 <a className={styles.title} href={watchUrl(video.youtubeId)} target="_blank" rel="noopener noreferrer">
                     {title}

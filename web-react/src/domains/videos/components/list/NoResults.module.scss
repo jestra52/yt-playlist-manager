@@ -1,0 +1,15 @@
+@use '../../../../styles/tokens' as *;
+
+.empty {
+    margin-top: 16px;
+    padding: 40px 24px;
+    border: 1px dashed var(--mui-palette-divider);
+    border-radius: 10px;
+}
+
+.message {
+    margin: 0 0 16px;
+    font-family: $font-display;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
