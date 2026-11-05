@@ -52,7 +52,7 @@ export const AppDialog = ({ open, onClose, onExited, title, actions, children }:
                 if (open && !event.currentTarget.open) onClose();
             }}
         >
-            <div className={`modal-box glass ${styles.box}`}>
+            <div className={`modal-box ${styles.box}`}>
                 <button
                     className="btn btn-sm btn-circle btn-ghost absolute top-3 right-3"
                     type="button"

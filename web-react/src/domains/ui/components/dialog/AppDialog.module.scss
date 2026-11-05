@@ -1,14 +1,13 @@
-// Mostly opaque, so text stays readable over bright and dark thumbnails alike.
+// Frosted glass: the page stays visible behind the panel as soft, blurred shapes.
 .box {
-    --glass-blur: 24px;
-    --glass-opacity: 8%;
-    --glass-reflect-opacity: 3%;
-
-    background-color: color-mix(in srgb, var(--color-base-100) 82%, transparent);
+    background-color: color-mix(in srgb, var(--color-base-100) 30%, transparent);
+    box-shadow:
+        0 25px 50px -12px rgb(0 0 0 / 25%),
+        inset 0 0 0 1px color-mix(in srgb, var(--color-base-content) 12%, transparent);
+    backdrop-filter: blur(20px) saturate(150%);
 
     @media (prefers-reduced-transparency: reduce) {
         background-color: var(--color-base-100);
-        background-image: none;
         backdrop-filter: none;
     }
 }
