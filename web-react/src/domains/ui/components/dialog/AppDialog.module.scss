@@ -4,7 +4,7 @@
     box-shadow:
         0 25px 50px -12px rgb(0 0 0 / 25%),
         inset 0 0 0 1px color-mix(in srgb, var(--color-base-content) 12%, transparent);
-    backdrop-filter: blur(20px) saturate(150%);
+    backdrop-filter: blur(25px) saturate(150%);
 
     @media (prefers-reduced-transparency: reduce) {
         background-color: var(--color-base-100);
