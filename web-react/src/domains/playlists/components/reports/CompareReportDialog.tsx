@@ -1,13 +1,10 @@
 import FileUploadOutlined from '@mui/icons-material/FileUploadOutlined';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogTitle from '@mui/material/DialogTitle';
 import { compareReport, FORMATS, parseReport } from '@ytpm/core/playlists/report-compare';
 import { useMemo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
+import { AppDialog } from '../../../ui/components/dialog/AppDialog';
 import { selectAllVideos } from '../../../videos/videos.selectors';
 import { addMissingFromReport } from '../../playlists.thunks';
 import styles from './CompareReportDialog.module.scss';
@@ -45,90 +42,97 @@ export const CompareReportDialog = ({ playlistId, onClose }: { playlistId: strin
     };
 
     return (
-        <Dialog open onClose={onClose} fullWidth maxWidth="sm">
-            <DialogTitle>Compare with a report</DialogTitle>
-            <DialogContent>
-                <p className={styles.intro}>
-                    Load a report saved from this app (<code>1: title | artist</code> per line, or <code>1: title</code>{' '}
-                    in older reports) to find the videos this playlist no longer has. Missing items come back in their
-                    old place, and you can paste each one's YouTube link later.
-                </p>
-                <div className={styles.file}>
-                    <Button component="label" variant="outlined" size="small" startIcon={<FileUploadOutlined />}>
-                        Choose a .txt file
-                        <input className={styles.hidden} type="file" accept=".txt,text/plain" onChange={readFile} />
+        <AppDialog
+            title="Compare with a report"
+            onClose={onClose}
+            actions={
+                <>
+                    <Button color="inherit" onClick={onClose}>
+                        Cancel
                     </Button>
-                    <span className={styles.fileName}>{fileName || 'or paste it below'}</span>
-                </div>
-                <label className={styles.label} htmlFor="report-text">
-                    Report text
-                </label>
-                <textarea
-                    id="report-text"
-                    className={styles.text}
-                    rows={5}
-                    placeholder={EXAMPLE}
-                    value={text}
-                    onChange={(e) => {
-                        setText(e.target.value);
-                        setFileName('');
-                    }}
-                    spellCheck={false}
-                />
-
-                {result === null && (
-                    <p className={styles.error} role="alert">
-                        No numbered lines found. Each video needs a line like "12: title".
-                    </p>
-                )}
-                {result && (
-                    <>
-                        <Chip
-                            size="small"
-                            className={styles.format}
-                            label={
-                                result.format === FORMATS.artists ? 'Report with artists' : 'Legacy report, no artists'
-                            }
-                        />
-                        <dl className={styles.stats}>
-                            <div>
-                                <dt>In the report</dt>
-                                <dd>{result.total}</dd>
-                            </div>
-                            <div>
-                                <dt>Still here</dt>
-                                <dd>{result.found}</dd>
-                            </div>
-                            <div>
-                                <dt>Missing</dt>
-                                <dd>{missing.length}</dd>
-                            </div>
-                        </dl>
-                        {missing.length ? (
-                            <MissingEntries entries={missing} />
-                        ) : (
-                            <p>Nothing is missing: every item in the report is still in this playlist.</p>
-                        )}
-                    </>
-                )}
-            </DialogContent>
-            <DialogActions>
-                <Button color="inherit" onClick={onClose}>
-                    Cancel
-                </Button>
+                    <Button
+                        variant="contained"
+                        disabled={!missing.length}
+                        onClick={() => {
+                            dispatch(addMissingFromReport(playlistId, missing));
+                            onClose();
+                        }}
+                    >
+                        {missing.length
+                            ? `Add ${missing.length} missing item${missing.length === 1 ? '' : 's'}`
+                            : 'Add missing items'}
+                    </Button>
+                </>
+            }
+        >
+            <p className={styles.intro}>
+                Load a report saved from this app (<code>1: title | artist</code> per line, or <code>1: title</code> in
+                older reports) to find the videos this playlist no longer has. Missing items come back in their old
+                place, and you can paste each one's YouTube link later.
+            </p>
+            <div className={styles.file}>
                 <Button
+                    component="label"
                     variant="contained"
-                    disabled={!missing.length}
-                    onClick={() => {
-                        dispatch(addMissingFromReport(playlistId, missing));
-                        onClose();
-                    }}
+                    color="inherit"
+                    size="small"
+                    className={styles.choose}
+                    startIcon={<FileUploadOutlined />}
                 >
-                    {missing.length
-                        ? `Add ${missing.length} missing item${missing.length === 1 ? '' : 's'}`
-                        : 'Add missing items'}
+                    Choose a .txt file
+                    <input className={styles.hidden} type="file" accept=".txt,text/plain" onChange={readFile} />
                 </Button>
-            </DialogActions>
-        </Dialog>
+                <span className={styles.fileName}>{fileName || 'or paste it below'}</span>
+            </div>
+            <label className={styles.label} htmlFor="report-text">
+                Report text
+            </label>
+            <textarea
+                id="report-text"
+                className={styles.text}
+                rows={5}
+                placeholder={EXAMPLE}
+                value={text}
+                onChange={(e) => {
+                    setText(e.target.value);
+                    setFileName('');
+                }}
+                spellCheck={false}
+            />
+
+            {result === null && (
+                <p className={styles.error} role="alert">
+                    No numbered lines found. Each video needs a line like "12: title".
+                </p>
+            )}
+            {result && (
+                <>
+                    <Chip
+                        size="small"
+                        className={styles.format}
+                        label={result.format === FORMATS.artists ? 'Report with artists' : 'Legacy report, no artists'}
+                    />
+                    <dl className={styles.stats}>
+                        <div>
+                            <dt>In the report</dt>
+                            <dd>{result.total}</dd>
+                        </div>
+                        <div>
+                            <dt>Still here</dt>
+                            <dd>{result.found}</dd>
+                        </div>
+                        <div>
+                            <dt>Missing</dt>
+                            <dd>{missing.length}</dd>
+                        </div>
+                    </dl>
+                    {missing.length ? (
+                        <MissingEntries entries={missing} />
+                    ) : (
+                        <p>Nothing is missing: every item in the report is still in this playlist.</p>
+                    )}
+                </>
+            )}
+        </AppDialog>
     );
 };

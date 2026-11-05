@@ -15,7 +15,10 @@ export const videosSlice = createSlice({
         playingId: null as string | null,
     }),
     reducers: {
-        loaded: videosAdapter.setAll,
+        loaded: (state, { payload }: PayloadAction<Video[]>) => {
+            videosAdapter.setAll(state, payload);
+            if (state.playingId && !state.entities[state.playingId]) state.playingId = null;
+        },
         upserted: videosAdapter.upsertMany,
         changed: videosAdapter.upsertOne,
         removed: (state, { payload }: PayloadAction<string>) => {

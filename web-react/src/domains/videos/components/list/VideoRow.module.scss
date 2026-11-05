@@ -4,6 +4,8 @@
     align-items: center;
     padding: 10px 12px;
     border-bottom: 1px solid var(--mui-palette-divider);
+    content-visibility: auto;
+    contain-intrinsic-size: auto 96px;
 
     &:last-child {
         border-bottom: 0;

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Database } from '@ytpm/core/db/database';
 import { setDatabase } from '@ytpm/core/db/index';
 import initSqlJs, { type SqlJsStatic } from 'sql.js';
@@ -6,7 +6,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../../App';
 import { createStore, type AppStore } from '../../app/store';
 import { selectProgressByPlaylist, selectVideoById, selectVideoIdsFor } from '../videos/videos.selectors';
-import { addVideosFromText, setWatched } from '../videos/videos.thunks';
+import { addEntries, addVideosFromText, setWatched } from '../videos/videos.thunks';
 import { selectPlaylists, selectSelectedPlaylist } from './playlists.selectors';
 import { createFromInput, createPlaylist, loadLibrary, selectPlaylist } from './playlists.thunks';
 
@@ -57,6 +57,30 @@ afterAll(() => {
 beforeEach(() => {
     setDatabase(new Database(new SQL.Database()));
     store = createStore();
+});
+
+describe('switching playlists', () => {
+    it('shows only the open playlist, with all its videos', async () => {
+        const first = store.dispatch(createPlaylist({ name: 'First' }))!;
+        const entries = Array.from({ length: 30 }, (_, i) => ({
+            youtubeId: String(i).padStart(11, 'a'),
+            title: `Song ${i}`,
+        }));
+        store.dispatch(addEntries(first.id, entries));
+        const second = store.dispatch(createPlaylist({ name: 'Second' }))!;
+        render(<App store={store} />);
+
+        act(() => {
+            store.dispatch(selectPlaylist(first.id));
+        });
+        expect(await screen.findAllByRole('checkbox', { name: /^Watched:/ })).toHaveLength(30);
+
+        act(() => {
+            store.dispatch(selectPlaylist(second.id));
+        });
+        await waitFor(() => expect(screen.getAllByRole('textbox', { name: 'Playlist name' })).toHaveLength(1));
+        expect(screen.getByRole('textbox', { name: 'Playlist name' })).toHaveValue('Second');
+    });
 });
 
 describe('playlist and video slices', () => {

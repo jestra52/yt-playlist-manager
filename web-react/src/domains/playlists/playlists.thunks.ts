@@ -6,16 +6,19 @@ import {
     updatePlaylist,
     type NewPlaylist,
     type Playlist,
+    type PlaylistPatch,
 } from '@ytpm/core/playlists/playlists.repository';
 import { buildPlaylistReport, reportFileName } from '@ytpm/core/playlists/report';
 import type { MissingEntry } from '@ytpm/core/playlists/report-compare';
+import type { YouTubeDiff } from '@ytpm/core/playlists/youtube-sync';
 import { fetchVideoMetadata } from '@ytpm/core/videos/metadata.client';
 import {
     fetchYouTubePlaylist,
     PARTIAL_IMPORT_NOTE,
     UNAVAILABLE_NEEDS_KEY_NOTE,
+    type YouTubePlaylist,
 } from '@ytpm/core/videos/playlist.client';
-import { listVideos } from '@ytpm/core/videos/videos.repository';
+import { listVideos, type Video } from '@ytpm/core/videos/videos.repository';
 import {
     listProblem,
     parsePlaylistId,
@@ -28,7 +31,7 @@ import { downloadTextFile } from '../../shared/download';
 import { notify, setImporting } from '../ui/ui.slice';
 import { selectAllVideos } from '../videos/videos.selectors';
 import { filterSet, loaded as videosLoaded, playlistDropped } from '../videos/videos.slice';
-import { addEntries, addFromReport } from '../videos/videos.thunks';
+import { addEntries, addFromReport, applyYouTubeDiff } from '../videos/videos.thunks';
 import { selectPlaylistById, selectSelectedPlaylistId } from './playlists.selectors';
 import { added, changed, loaded, rememberedPlaylist, rememberPlaylist, removed, selected } from './playlists.slice';
 
@@ -143,19 +146,21 @@ export const createFromInput =
     };
 
 const update =
-    (id: string, patch: { name?: string; description?: string }): AppThunk =>
+    (id: string, patch: PlaylistPatch): AppThunk<boolean> =>
     (dispatch) => {
         try {
             const playlist = updatePlaylist(getDatabase(), id, patch);
             if (playlist) dispatch(changed(playlist));
+            return Boolean(playlist);
         } catch (err) {
             dispatch(notify((err as Error).message, { tone: 'error' }));
+            return false;
         }
     };
 
-export const renamePlaylist = (id: string, name: string): AppThunk => update(id, { name });
+export const renamePlaylist = (id: string, name: string): AppThunk<boolean> => update(id, { name });
 
-export const describePlaylist = (id: string, description: string): AppThunk => update(id, { description });
+export const describePlaylist = (id: string, description: string): AppThunk<boolean> => update(id, { description });
 
 /** Deletes a playlist and its videos, and opens the playlist next to it. */
 export const deletePlaylist =
@@ -191,4 +196,66 @@ export const addMissingFromReport =
         if (waiting) parts.push(`${waiting} need${waiting === 1 ? 's' : ''} a YouTube link`);
         dispatch(notify(parts.join('. ')));
         if (waiting) dispatch(filterSet('missing'));
+    };
+
+/**
+ * Links a playlist to the YouTube playlist at `input` (a link or a bare ID), so
+ * it can be synced with it. An empty `input` unlinks it. Returns true when saved.
+ */
+export const linkToYouTube =
+    (id: string, input: string): AppThunk<boolean> =>
+    (dispatch) => {
+        const text = input.trim();
+        if (!text) {
+            if (!dispatch(update(id, { source: '' }))) return false;
+            dispatch(notify('Unlinked from YouTube'));
+            return true;
+        }
+        const listId = parsePlaylistId(text);
+        if (!listId) {
+            const problem =
+                listProblem(text) ?? 'Paste a YouTube playlist link, like https://www.youtube.com/playlist?list=...';
+            dispatch(notify(problem, { tone: 'error' }));
+            return false;
+        }
+        if (!dispatch(update(id, { source: 'youtube', sourceId: listId }))) return false;
+        dispatch(notify('Linked to the YouTube playlist'));
+        return true;
+    };
+
+/**
+ * Reads the playlist's linked YouTube playlist, with its deleted and private
+ * videos so they aren't mistaken for removed ones, without changing anything.
+ * Resolves to null after telling the person what went wrong.
+ */
+export const readLinkedYouTubePlaylist =
+    (id: string): AppThunk<Promise<YouTubePlaylist | null>> =>
+    async (dispatch, getState) => {
+        const playlist = selectPlaylistById(getState(), id);
+        if (playlist?.source !== 'youtube' || !playlist.sourceId) return null;
+        try {
+            return await fetchYouTubePlaylist(playlist.sourceId, '/api', { includeUnavailable: true });
+        } catch (err) {
+            dispatch(notify((err as Error).message, { tone: 'error', timeout: 6000 }));
+            return null;
+        }
+    };
+
+/**
+ * Applies a comparison with YouTube. With `saveReport`, the playlist's report
+ * is downloaded first, as it was before the sync.
+ */
+export const applyYouTubeSync =
+    (id: string, diff: YouTubeDiff<Video>, { removeMissing = false, saveReport = false } = {}): AppThunk =>
+    (dispatch) => {
+        if (saveReport) dispatch(downloadReport(id));
+        const counts = dispatch(applyYouTubeDiff(id, diff, { removeMissing }));
+        const parts: string[] = [];
+        if (counts.added) parts.push(`${plural(counts.added, 'new video')} added`);
+        if (counts.addedMissing) parts.push(`${plural(counts.addedMissing, 'deleted video')} added as Missing`);
+        if (counts.nowUnavailable) parts.push(`${counts.nowUnavailable} marked as deleted on YouTube`);
+        if (counts.availableAgain) parts.push(`${counts.availableAgain} back on YouTube`);
+        if (counts.removed) parts.push(`${counts.removed} removed`);
+        const message = parts.length ? `Synced with YouTube: ${parts.join(', ')}` : 'Already in step with YouTube';
+        dispatch(notify(message, { timeout: 6000 }));
     };

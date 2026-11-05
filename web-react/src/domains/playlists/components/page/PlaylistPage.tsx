@@ -1,4 +1,5 @@
 import Typography from '@mui/material/Typography';
+import { Fragment } from 'react';
 import { useAppSelector } from '../../../../app/store';
 import { AddVideosForm } from '../../../videos/components/add/AddVideosForm';
 import { VideoList } from '../../../videos/components/list/VideoList';
@@ -28,10 +29,12 @@ export const PlaylistPage = () => {
     return (
         <section className={styles.page}>
             <PlayerPanel />
-            <PlaylistHeader key={`${playlist.id}:${playlist.updatedAt}`} playlist={playlist} />
-            <AddVideosForm key={playlist.id} playlistId={playlist.id} />
-            <VideoToolbar playlistId={playlist.id} />
-            <VideoList playlistId={playlist.id} />
+            <Fragment key={playlist.id}>
+                <PlaylistHeader playlist={playlist} />
+                <AddVideosForm playlistId={playlist.id} />
+                <VideoToolbar playlistId={playlist.id} />
+                <VideoList playlistId={playlist.id} />
+            </Fragment>
         </section>
     );
 };
