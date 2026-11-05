@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { App } from './App';
 import { createStore } from './app/store';
@@ -26,6 +26,27 @@ describe('ui slice', () => {
 });
 
 describe('App', () => {
+    it('follows a theme chosen in another tab, and leaves storage to the store', () => {
+        localStorage.setItem('mui-mode', 'dark');
+        localStorage.setItem('ytpm:theme', 'light');
+        const store = createStore();
+        render(<App store={store} />);
+        expect(document.documentElement).toHaveAttribute('data-theme', 'light');
+
+        localStorage.setItem('ytpm:theme', 'dark');
+        act(() => {
+            dispatchEvent(new StorageEvent('storage', { key: 'ytpm:theme' }));
+        });
+        expect(store.getState().ui.theme).toBe('dark');
+        expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
+
+        act(() => {
+            dispatchEvent(new StorageEvent('storage', { key: 'mui-mode', newValue: 'light' }));
+        });
+        expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
+        localStorage.clear();
+    });
+
     it('shows the brand and switches the theme', () => {
         const store = createStore({ ui: { theme: 'system', sidebarOpen: true } });
         render(<App store={store} />);
