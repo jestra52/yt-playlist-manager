@@ -1,10 +1,3 @@
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import Accordion from '@mui/material/Accordion';
-import AccordionDetails from '@mui/material/AccordionDetails';
-import AccordionSummary from '@mui/material/AccordionSummary';
-import Chip from '@mui/material/Chip';
-import styles from './DiffSection.module.scss';
-
 interface DiffItem {
     youtubeId: string;
     title?: string;
@@ -12,21 +5,20 @@ interface DiffItem {
 }
 
 export const DiffSection = ({ title, hint, items }: { title: string; hint: string; items: readonly DiffItem[] }) => (
-    <Accordion defaultExpanded={items.length > 0} disableGutters className={styles.section}>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />} className={styles.summary}>
-            <span className={styles.title}>{title}</span>
-            <Chip size="small" label={items.length} />
-        </AccordionSummary>
-        <AccordionDetails>
-            <p className={styles.hint}>{hint}</p>
-            <ul className={styles.list}>
+    <details className="collapse-arrow rounded-box border-base-300 collapse border" open={items.length > 0}>
+        <summary className="collapse-title py-2 text-sm font-semibold">
+            {title} <span className="badge badge-sm ml-1">{items.length}</span>
+        </summary>
+        <div className="collapse-content text-sm">
+            <p className="text-base-content/65 mt-0 mb-1">{hint}</p>
+            <ul className="m-0 max-h-36 list-none overflow-y-auto p-0">
                 {items.map((item) => (
-                    <li key={item.youtubeId} className={styles.item}>
+                    <li key={item.youtubeId} className="truncate py-0.5">
                         {item.title || `YouTube video ${item.youtubeId}`}
-                        {item.unavailable && <span className={styles.hint}> · deleted on YouTube</span>}
+                        {item.unavailable && <span className="text-base-content/65"> · deleted on YouTube</span>}
                     </li>
                 ))}
             </ul>
-        </AccordionDetails>
-    </Accordion>
+        </div>
+    </details>
 );
