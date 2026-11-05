@@ -11,6 +11,7 @@ import { loadSync } from './domains/sync/sync.thunks';
 import { OpenFailed } from './domains/ui/components/feedback/OpenFailed';
 import { selectAllVideos } from './domains/videos/videos.selectors';
 import { enrichMetadata } from './domains/videos/videos.thunks';
+import './styles/tailwind.css';
 
 const open = (db: Database) => {
     setDatabase(db);
