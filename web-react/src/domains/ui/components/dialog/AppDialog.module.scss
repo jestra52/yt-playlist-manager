@@ -2,6 +2,10 @@
 
 $sheet: 640px;
 
+.backdrop {
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
 .container {
     align-items: flex-end;
 
@@ -20,11 +24,41 @@ $sheet: 640px;
     overflow-y: auto;
     background-image: none;
     border-radius: 16px 16px 0 0;
-    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    animation: enter 0.3s ease-out;
+    --hidden-translate: 0 100%;
+    --hidden-scale: 1;
 
     @include up($sheet) {
         max-width: 32rem;
         border-radius: 16px;
+        --hidden-translate: 0 2%;
+        --hidden-scale: 0.98;
+    }
+}
+
+.leaving {
+    animation: leave 0.3s ease-out forwards;
+}
+
+@keyframes enter {
+    from {
+        translate: var(--hidden-translate);
+        scale: var(--hidden-scale);
+    }
+}
+
+@keyframes leave {
+    to {
+        translate: var(--hidden-translate);
+        scale: var(--hidden-scale);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .paper,
+    .leaving {
+        animation: none;
     }
 }
 

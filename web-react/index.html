@@ -3,6 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <style>
+      html {
+        background-color: #e9edf2;
+      }
+      html[data-theme='dark'] {
+        color-scheme: dark;
+        background-color: #0f1626;
+      }
+      html[data-theme='light'] {
+        color-scheme: light;
+        background-color: #e9edf2;
+      }
+      @media (prefers-color-scheme: dark) {
+        html:not([data-theme]) {
+          background-color: #0f1626;
+        }
+      }
+    </style>
+    <script src="/theme-boot.js"></script>
     <meta
       name="description"
       content="Your own playlists of music and videos, in order, offline-first, synced across devices."

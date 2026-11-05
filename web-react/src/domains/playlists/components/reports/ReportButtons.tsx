@@ -1,14 +1,14 @@
 import FileDownloadOutlined from '@mui/icons-material/FileDownloadOutlined';
 import FileUploadOutlined from '@mui/icons-material/FileUploadOutlined';
 import Button from '@mui/material/Button';
-import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
+import { useDialog } from '../../../ui/components/dialog/useDialog';
 import { selectProgressByPlaylist } from '../../../videos/videos.selectors';
 import { downloadReport } from '../../playlists.thunks';
 import { CompareReportDialog } from './CompareReportDialog';
 
 export const ReportButtons = ({ playlistId }: { playlistId: string }) => {
-    const [comparing, setComparing] = useState(false);
+    const dialog = useDialog();
     const total = useAppSelector(selectProgressByPlaylist)[playlistId]?.total ?? 0;
     const dispatch = useAppDispatch();
 
@@ -20,7 +20,7 @@ export const ReportButtons = ({ playlistId }: { playlistId: string }) => {
                 startIcon={<FileUploadOutlined />}
                 title="Find videos missing since an old report"
                 aria-label="Compare with an old report and add back missing videos"
-                onClick={() => setComparing(true)}
+                onClick={dialog.show}
             >
                 Compare
             </Button>
@@ -35,7 +35,7 @@ export const ReportButtons = ({ playlistId }: { playlistId: string }) => {
             >
                 Report
             </Button>
-            {comparing && <CompareReportDialog playlistId={playlistId} onClose={() => setComparing(false)} />}
+            {dialog.mounted && <CompareReportDialog playlistId={playlistId} {...dialog.controls} />}
         </>
     );
 };

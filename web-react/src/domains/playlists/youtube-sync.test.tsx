@@ -138,6 +138,15 @@ describe('sync dialog', () => {
         await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     });
 
+    it('opens fresh after closing', async () => {
+        await compared();
+        fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+        fireEvent.click(screen.getByRole('button', { name: /YouTube playlist: sync from it/ }));
+        expect(screen.getByRole('button', { name: 'Compare with YouTube' })).toBeInTheDocument();
+    });
+
     it('warns when YouTube only returned part of the playlist, and hides removals', async () => {
         reply = () => json(200, youtube({ partial: true, source: 'feed' }));
         await compared();
