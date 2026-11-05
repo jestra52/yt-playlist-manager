@@ -10,8 +10,8 @@ import {
     parseYouTubeList,
     videoInPlaylist,
 } from '@ytpm/core/videos/youtube';
-import { fetchYouTubePlaylist } from '../videos/playlist.client.js';
-import { fetchVideoMetadata } from '../videos/metadata.client.js';
+import { fetchYouTubePlaylist } from '@ytpm/core/videos/playlist.client';
+import { fetchVideoMetadata } from '@ytpm/core/videos/metadata.client';
 import { downloadTextFile } from '../../shared/download.js';
 import { buildPlaylistReport, reportFileName } from '@ytpm/core/playlists/report';
 import { compareReport, parseReport } from '@ytpm/core/playlists/report-compare';

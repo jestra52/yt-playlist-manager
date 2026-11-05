@@ -4,8 +4,8 @@ import { dataChanged } from '../../core/events.js';
 import { notify } from '../ui/ui.service.svelte.js';
 import { extractYouTubeIds, parseYouTubeId, thumbnailFor } from '@ytpm/core/videos/youtube';
 import { cleanArtist, guessedArtistPatch, knownArtists, matchKnownArtist } from '@ytpm/core/videos/artist';
-import { fetchVideoMetadata } from './metadata.client.js';
-import { fetchYouTubePlaylist } from './playlist.client.js';
+import { fetchVideoMetadata } from '@ytpm/core/videos/metadata.client';
+import { fetchYouTubePlaylist } from '@ytpm/core/videos/playlist.client';
 import * as repo from '@ytpm/core/videos/videos.repository';
 
 const byPosition = (a, b) => a.position - b.position;
