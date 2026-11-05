@@ -1,5 +1,3 @@
-import Tab from '@mui/material/Tab';
-import Tabs from '@mui/material/Tabs';
 import { useState } from 'react';
 import { ActivityTab } from './ActivityTab';
 import styles from './ConnectedView.module.scss';
@@ -9,29 +7,37 @@ import { SettingsTab } from './SettingsTab';
 
 type Section = 'devices' | 'security' | 'activity' | 'settings';
 
+const SECTIONS: { id: Section; label: string }[] = [
+    { id: 'devices', label: 'Devices' },
+    { id: 'security', label: 'Security' },
+    { id: 'activity', label: 'Activity' },
+    { id: 'settings', label: 'Settings' },
+];
+
 export const ConnectedView = () => {
     const [section, setSection] = useState<Section>('devices');
     const [replacing, setReplacing] = useState(false);
 
     return (
         <>
-            <p className={styles.intro}>
+            <p className="text-base-content/65 mt-0 mb-2 text-sm">
                 This device is in a sync chain: your playlists sync with the other devices in it.
             </p>
-            <Tabs
-                value={section}
-                onChange={(_, value: Section) => setSection(value)}
-                variant="scrollable"
-                scrollButtons={false}
-                aria-label="Sync chain"
-                className={styles.tabs}
-            >
-                <Tab value="devices" label="Devices" />
-                <Tab value="security" label="Security" />
-                <Tab value="activity" label="Activity" />
-                <Tab value="settings" label="Settings" />
-            </Tabs>
-            <div role="tabpanel" className={styles.panel}>
+            <div role="tablist" className="tabs tabs-border" aria-label="Sync chain">
+                {SECTIONS.map(({ id, label }) => (
+                    <button
+                        key={id}
+                        type="button"
+                        role="tab"
+                        aria-selected={section === id}
+                        className={`tab ${section === id ? 'tab-active' : ''}`}
+                        onClick={() => setSection(id)}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>
+            <div key={section} role="tabpanel" className={styles.panel}>
                 {section === 'devices' && (
                     <DevicesTab
                         onReplaceCode={() => {

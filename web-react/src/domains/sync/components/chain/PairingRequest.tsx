@@ -1,12 +1,8 @@
-import InfoOutlined from '@mui/icons-material/InfoOutlined';
-import Alert from '@mui/material/Alert';
-import Button from '@mui/material/Button';
 import { countdown } from '@ytpm/core/sync/pairing';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
 import { useNow } from '../../../../shared/useNow';
 import { approvePairing, denyPairing } from '../../pairing.thunks';
-import fields from '../settings/Field.module.scss';
-import styles from '../start/Notice.module.scss';
+import { Notice } from '../settings/Notice';
 
 export const PairingRequest = ({ requesterName, expiresAt }: { requesterName: string; expiresAt: number }) => {
     const busy = useAppSelector((state) => state.sync.busy);
@@ -14,35 +10,27 @@ export const PairingRequest = ({ requesterName, expiresAt }: { requesterName: st
     const now = useNow(1000);
 
     return (
-        <Alert
-            severity="info"
-            icon={<InfoOutlined fontSize="small" />}
-            role="alertdialog"
-            aria-labelledby="pairing-ask"
-            className={styles.notice}
-        >
-            <p id="pairing-ask" className={styles.title}>
+        <Notice tone="info" role="alertdialog" labelledBy="pairing-ask">
+            <p id="pairing-ask" className="m-0 font-semibold">
                 Allow {requesterName || 'this device'} to join?
             </p>
-            <p className={styles.text}>
+            <p className="mt-1 mb-0">
                 It will sync every playlist in this chain. Only allow it if it's your device and you just entered the
                 code on it. Answer within {countdown(expiresAt, now)}.
             </p>
-            <div className={styles.actions}>
-                <Button variant="contained" size="small" disabled={busy} onClick={() => dispatch(approvePairing())}>
-                    Allow
-                </Button>
-                <Button
-                    variant="contained"
-                    color="inherit"
-                    size="small"
-                    className={fields.soft}
+            <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                    className="btn btn-primary btn-sm"
+                    type="button"
                     disabled={busy}
-                    onClick={() => dispatch(denyPairing())}
+                    onClick={() => dispatch(approvePairing())}
                 >
+                    Allow
+                </button>
+                <button className="btn btn-sm" type="button" disabled={busy} onClick={() => dispatch(denyPairing())}>
                     Deny
-                </Button>
+                </button>
             </div>
-        </Alert>
+        </Notice>
     );
 };

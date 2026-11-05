@@ -1,10 +1,6 @@
-import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
-import CircularProgress from '@mui/material/CircularProgress';
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
 import { removeDevice } from '../../chain.thunks';
-import styles from './ChainDevices.module.scss';
 
 const formatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 const when = (ms: number) => (ms ? formatter.format(new Date(ms)) : '—');
@@ -32,43 +28,38 @@ export const ChainDevices = () => {
 
     return (
         <section aria-labelledby="chain-devices-title">
-            <h3 id="chain-devices-title" className={styles.title}>
+            <h3 id="chain-devices-title" className="mt-0 mb-2 text-base font-semibold">
                 Devices in this sync chain
             </h3>
             {!chain ? (
-                <p className={styles.loading}>
-                    <CircularProgress size={14} color="inherit" /> Loading devices…
+                <p className="text-base-content/65 m-0 flex items-center gap-2">
+                    <span className="loading loading-spinner loading-xs" /> Loading devices…
                 </p>
             ) : (
                 <>
-                    <ul className={styles.devices}>
+                    <ul className="rounded-box border-base-300 divide-base-300 m-0 list-none divide-y border p-0">
                         {chain.devices.map((device) => {
                             const current = device.id === chain.deviceId;
                             const confirming = confirmingId === device.id;
                             return (
-                                <li key={device.id} className={styles.device}>
-                                    <div className={styles.about}>
-                                        <p className={styles.name}>
+                                <li key={device.id} className="flex items-center gap-3 px-3 py-2">
+                                    <div className="min-w-0 flex-1">
+                                        <p className="m-0 truncate font-medium">
                                             {device.name}
                                             {current && (
-                                                <Chip
-                                                    size="small"
-                                                    color="primary"
-                                                    variant="outlined"
-                                                    label="This device"
-                                                    className={styles.chip}
-                                                />
+                                                <span className="badge badge-sm badge-soft badge-primary ml-2">
+                                                    This device
+                                                </span>
                                             )}
                                         </p>
-                                        <p className={styles.dates}>
+                                        <p className="text-base-content/65 m-0 text-xs">
                                             Joined {when(device.createdAt)} · last seen {when(device.lastSeenAt)}
                                         </p>
                                     </div>
                                     {!current && (
-                                        <Button
-                                            size="small"
-                                            color={confirming ? 'error' : 'inherit'}
-                                            variant={confirming ? 'contained' : 'text'}
+                                        <button
+                                            className={`btn btn-sm ${confirming ? 'btn-error' : 'btn-ghost'}`}
+                                            type="button"
                                             disabled={busy}
                                             aria-label={
                                                 confirming ? `Confirm removing ${device.name}` : `Remove ${device.name}`
@@ -76,13 +67,13 @@ export const ChainDevices = () => {
                                             onClick={() => remove(device.id)}
                                         >
                                             {confirming ? 'Remove it' : 'Remove'}
-                                        </Button>
+                                        </button>
                                     )}
                                 </li>
                             );
                         })}
                     </ul>
-                    <p className={styles.dates}>
+                    <p className="text-base-content/65 mt-1 mb-0 text-xs">
                         A removed device stops syncing at once and keeps its playlists. It can join again with the chain
                         code.
                     </p>
