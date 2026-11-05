@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
 import { selectProgressByPlaylist } from '../../../videos/videos.selectors';
 import { describePlaylist, renamePlaylist } from '../../playlists.thunks';
+import { ReportButtons } from '../reports/ReportButtons';
 import { DeletePlaylistButton } from './DeletePlaylistButton';
 import styles from './PlaylistHeader.module.scss';
 
@@ -54,6 +55,7 @@ export const PlaylistHeader = ({ playlist }: { playlist: Playlist }) => {
                     autoComplete="off"
                     spellCheck={false}
                 />
+                <ReportButtons playlistId={playlist.id} />
                 <DeletePlaylistButton playlistId={playlist.id} />
             </div>
             <label className={styles.label} htmlFor="playlist-description">
