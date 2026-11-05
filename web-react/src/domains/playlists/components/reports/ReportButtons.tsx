@@ -1,7 +1,5 @@
-import FileDownloadOutlined from '@mui/icons-material/FileDownloadOutlined';
-import FileUploadOutlined from '@mui/icons-material/FileUploadOutlined';
-import Button from '@mui/material/Button';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
+import { Icon } from '../../../../shared/components/Icon';
 import { useDialog } from '../../../ui/components/dialog/useDialog';
 import { selectProgressByPlaylist } from '../../../videos/videos.selectors';
 import { downloadReport } from '../../playlists.thunks';
@@ -14,27 +12,27 @@ export const ReportButtons = ({ playlistId }: { playlistId: string }) => {
 
     return (
         <>
-            <Button
-                size="small"
-                color="inherit"
-                startIcon={<FileUploadOutlined />}
+            <button
+                type="button"
+                className="btn btn-ghost btn-sm"
                 title="Find videos missing since an old report"
                 aria-label="Compare with an old report and add back missing videos"
                 onClick={dialog.show}
             >
-                Compare
-            </Button>
-            <Button
-                size="small"
-                color="inherit"
-                startIcon={<FileDownloadOutlined />}
+                <Icon name="upload" size={16} />
+                <span className="max-md:hidden">Compare</span>
+            </button>
+            <button
+                type="button"
+                className="btn btn-ghost btn-sm"
                 title="Download a .txt list of the videos"
                 aria-label="Download a report of this playlist's videos"
                 disabled={total === 0}
                 onClick={() => dispatch(downloadReport(playlistId))}
             >
-                Report
-            </Button>
+                <Icon name="download" size={16} />
+                <span className="max-md:hidden">Report</span>
+            </button>
             {dialog.mounted && <CompareReportDialog playlistId={playlistId} {...dialog.controls} />}
         </>
     );

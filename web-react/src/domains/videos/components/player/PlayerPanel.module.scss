@@ -1,17 +1,3 @@
-@use '../../../../styles/tokens' as *;
-
-.player {
-    margin-bottom: 24px;
-    overflow: hidden;
-    color: $sidebar-text;
-    background-color: $sidebar-bg;
-    border-radius: 10px;
-
-    @include dark {
-        background-color: $sidebar-bg-dark;
-    }
-}
-
 .frame {
     aspect-ratio: 16 / 9;
     max-height: 56vh;
@@ -23,21 +9,4 @@
         height: 100%;
         border: 0;
     }
-}
-
-.bar {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    padding: 10px 10px 10px 16px;
-}
-
-.title {
-    flex: 1;
-    min-width: 0;
-    margin: 0;
-    overflow: hidden;
-    font-weight: 600;
-    white-space: nowrap;
-    text-overflow: ellipsis;
 }

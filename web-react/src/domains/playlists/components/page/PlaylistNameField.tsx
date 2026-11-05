@@ -14,24 +14,31 @@ export const PlaylistNameField = ({ playlist }: { playlist: Playlist }) => {
     };
 
     return (
-        <>
-            <label className={styles.label} htmlFor="playlist-name">
+        <div className={styles.field}>
+            <label className="sr-only" htmlFor="playlist-name">
                 Playlist name
             </label>
-            <input
+            <span className={styles.sizer} aria-hidden="true">
+                {name}{' '}
+            </span>
+            <textarea
                 id="playlist-name"
-                className={styles.name}
+                className={`textarea textarea-ghost ${styles.name}`}
+                rows={1}
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => setName(e.target.value.replace(/\s*\n\s*/g, ' '))}
                 onBlur={save}
                 onKeyDown={(e) => {
-                    if (e.key === 'Enter') e.currentTarget.blur();
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.currentTarget.blur();
+                    }
                     if (e.key === 'Escape') setName(playlist.name);
                 }}
                 maxLength={200}
                 autoComplete="off"
                 spellCheck={false}
             />
-        </>
+        </div>
     );
 };

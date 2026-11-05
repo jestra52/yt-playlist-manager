@@ -20,3 +20,12 @@ Object.defineProperty(window, 'matchMedia', {
         dispatchEvent: () => false,
     }),
 });
+
+HTMLDialogElement.prototype.showModal = function showModal() {
+    this.open = true;
+};
+HTMLDialogElement.prototype.close = function close() {
+    if (!this.open) return;
+    this.open = false;
+    this.dispatchEvent(new Event('close'));
+};

@@ -1,0 +1,29 @@
+.notice {
+    grid-auto-flow: column;
+    justify-content: space-between;
+    box-sizing: border-box;
+    max-width: min(30rem, calc(100vw - 2rem));
+    animation: rise 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.notice :global(.btn) {
+    color: inherit;
+
+    &:hover {
+        background: color-mix(in srgb, currentcolor 15%, transparent);
+        border-color: transparent;
+    }
+}
+
+.info {
+    color: var(--color-neutral-content);
+    background: var(--color-neutral);
+    border-color: var(--color-neutral);
+}
+
+@keyframes rise {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+}

@@ -1,10 +1,7 @@
-import Button from '@mui/material/Button';
 import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
 import type { AppThunk } from '../../../../app/store';
 import { deleteChain, leaveChain, renewRecoveryCodes, replaceCode } from '../../chain.thunks';
-import fields from '../settings/Field.module.scss';
-import styles from './SecurityTab.module.scss';
 
 type Action = 'replace' | 'codes' | 'leave' | 'delete';
 
@@ -39,55 +36,50 @@ export const SecurityTab = ({ replacing }: { replacing: boolean }) => {
 
     const warning = (action: Action) =>
         confirming === action && (
-            <p className={action === 'delete' ? styles.danger : styles.warning} role="alert">
+            <p className={`mt-2 mb-0 ${action === 'delete' ? 'text-error' : 'text-warning'}`} role="alert">
                 {WARNINGS[action]}
             </p>
         );
 
-    const safe = (action: Action) =>
-        confirming === action
-            ? ({ variant: 'contained', color: 'warning' } as const)
-            : ({ variant: 'contained', color: 'inherit', className: fields.soft } as const);
+    const safe = (action: Action) => `btn btn-sm ${confirming === action ? 'btn-warning' : ''}`;
 
     return (
         <>
-            <section className={styles.action}>
-                <p className={styles.when}>Use this if the code leaked or a device was lost.</p>
-                <Button {...safe('replace')} size="small" disabled={busy} onClick={() => act('replace')}>
+            <section className="mb-4">
+                <p className="text-base-content/65 mt-0 mb-2">Use this if the code leaked or a device was lost.</p>
+                <button className={safe('replace')} type="button" disabled={busy} onClick={() => act('replace')}>
                     {confirming === 'replace' ? 'Yes, new code and remove other devices' : 'Generate a new code'}
-                </Button>
+                </button>
                 {warning('replace')}
             </section>
-            <section className={styles.action}>
-                <p className={styles.when}>Use this if you used or lost your recovery codes.</p>
-                <Button {...safe('codes')} size="small" disabled={busy} onClick={() => act('codes')}>
+            <section className="mb-4">
+                <p className="text-base-content/65 mt-0 mb-2">Use this if you used or lost your recovery codes.</p>
+                <button className={safe('codes')} type="button" disabled={busy} onClick={() => act('codes')}>
                     {confirming === 'codes' ? 'Yes, new recovery codes' : 'Generate new recovery codes'}
-                </Button>
+                </button>
                 {warning('codes')}
             </section>
-            <section className={styles.risky} aria-labelledby="leave-or-delete">
-                <h3 id="leave-or-delete" className={styles.title}>
+            <section className="border-base-300 mt-6 border-t pt-4" aria-labelledby="leave-or-delete">
+                <h3 id="leave-or-delete" className="mt-0 mb-2 text-base font-semibold">
                     Leave or delete
                 </h3>
-                <div className={styles.buttons}>
-                    <Button
-                        size="small"
-                        color="warning"
-                        variant={confirming === 'leave' ? 'contained' : 'outlined'}
+                <div className="flex flex-wrap gap-2">
+                    <button
+                        className={`btn btn-sm btn-warning ${confirming === 'leave' ? '' : 'btn-outline'}`}
+                        type="button"
                         disabled={busy}
                         onClick={() => act('leave')}
                     >
                         {confirming === 'leave' ? 'Yes, leave' : 'Leave this chain'}
-                    </Button>
-                    <Button
-                        size="small"
-                        color="error"
-                        variant={confirming === 'delete' ? 'contained' : 'outlined'}
+                    </button>
+                    <button
+                        className={`btn btn-sm btn-error ${confirming === 'delete' ? '' : 'btn-outline'}`}
+                        type="button"
                         disabled={busy}
                         onClick={() => act('delete')}
                     >
                         {confirming === 'delete' ? 'Yes, delete it for every device' : 'Delete the sync chain'}
-                    </Button>
+                    </button>
                 </div>
                 {warning('leave')}
                 {warning('delete')}

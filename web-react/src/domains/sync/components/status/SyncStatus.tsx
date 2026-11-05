@@ -1,8 +1,5 @@
-import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
-import SyncIcon from '@mui/icons-material/Sync';
-import CircularProgress from '@mui/material/CircularProgress';
-import IconButton from '@mui/material/IconButton';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
+import { Icon } from '../../../../shared/components/Icon';
 import { timeAgo } from '../../../../shared/time';
 import { useNow } from '../../../../shared/useNow';
 import { openSettings, toggleSidebar } from '../../../ui/ui.slice';
@@ -27,37 +24,36 @@ export const SyncStatus = () => {
 
     const tone = () => {
         if (!configured) return styles.idle;
-        if (status === 'error') return styles.failed;
-        return pending > 0 ? styles.waiting : styles.synced;
+        if (status === 'error') return 'status-error';
+        return pending > 0 ? 'status-warning' : 'status-success';
     };
 
     return (
-        <div className={styles.status}>
+        <div className={`flex gap-1 pt-3 ${styles.bar}`}>
             <button
                 type="button"
-                className={styles.summary}
+                className="btn btn-ghost btn-sm min-w-0 flex-1 justify-start gap-2 px-2 font-normal"
                 title={error ?? 'Sync settings'}
                 onClick={() => {
                     dispatch(toggleSidebar(false));
                     dispatch(openSettings());
                 }}
             >
-                <span className={[styles.dot, tone(), syncing && styles.pulse].filter(Boolean).join(' ')} />
-                <span className={styles.text}>{label()}</span>
-                <SettingsOutlined fontSize="small" />
+                <span className={`status ${tone()} ${syncing ? 'animate-pulse' : ''}`} aria-hidden="true" />
+                <span className="grow truncate text-left">{label()}</span>
+                <Icon name="settings" size={16} />
             </button>
             {configured && (
-                <IconButton
-                    size="small"
-                    color="inherit"
-                    className={styles.now}
+                <button
+                    className="btn btn-ghost btn-sm btn-square"
+                    type="button"
                     title="Sync now"
                     aria-label="Sync now"
                     disabled={syncing}
                     onClick={() => dispatch(syncNow())}
                 >
-                    {syncing ? <CircularProgress size={14} color="inherit" /> : <SyncIcon fontSize="small" />}
-                </IconButton>
+                    {syncing ? <span className="loading loading-spinner loading-xs" /> : <Icon name="sync" size={16} />}
+                </button>
             )}
         </div>
     );

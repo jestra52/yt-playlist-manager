@@ -1,75 +1,22 @@
-@use '../../../../styles/tokens' as *;
+$text: var(--color-neutral-content);
 
-.status {
-    display: flex;
-    gap: 4px;
-    padding-top: 12px;
-    border-top: 1px solid $sidebar-line;
-}
+.bar {
+    border-top: 1px solid color-mix(in srgb, $text 12%, transparent);
 
-.summary {
-    display: flex;
-    flex: 1;
-    gap: 8px;
-    align-items: center;
-    min-width: 0;
-    padding: 6px 8px;
-    color: inherit;
-    font: inherit;
-    text-align: left;
-    background: none;
-    border: 0;
-    border-radius: 8px;
-    cursor: pointer;
-    opacity: 0.8;
+    :global(.btn) {
+        color: color-mix(in srgb, $text 70%, transparent);
 
-    &:hover {
-        background-color: $sidebar-selected;
-        opacity: 1;
+        &:hover:not(:disabled) {
+            color: $text;
+            background: color-mix(in srgb, $text 10%, transparent);
+        }
+
+        &:disabled {
+            background: transparent;
+        }
     }
-}
-
-.text {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-}
-
-.dot {
-    flex: none;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
 }
 
 .idle {
-    background-color: rgba(231, 236, 245, 0.45);
-}
-
-.synced {
-    background-color: var(--mui-palette-success-main);
-}
-
-.waiting {
-    background-color: var(--mui-palette-warning-main);
-}
-
-.failed {
-    background-color: var(--mui-palette-error-main);
-}
-
-.pulse {
-    animation: pulse 1s ease-in-out infinite alternate;
-}
-
-.now {
-    opacity: 0.8;
-}
-
-@keyframes pulse {
-    to {
-        opacity: 0.4;
-    }
+    background: color-mix(in srgb, $text 45%, transparent);
 }

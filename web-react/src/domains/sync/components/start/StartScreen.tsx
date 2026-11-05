@@ -4,14 +4,12 @@ import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
 import { joinWithPairingCode } from '../../pairing.thunks';
 import { Field } from '../settings/Field';
-import fields from '../settings/Field.module.scss';
 import { ChooseWay } from './ChooseWay';
 import { JoinForm } from './JoinForm';
 import { LegacyClaim } from './LegacyClaim';
 import { PairForm } from './PairForm';
 import { QrScanner } from './QrScanner';
 import { RecoverForm } from './RecoverForm';
-import styles from './StartScreen.module.scss';
 
 export type StartMode = 'choose' | 'pair' | 'join' | 'recover';
 
@@ -48,15 +46,15 @@ export const StartScreen = () => {
 
     return (
         <>
-            <p className={styles.intro}>
+            <p className="text-base-content/65 mt-0 mb-4 text-sm">
                 Your playlists are saved in a SQLite database in this browser. A <strong>sync chain</strong> keeps your
                 devices in step: create one here, then add your other devices with a pairing code from this one, or with
                 the chain's 24-word code. No account or password needed.
             </p>
-            <div className={styles.name}>
+            <div className="mb-3">
                 <Field label="This device's name">
                     <input
-                        className={fields.input}
+                        className="input w-full"
                         value={deviceName}
                         onChange={(e) => setDeviceName(e.target.value)}
                         maxLength={100}

@@ -1,11 +1,8 @@
-import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
 import { ChainCodeError, WORD_COUNT, splitWords, wordsToSecret } from '@ytpm/core/sync/chain-code';
 import { canScan } from '@ytpm/core/sync/qr-scan';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
 import { joinChain } from '../../chain.thunks';
 import { Field } from '../settings/Field';
-import fields from '../settings/Field.module.scss';
 
 const problemWith = (text: string): string => {
     if (splitWords(text).length < WORD_COUNT) return '';
@@ -40,7 +37,7 @@ export const JoinForm = ({ deviceName, text, onText, onBack, onScan }: JoinFormP
         >
             <Field label="Sync chain code" problem={problem} hint={`${typed} of ${WORD_COUNT} words`}>
                 <textarea
-                    className={`${fields.input} ${fields.words}`}
+                    className="textarea w-full font-mono text-sm"
                     rows={4}
                     value={text}
                     onChange={(e) => onText(e.target.value)}
@@ -50,29 +47,19 @@ export const JoinForm = ({ deviceName, text, onText, onBack, onScan }: JoinFormP
                     spellCheck={false}
                 />
             </Field>
-            <div className={fields.buttons}>
-                <Button color="inherit" onClick={onBack}>
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
+                <button className="btn btn-ghost" type="button" onClick={onBack}>
                     Back
-                </Button>
+                </button>
                 {canScan() && (
-                    <Button
-                        variant="contained"
-                        color="inherit"
-                        className={fields.soft}
-                        disabled={busy}
-                        onClick={onScan}
-                    >
+                    <button className="btn" type="button" disabled={busy} onClick={onScan}>
                         Scan
-                    </Button>
+                    </button>
                 )}
-                <Button
-                    type="submit"
-                    variant="contained"
-                    disabled={busy || typed !== WORD_COUNT || Boolean(problem)}
-                    startIcon={busy ? <CircularProgress size={14} color="inherit" /> : undefined}
-                >
+                <button className="btn" type="submit" disabled={busy || typed !== WORD_COUNT || Boolean(problem)}>
+                    {busy && <span className="loading loading-spinner loading-xs" />}
                     Join
-                </Button>
+                </button>
             </div>
         </form>
     );

@@ -1,9 +1,7 @@
-import Button from '@mui/material/Button';
 import { listProblem, parsePlaylistId } from '@ytpm/core/videos/youtube';
 import { useState } from 'react';
 import { useAppDispatch } from '../../../../app/store';
 import { linkToYouTube } from '../../playlists.thunks';
-import styles from './LinkPlaylistForm.module.scss';
 
 export const LinkPlaylistForm = ({ playlistId, onLinked }: { playlistId: string; onLinked: () => void }) => {
     const [link, setLink] = useState('');
@@ -13,18 +11,18 @@ export const LinkPlaylistForm = ({ playlistId, onLinked }: { playlistId: string;
     return (
         <>
             <form
-                className={styles.form}
+                className="join mt-4 w-full"
                 onSubmit={(event) => {
                     event.preventDefault();
                     if (dispatch(linkToYouTube(playlistId, link))) onLinked();
                 }}
             >
-                <label className={styles.label} htmlFor="sync-link">
+                <label className="sr-only" htmlFor="sync-link">
                     YouTube playlist link or ID
                 </label>
                 <input
                     id="sync-link"
-                    className={styles.input}
+                    className="input join-item min-w-0 flex-1"
                     value={link}
                     onChange={(e) => setLink(e.target.value)}
                     placeholder="https://www.youtube.com/playlist?list=…"
@@ -32,12 +30,12 @@ export const LinkPlaylistForm = ({ playlistId, onLinked }: { playlistId: string;
                     spellCheck={false}
                     inputMode="url"
                 />
-                <Button type="submit" variant="contained" className={styles.submit} disabled={!valid}>
+                <button className="btn btn-primary join-item" type="submit" disabled={!valid}>
                     Link
-                </Button>
+                </button>
             </form>
             {link.trim() && !valid && (
-                <p className={styles.error} role="alert">
+                <p className="text-error mt-2 mb-0 text-sm" role="alert">
                     {listProblem(link) ?? "That isn't a YouTube playlist link or ID"}.
                 </p>
             )}

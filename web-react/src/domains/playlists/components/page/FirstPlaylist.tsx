@@ -1,12 +1,7 @@
-import Button from '@mui/material/Button';
-import Checkbox from '@mui/material/Checkbox';
-import CircularProgress from '@mui/material/CircularProgress';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Link from '@mui/material/Link';
-import Typography from '@mui/material/Typography';
 import { parsePlaylistId, videoInPlaylist } from '@ytpm/core/videos/youtube';
 import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
+import { ShowPlaylistsButton } from '../../../ui/components/layout/ShowPlaylistsButton';
 import { openSettings } from '../../../ui/ui.slice';
 import { LinkChoice } from '../../../videos/components/add/LinkChoice';
 import { createFromInput } from '../../playlists.thunks';
@@ -23,27 +18,26 @@ export const FirstPlaylist = () => {
     const isLink = Boolean(parsePlaylistId(name)) && (!fromList || wholePlaylist);
 
     return (
-        <section className={styles.first}>
-            <Typography variant="h3" component="h1">
-                Start your first playlist
-            </Typography>
-            <p className={styles.muted}>
+        <section className="max-w-xl pt-[12vh]">
+            <ShowPlaylistsButton className="mb-4" />
+            <h1 className={styles.title}>Start your first playlist</h1>
+            <p className="text-base-content/65 m-0">
                 Save YouTube videos to watch later, in the order you want, with notes. Everything stays in this browser.
             </p>
             <form
-                className={styles.form}
+                className="join mt-6 mb-2 w-full"
                 onSubmit={(event) => {
                     event.preventDefault();
                     const options = { includeUnavailable: withDeleted, justVideo: fromList && !wholePlaylist };
                     dispatch(createFromInput(name, options));
                 }}
             >
-                <label className={styles.label} htmlFor="first-name">
+                <label className="sr-only" htmlFor="first-name">
                     Playlist name or YouTube playlist link
                 </label>
                 <input
                     id="first-name"
-                    className={styles.input}
+                    className="input input-lg join-item min-w-0 flex-1 text-base"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     maxLength={500}
@@ -51,46 +45,59 @@ export const FirstPlaylist = () => {
                     spellCheck={false}
                     disabled={importing}
                 />
-                <Button
+                <button
+                    className="btn btn-primary btn-lg join-item text-base"
                     type="submit"
-                    variant="contained"
-                    className={styles.submit}
                     disabled={!name.trim() || importing}
-                    startIcon={importing ? <CircularProgress size={16} color="inherit" /> : undefined}
                 >
-                    {importing && 'Importing…'}
+                    {importing && (
+                        <>
+                            <span className="loading loading-spinner loading-sm" /> Importing…
+                        </>
+                    )}
                     {!importing && (isLink ? 'Import playlist' : 'Create playlist')}
-                </Button>
+                </button>
             </form>
             {fromList && (
-                <LinkChoice
-                    wholePlaylist={wholePlaylist}
-                    onChange={setWholePlaylist}
-                    videoLabel="Start with just this video"
-                    playlistLabel="Import the whole playlist"
-                    disabled={importing}
-                />
+                <div className="mb-2">
+                    <LinkChoice
+                        wholePlaylist={wholePlaylist}
+                        onChange={setWholePlaylist}
+                        videoLabel="Start with just this video"
+                        playlistLabel="Import the whole playlist"
+                        disabled={importing}
+                    />
+                </div>
             )}
             {isLink && (
-                <FormControlLabel
-                    className={styles.deleted}
-                    disabled={importing}
-                    label="Import with deleted videos (added as Missing items, so you can paste another link later)"
-                    control={
-                        <Checkbox
-                            size="small"
-                            checked={withDeleted}
-                            onChange={(e) => setWithDeleted(e.target.checked)}
-                        />
-                    }
-                />
+                <label className="mb-2 flex cursor-pointer items-center gap-2 text-sm">
+                    <input
+                        type="checkbox"
+                        className="checkbox checkbox-sm"
+                        checked={withDeleted}
+                        onChange={(e) => setWithDeleted(e.target.checked)}
+                        disabled={importing}
+                    />
+                    <span>
+                        Import with deleted videos{' '}
+                        <span className="text-base-content/65">
+                            (added as Missing items, so you can paste another link later)
+                        </span>
+                    </span>
+                </label>
             )}
-            <p className={styles.hint}>Type a name, or paste a link to a YouTube playlist to bring in its videos.</p>
-            <p className={styles.hint}>
+            <p className="text-base-content/65 mt-0 mb-8 text-sm">
+                Type a name, or paste a link to a YouTube playlist to bring in its videos.
+            </p>
+            <p className="text-base-content/65 m-0 text-sm">
                 Already using Yuzu Tapes on another device?{' '}
-                <Link component="button" type="button" color="inherit" onClick={() => dispatch(openSettings())}>
+                <button
+                    className="link text-base-content font-semibold"
+                    type="button"
+                    onClick={() => dispatch(openSettings())}
+                >
                     Connect sync
-                </Link>{' '}
+                </button>{' '}
                 to bring your playlists here.
             </p>
         </section>

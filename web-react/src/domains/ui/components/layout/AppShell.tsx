@@ -1,40 +1,33 @@
-import MenuIcon from '@mui/icons-material/Menu';
-import Drawer from '@mui/material/Drawer';
-import IconButton from '@mui/material/IconButton';
-import useMediaQuery from '@mui/material/useMediaQuery';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
 import { toggleSidebar } from '../../ui.slice';
-import styles from './AppShell.module.scss';
 import { Sidebar } from './Sidebar';
 
+const TOGGLE_ID = 'playlists-drawer';
+
 export const AppShell = ({ children }: { children: React.ReactNode }) => {
-    const wide = useMediaQuery((theme) => theme.breakpoints.up('md'));
     const open = useAppSelector((state) => state.ui.sidebarOpen);
     const dispatch = useAppDispatch();
 
     return (
-        <div className={styles.root}>
-            <Drawer
-                variant={wide ? 'permanent' : 'temporary'}
-                open={wide || open}
-                onClose={() => dispatch(toggleSidebar(false))}
-                className={styles.drawer}
-                slotProps={{ paper: { className: styles.drawerPaper } }}
-            >
+        <div className="drawer lg:drawer-open min-h-screen">
+            <input
+                id={TOGGLE_ID}
+                type="checkbox"
+                className="drawer-toggle"
+                aria-hidden="true"
+                tabIndex={-1}
+                checked={open}
+                onChange={(event) => dispatch(toggleSidebar(event.currentTarget.checked))}
+            />
+            <div className="drawer-content min-w-0">
+                <main className="px-4 pt-5 pb-24 sm:px-8 md:pt-10 lg:px-14">
+                    <div className="max-w-4xl">{children}</div>
+                </main>
+            </div>
+            <div className="drawer-side z-30">
+                <label htmlFor={TOGGLE_ID} aria-label="Close playlists" className="drawer-overlay" />
                 <Sidebar />
-            </Drawer>
-            <main className={styles.main}>
-                {!wide && (
-                    <IconButton
-                        aria-label="Show playlists"
-                        onClick={() => dispatch(toggleSidebar(true))}
-                        className={styles.menuButton}
-                    >
-                        <MenuIcon />
-                    </IconButton>
-                )}
-                {children}
-            </main>
+            </div>
         </div>
     );
 };

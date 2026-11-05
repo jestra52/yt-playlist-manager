@@ -1,56 +1,12 @@
-.first {
-    max-width: 36rem;
-    padding-top: 12vh;
-}
+.title {
+    margin: 0 0 12px;
+    font-family: var(--font-display);
+    font-size: 2.25rem;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
 
-.muted {
-    margin: 12px 0 0;
-    color: var(--mui-palette-text-secondary);
-}
-
-.form {
-    display: flex;
-    margin: 24px 0 8px;
-}
-
-.label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-}
-
-.input {
-    flex: 1;
-    min-width: 0;
-    padding: 12px 14px;
-    color: var(--mui-palette-text-primary);
-    font: inherit;
-    background: none;
-    border: 1px solid var(--mui-palette-divider);
-    border-right: 0;
-    border-radius: 8px 0 0 8px;
-}
-
-.submit {
-    flex: none;
-    padding-inline: 20px;
-    border-radius: 0 8px 8px 0;
-}
-
-.deleted {
-    :global(.MuiFormControlLabel-label) {
-        font-size: 0.875rem;
-    }
-}
-
-.hint {
-    margin: 8px 0 0;
-    color: var(--mui-palette-text-secondary);
-    font-size: 0.875rem;
-
-    & + & {
-        margin-top: 24px;
+    @media (max-width: 767px) {
+        font-size: 1.5rem;
     }
 }

@@ -12,7 +12,7 @@ export const PlaylistList = () => {
     const dispatch = useAppDispatch();
 
     return (
-        <ul className={styles.list}>
+        <ul className={`menu w-full gap-0.5 p-0 ${styles.list}`}>
             {playlists.map((playlist) => {
                 const { left, total } = progress[playlist.id] ?? { left: 0, total: 0 };
                 const active = playlist.id === selectedId;
@@ -27,9 +27,12 @@ export const PlaylistList = () => {
                                 dispatch(toggleSidebar(false));
                             }}
                         >
-                            <span className={styles.name}>{playlist.name}</span>
-                            <span className={styles.count}>
-                                <strong>{left}</strong>/{total}
+                            <span className={styles.name} title={playlist.name}>
+                                {playlist.name}
+                            </span>
+                            <span className={styles.count} title={`${left} left to watch`}>
+                                {left}
+                                <span className={styles.of}>/{total}</span>
                             </span>
                         </button>
                     </li>

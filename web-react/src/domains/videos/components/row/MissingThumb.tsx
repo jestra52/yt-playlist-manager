@@ -1,4 +1,4 @@
-import LinkIcon from '@mui/icons-material/Link';
+import { Icon } from '../../../../shared/components/Icon';
 import styles from './MissingThumb.module.scss';
 
 export const MissingThumb = ({ unavailable }: { unavailable: boolean }) => (
@@ -10,7 +10,7 @@ export const MissingThumb = ({ unavailable }: { unavailable: boolean }) => (
                 : 'Not on YouTube yet: paste its link'
         }
     >
-        <LinkIcon fontSize="small" />
+        <Icon name="link" size={22} />
         <span>{unavailable ? 'Deleted' : 'Missing'}</span>
     </div>
 );

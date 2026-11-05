@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import styles from './Field.module.scss';
 
 interface FieldProps {
     label: string;
@@ -9,9 +8,13 @@ interface FieldProps {
 }
 
 export const Field = ({ label, hint, problem, children }: FieldProps) => (
-    <label className={styles.field}>
-        <span className={styles.legend}>{label}</span>
+    <label className="fieldset">
+        <span className="fieldset-legend">{label}</span>
         {children}
-        {(problem || hint) && <span className={problem ? styles.problem : styles.hint}>{problem || hint}</span>}
+        {(problem || hint) && (
+            <span className={`label whitespace-normal ${problem ? 'text-error' : ''}`}>
+                <span>{problem || hint}</span>
+            </span>
+        )}
     </label>
 );

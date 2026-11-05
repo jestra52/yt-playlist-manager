@@ -1,91 +1,13 @@
-@use '../../../../styles/tokens' as *;
+// Frosted glass: the page stays visible behind the panel as soft, blurred shapes.
+.box {
+    background-color: color-mix(in srgb, var(--color-base-100) 30%, transparent);
+    box-shadow:
+        0 25px 50px -12px rgb(0 0 0 / 25%),
+        inset 0 0 0 1px color-mix(in srgb, var(--color-base-content) 12%, transparent);
+    backdrop-filter: blur(25px) saturate(150%);
 
-$sheet: 640px;
-
-.backdrop {
-    background-color: rgba(0, 0, 0, 0.4);
-}
-
-.container {
-    align-items: flex-end;
-
-    @include up($sheet) {
-        align-items: center;
+    @media (prefers-reduced-transparency: reduce) {
+        background-color: var(--color-base-100);
+        backdrop-filter: none;
     }
-}
-
-.paper {
-    position: relative;
-    width: 100%;
-    max-width: none;
-    max-height: calc(100vh - 5em);
-    margin: 0;
-    padding: 24px;
-    overflow-y: auto;
-    background-image: none;
-    border-radius: 16px 16px 0 0;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    animation: enter 0.3s ease-out;
-    --hidden-translate: 0 100%;
-    --hidden-scale: 1;
-
-    @include up($sheet) {
-        max-width: 32rem;
-        border-radius: 16px;
-        --hidden-translate: 0 2%;
-        --hidden-scale: 0.98;
-    }
-}
-
-.leaving {
-    animation: leave 0.3s ease-out forwards;
-}
-
-@keyframes enter {
-    from {
-        translate: var(--hidden-translate);
-        scale: var(--hidden-scale);
-    }
-}
-
-@keyframes leave {
-    to {
-        translate: var(--hidden-translate);
-        scale: var(--hidden-scale);
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .paper,
-    .leaving {
-        animation: none;
-    }
-}
-
-.close {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    color: inherit;
-}
-
-.title {
-    margin-bottom: 8px;
-    padding: 0 40px 0 0;
-    font-family: $font-display;
-    font-size: 1.5rem;
-    font-weight: 700;
-    line-height: 1.33;
-    letter-spacing: -0.025em;
-}
-
-.content {
-    min-width: 0;
-}
-
-.actions {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-    margin-top: 24px;
 }

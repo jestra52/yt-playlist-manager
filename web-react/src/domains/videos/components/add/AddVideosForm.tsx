@@ -1,10 +1,8 @@
-import AddIcon from '@mui/icons-material/Add';
-import Button from '@mui/material/Button';
 import { extractYouTubeIds } from '@ytpm/core/videos/youtube';
 import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
+import { Icon } from '../../../../shared/components/Icon';
 import { addVideosFromText } from '../../videos.thunks';
-import styles from './AddVideosForm.module.scss';
 import { LinkChoice } from './LinkChoice';
 
 export const AddVideosForm = ({ playlistId }: { playlistId: string }) => {
@@ -16,7 +14,6 @@ export const AddVideosForm = ({ playlistId }: { playlistId: string }) => {
 
     return (
         <form
-            className={styles.form}
             onSubmit={async (event) => {
                 event.preventDefault();
                 const whole = inPlaylist > 0 && wholePlaylists;
@@ -26,13 +23,13 @@ export const AddVideosForm = ({ playlistId }: { playlistId: string }) => {
                 }
             }}
         >
-            <div className={styles.row}>
-                <label className={styles.label} htmlFor="add-videos">
+            <div className="join w-full">
+                <label className="sr-only" htmlFor="add-videos">
                     YouTube video or playlist links
                 </label>
                 <input
                     id="add-videos"
-                    className={styles.input}
+                    className="input input-lg join-item min-w-0 flex-1 text-base"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Paste YouTube video or playlist links"
@@ -41,18 +38,32 @@ export const AddVideosForm = ({ playlistId }: { playlistId: string }) => {
                     inputMode="url"
                     disabled={importing}
                 />
-                <Button type="submit" variant="contained" startIcon={<AddIcon />} disabled={!text.trim() || importing}>
-                    {importing ? 'Importing...' : 'Add'}
-                </Button>
+                <button
+                    className="btn btn-primary btn-lg join-item text-base"
+                    type="submit"
+                    disabled={!text.trim() || importing}
+                >
+                    {importing ? (
+                        <>
+                            <span className="loading loading-spinner loading-sm" /> Importing…
+                        </>
+                    ) : (
+                        <>
+                            <Icon name="plus" size={16} /> Add
+                        </>
+                    )}
+                </button>
             </div>
             {inPlaylist > 0 && (
-                <LinkChoice
-                    wholePlaylist={wholePlaylists}
-                    onChange={setWholePlaylists}
-                    videoLabel={inPlaylist === 1 ? 'Add this video' : 'Add these videos'}
-                    playlistLabel={inPlaylist === 1 ? 'Add the whole playlist' : 'Add the whole playlists'}
-                    disabled={importing}
-                />
+                <div className="mt-2 px-1">
+                    <LinkChoice
+                        wholePlaylist={wholePlaylists}
+                        onChange={setWholePlaylists}
+                        videoLabel={inPlaylist === 1 ? 'Add this video' : 'Add these videos'}
+                        playlistLabel={inPlaylist === 1 ? 'Add the whole playlist' : 'Add the whole playlists'}
+                        disabled={importing}
+                    />
+                </div>
             )}
         </form>
     );

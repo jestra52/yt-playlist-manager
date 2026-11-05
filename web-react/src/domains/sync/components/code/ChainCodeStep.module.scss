@@ -1,128 +1,20 @@
-@use '../../../../styles/tokens' as *;
-
-.step {
-    font-size: 0.875rem;
-}
-
-.title {
-    margin: 0 0 4px;
-    font-size: 1rem;
-    font-weight: 600;
-}
-
-.subtitle {
-    margin: 16px 0 0;
-    font-size: 0.875rem;
-    font-weight: 600;
-}
-
-.muted {
-    margin: 0;
-    color: var(--mui-palette-text-secondary);
-}
-
-.warning {
-    margin: 8px 0 0;
-    font-weight: 500;
-}
-
-.words,
-.codes {
-    display: grid;
-    gap: 4px 12px;
-    margin: 12px 0 0;
-    padding: 12px;
-    font-family: ui-monospace, monospace;
-    white-space: nowrap;
-    list-style: none;
-    background-color: var(--mui-palette-background-default);
-    border-radius: 12px;
-}
-
-.words {
-    grid-template-columns: repeat(2, 1fr);
-
-    @include up(640px) {
-        grid-template-columns: repeat(4, 1fr);
-    }
-}
-
-.codes {
-    grid-template-columns: 1fr;
-    margin-top: 8px;
-
-    @include up(640px) {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-.number {
-    color: var(--mui-palette-text-secondary);
-}
-
-.check {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin: 16px 0 0;
-    padding: 0;
-    border: 0;
-}
-
-.legend {
-    margin-bottom: 6px;
-    padding: 0;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.answer {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    width: 9rem;
-    padding: 4px 8px;
-    color: var(--mui-palette-text-secondary);
-    border: 1px solid var(--mui-palette-divider);
-    border-radius: 8px;
-
-    span {
-        flex: none;
-    }
-
-    input {
-        width: 100%;
-        min-width: 0;
-        color: var(--mui-palette-text-primary);
-        font: inherit;
-        background: none;
-        border: 0;
-        outline: none;
-    }
-}
-
-.done {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 16px;
-}
-
 // Printing while codes are shown prints only the codes.
 @media print {
     :global(body):has(.step) {
         visibility: hidden;
 
-        :global(.MuiDialog-root),
-        :global(.MuiDialog-container),
-        :global(.MuiDialog-paper) {
+        :global(.modal),
+        :global(.modal-box) {
             position: static;
             display: block;
             max-width: none;
             max-height: none;
             overflow: visible;
             background: none;
+            backdrop-filter: none;
             box-shadow: none;
-            animation: none;
+            visibility: hidden;
+            transition: none;
         }
 
         .step {

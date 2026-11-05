@@ -50,7 +50,7 @@ The screenshots use sample data and placeholder thumbnails.
 
 ```
 ┌──────────── Browser ────────────┐       ┌── Netlify ──┐       ┌────── Render ───────┐      ┌──── Neon ────┐
-│ React components (Material UI)  │       │ web app     │       │ ASP.NET Core API    │      │ PostgreSQL   │
+│ React components (daisyUI)      │       │ web app     │       │ ASP.NET Core API    │      │ PostgreSQL   │
 │ ↓ call                          │ HTTPS │             │ HTTPS │  POST /api/sync     │ EF   │ playlists    │
 │ Domain services ($state)        │──────►│ /api/* proxy│──────►│  GET  /api/oembed   │─────►│ videos       │
 │ ↓ read / write                  │       └─────────────┘       │  GET  /api/playlist │ Core │ sync_counter │
@@ -87,7 +87,7 @@ packages/core/                shared logic in TypeScript, no UI (also for the Re
   src/playlists/              report.ts, report-compare.ts (reports), youtube-sync.ts (YouTube comparison)
   src/db/                     SQLite wrapper (sql.js + Drizzle), tables.ts, generated migrations, IndexedDB persistence
   src/*/…repository.ts        playlists and videos data access (Drizzle ORM queries)
-web-react/                   the deployed web app (React, Material UI, Redux Toolkit)
+web-react/                   the deployed web app (React, daisyUI, Redux Toolkit)
   scripts/write-redirects.mjs  writes the Netlify /api proxy rule from API_ORIGIN
   public/_headers            security headers (CSP) for Netlify
 web/                         the previous Svelte app, not deployed; removed in #92
@@ -192,7 +192,7 @@ In the app, open the sync settings at the bottom of the sidebar and choose **Cre
 
 ### The React app (web-react)
 
-The deployed app is the React rewrite (#23) in `web-react/`, with Material UI, Redux Toolkit and TypeScript. The Svelte app in `web/` is no longer deployed and stays here until #92 removes it, so the layers described above for `web/` map to the same domains in `web-react/src/domains`.
+The deployed app is the React rewrite (#23) in `web-react/`, with daisyUI, Redux Toolkit and TypeScript. The Svelte app in `web/` is no longer deployed and stays here until #92 removes it, so the layers described above for `web/` map to the same domains in `web-react/src/domains`.
 
 ```bash
 cp web-react/.env.example web-react/.env   # optional: API_URL for the dev proxy (defaults to http://localhost:8787)

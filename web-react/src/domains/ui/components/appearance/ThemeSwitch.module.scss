@@ -1,13 +1,16 @@
-@use '../../../../styles/tokens' as *;
+.choice {
+    --text: var(--color-neutral-content);
 
-.group :global(.MuiToggleButton-root) {
-    padding-block: 2px;
-    color: inherit;
-    border-color: $sidebar-line;
+    color: color-mix(in srgb, var(--text) 65%, transparent);
+    background: transparent;
+    border-color: color-mix(in srgb, var(--text) 18%, transparent);
 
-    &:global(.Mui-selected),
-    &:global(.Mui-selected:hover) {
-        color: inherit;
-        background-color: $sidebar-selected;
+    &:hover {
+        color: var(--text);
+    }
+
+    &[aria-checked='true'] {
+        color: var(--text);
+        background: color-mix(in srgb, var(--text) 16%, transparent);
     }
 }

@@ -1,51 +1,18 @@
-@use '../../../../styles/tokens' as *;
+$text: var(--color-neutral-content);
 
 .open {
-    justify-content: flex-start;
-    width: 100%;
-    margin-top: 8px;
-    color: inherit;
-    border: 1px dashed $sidebar-line;
-}
+    color: color-mix(in srgb, $text 70%, transparent);
+    font-weight: 500;
+    border: 1px dashed color-mix(in srgb, $text 35%, transparent);
 
-.form {
-    margin-top: 8px;
-
-    :global(.MuiRadio-root),
-    :global(.MuiCheckbox-root) {
-        color: inherit;
+    &:hover {
+        color: $text;
+        background: transparent;
+        border-color: color-mix(in srgb, $text 70%, transparent);
     }
-}
-
-.row {
-    display: flex;
-    gap: 6px;
-}
-
-.label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-}
-
-.input {
-    flex: 1;
-    min-width: 0;
-    padding: 4px 8px;
-    color: #16213a;
-    font: inherit;
-    font-size: 0.875rem;
-    background: #f7f9fb;
-    border: 0;
-    border-radius: 6px;
 }
 
 .withDeleted {
-    margin-top: 2px;
-
-    :global(.MuiFormControlLabel-label) {
-        font-size: 0.875rem;
-    }
+    color: color-mix(in srgb, $text 70%, transparent);
+    cursor: pointer;
 }

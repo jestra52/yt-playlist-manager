@@ -1,10 +1,7 @@
-import SearchIcon from '@mui/icons-material/Search';
-import Tab from '@mui/material/Tab';
-import Tabs from '@mui/material/Tabs';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
+import { Icon } from '../../../../shared/components/Icon';
 import { selectFilter, selectMissingCount, selectQuery } from '../../videos.selectors';
 import { filterSet, querySet, type VideoFilter } from '../../videos.slice';
-import styles from './VideoToolbar.module.scss';
 
 export const VideoToolbar = ({ playlistId }: { playlistId: string }) => {
     const filter = useAppSelector(selectFilter);
@@ -12,25 +9,35 @@ export const VideoToolbar = ({ playlistId }: { playlistId: string }) => {
     const missing = useAppSelector((state) => selectMissingCount(state, playlistId));
     const dispatch = useAppDispatch();
 
+    const filters: { id: VideoFilter; label: string }[] = [
+        { id: 'all', label: 'All' },
+        { id: 'unwatched', label: 'To watch' },
+        { id: 'watched', label: 'Watched' },
+        ...(missing > 0 || filter === 'missing' ? [{ id: 'missing' as const, label: `Missing (${missing})` }] : []),
+    ];
+
     return (
-        <div className={styles.toolbar}>
-            <Tabs
-                value={filter}
-                onChange={(_, value: VideoFilter) => dispatch(filterSet(value))}
-                aria-label="Show"
-                className={styles.tabs}
-            >
-                <Tab value="all" label="All" />
-                <Tab value="unwatched" label="To watch" />
-                <Tab value="watched" label="Watched" />
-                {(missing > 0 || filter === 'missing') && <Tab value="missing" label={`Missing (${missing})`} />}
-            </Tabs>
-            <label className={styles.search}>
-                <SearchIcon fontSize="small" />
-                <span className={styles.label}>Search this playlist</span>
+        <div className="mt-6 mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div role="tablist" className="tabs tabs-box tabs-sm bg-base-300/60" aria-label="Show">
+                {filters.map(({ id, label }) => (
+                    <button
+                        key={id}
+                        type="button"
+                        role="tab"
+                        aria-selected={filter === id}
+                        className={`tab font-semibold ${filter === id ? 'tab-active' : ''}`}
+                        onClick={() => dispatch(filterSet(id))}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>
+            <label className="input input-sm w-full sm:w-72">
+                <Icon name="search" size={16} />
+                <span className="sr-only">Search this playlist</span>
                 <input
                     type="search"
-                    className={styles.input}
+                    className="grow"
                     value={query}
                     onChange={(e) => dispatch(querySet(e.target.value))}
                     placeholder="Search titles, artists, channels, notes"

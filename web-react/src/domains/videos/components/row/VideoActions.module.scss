@@ -1,6 +1,18 @@
 .actions {
-    display: flex;
-    flex-shrink: 0;
-    align-items: center;
-    margin-left: auto;
+    opacity: 0.6;
+    transition: opacity 150ms ease;
+
+    :global(.list-row):hover &,
+    &:focus-within,
+    &:has(details[open]) {
+        opacity: 1;
+    }
+
+    // On phones the buttons get their own line. Spanning the whole row keeps their
+    // width out of the title column, which would otherwise be squeezed to nothing.
+    @media (max-width: 767px) {
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+        opacity: 1;
+    }
 }

@@ -1,34 +1,38 @@
-@use '../../../../styles/tokens' as *;
+// The hidden sizer holds the same text, so the field is always as big as the name.
+.field {
+    display: grid;
+    flex: 0 1 auto;
+    min-width: 0;
+    margin-left: -0.75rem;
+}
 
-.label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
+.sizer,
+.name {
+    grid-area: 1 / 1;
+    min-width: 0;
+    min-height: 0;
+    padding: 0.15rem 0.75rem;
+    font-family: var(--font-display);
+    font-size: 2.25rem;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+    overflow-wrap: anywhere;
+    border: var(--border) solid transparent;
+
+    @media (max-width: 767px) {
+        font-size: 1.5rem;
+    }
+}
+
+.sizer {
+    white-space: pre-wrap;
+    visibility: hidden;
 }
 
 .name {
-    flex: 1;
     width: 100%;
-    min-width: 0;
-    padding: 2px 4px;
-    color: inherit;
-    font-family: $font-display;
-    font-size: 3rem;
-    font-weight: 800;
-    letter-spacing: -0.025em;
-    background: none;
-    border: 1px solid transparent;
-    border-radius: 6px;
-
-    &:focus {
-        background-color: var(--mui-palette-background-paper);
-        outline: 2px solid var(--mui-palette-text-primary);
-        outline-offset: 2px;
-    }
-
-    @media (max-width: 599px) {
-        font-size: 2rem;
-    }
+    height: 100%;
+    overflow: hidden;
+    resize: none;
 }
