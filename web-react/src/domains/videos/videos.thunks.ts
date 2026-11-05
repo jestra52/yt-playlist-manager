@@ -14,7 +14,7 @@ import {
     type Video,
     type VideoEntry,
 } from '@ytpm/core/videos/videos.repository';
-import { extractYouTubeIds } from '@ytpm/core/videos/youtube';
+import { extractYouTubeIds, parseYouTubeId, thumbnailFor } from '@ytpm/core/videos/youtube';
 import type { AppThunk } from '../../app/store';
 import { notify, setImporting } from '../ui/ui.slice';
 import { selectAllVideos, selectPlaying } from './videos.selectors';
@@ -192,3 +192,38 @@ export const finishAndPlayNext = (): AppThunk => (dispatch, getState) => {
         dispatch(notify("You've watched everything in this playlist"));
     }
 };
+
+/**
+ * Completes a placeholder, or a video deleted on YouTube, with the YouTube video
+ * at `link`: its ID, then the title, channel and thumbnail from YouTube.
+ * Resolves to true when saved.
+ */
+export const completeVideo =
+    (id: string, link: string): AppThunk<Promise<boolean>> =>
+    async (dispatch, getState) => {
+        const db = getDatabase();
+        const video = getVideo(db, id);
+        if (!video) return false;
+        const youtubeId = parseYouTubeId(link.trim());
+        if (!youtubeId) {
+            dispatch(notify('Paste a YouTube video link, like https://youtu.be/...', { tone: 'error' }));
+            return false;
+        }
+        const duplicate = selectAllVideos(getState()).find(
+            (v) => v.playlistId === video.playlistId && v.youtubeId === youtubeId && v.id !== id,
+        );
+        if (duplicate) {
+            const name = duplicate.title || youtubeId;
+            dispatch(notify(`That video is already in this playlist: "${name}"`, { tone: 'error' }));
+            return false;
+        }
+        const linked = updateVideo(db, id, { youtubeId, thumbnailUrl: thumbnailFor(youtubeId), unavailable: false });
+        if (linked) dispatch(changed(linked));
+        const meta = await fetchVideoMetadata(youtubeId);
+        const current = getVideo(getDatabase(), id);
+        if (meta && !meta.unavailable && current?.youtubeId === youtubeId) {
+            const updated = updateVideo(getDatabase(), id, { ...meta, ...guessedArtistPatch(current, meta) });
+            if (updated) dispatch(changed(updated));
+        }
+        return true;
+    };

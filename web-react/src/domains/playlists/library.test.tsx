@@ -154,7 +154,7 @@ describe('playlist page', () => {
             target: { value: 'Road trip' },
         });
         fireEvent.click(screen.getByRole('button', { name: 'Create' }));
-        expect(await screen.findByRole('heading', { name: 'Road trip' })).toBeInTheDocument();
+        expect(await screen.findByRole('textbox', { name: 'Playlist name' })).toHaveValue('Road trip');
 
         fireEvent.change(screen.getByLabelText('YouTube video or playlist links'), {
             target: { value: 'https://youtu.be/dQw4w9WgXcQ' },
@@ -163,7 +163,7 @@ describe('playlist page', () => {
         expect(await screen.findByText('Added 1 video')).toBeInTheDocument();
 
         fireEvent.click(await screen.findByLabelText('Watched: Kenji Mori - Song dQw4w9WgXcQ'));
-        expect(screen.getByText('left of 1').textContent).toBe('0 left of 1');
+        expect(screen.getByText('All 1 watched')).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Show playlists' }));
         const sidebar = screen.getByRole('navigation', { name: 'Playlists' });
         expect(within(sidebar).getByRole('button', { name: /Road trip/ })).toHaveTextContent('0/1');

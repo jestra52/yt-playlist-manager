@@ -22,6 +22,13 @@ export const videosSlice = createSlice({
             videosAdapter.removeOne(state, payload);
             if (state.playingId === payload) state.playingId = null;
         },
+        playlistDropped: (state, { payload }: PayloadAction<string>) => {
+            const ids = Object.values(state.entities)
+                .filter((v) => v.playlistId === payload)
+                .map((v) => v.id);
+            videosAdapter.removeMany(state, ids);
+            if (state.playingId && !state.entities[state.playingId]) state.playingId = null;
+        },
         filterSet: (state, { payload }: PayloadAction<VideoFilter>) => {
             state.filter = payload;
         },
@@ -37,4 +44,5 @@ export const videosSlice = createSlice({
     },
 });
 
-export const { loaded, upserted, changed, removed, filterSet, querySet, played, playerClosed } = videosSlice.actions;
+export const { loaded, upserted, changed, removed, playlistDropped, filterSet, querySet, played, playerClosed } =
+    videosSlice.actions;
