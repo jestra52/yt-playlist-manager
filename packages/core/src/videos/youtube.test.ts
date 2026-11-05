@@ -142,7 +142,7 @@ describe('Mixes and private lists', () => {
         ).toBe('RDCLAK5uy_kmPRjHDECIcuVwnKsx2Ng7fyNgFKWNJFs');
     });
 
-    it('say why they can’t be imported', () => {
+    it("say why they can't be imported", () => {
         expect(listProblem(mix)).toMatch(/Mix/);
         expect(listProblem('https://www.youtube.com/playlist?list=LL')).toMatch(/private/);
         expect(listProblem('https://www.youtube.com/playlist?list=PLsPETV9bmUbpSAj-kxXP4vzUvumC8TZUG')).toBeNull();

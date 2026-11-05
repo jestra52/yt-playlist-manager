@@ -91,7 +91,7 @@ class VideosService {
         }
         const { ids, playlistIds, invalid } = extractYouTubeIds(text, { wholePlaylists });
         if (!ids.length && !playlistIds.length) {
-            notify('That doesn’t look like a YouTube link', { tone: 'error' });
+            notify("That doesn't look like a YouTube link", { tone: 'error' });
             return false;
         }
 
@@ -341,7 +341,7 @@ class VideosService {
         if (next) this.play(next.id);
         else {
             this.closePlayer();
-            notify('You’ve watched everything in this playlist');
+            notify("You've watched everything in this playlist");
         }
     }
 

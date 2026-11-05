@@ -101,8 +101,8 @@ export const parsePlaylistId = (input: unknown): string | null => {
 
 export const listProblem = (input: unknown): string | null => {
     const kind = parseYouTubeList(input)?.kind;
-    if (kind === 'mix') return 'That’s a YouTube Mix, not a playlist. Mixes can’t be imported';
-    if (kind === 'private') return 'That list is private to your YouTube account, so it can’t be imported';
+    if (kind === 'mix') return "That's a YouTube Mix, not a playlist. Mixes can't be imported";
+    if (kind === 'private') return "That list is private to your YouTube account, so it can't be imported";
     return null;
 };
 

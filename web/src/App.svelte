@@ -35,7 +35,7 @@
 {:else if phase === 'failed'}
     <div class="grid min-h-screen place-content-center p-8">
         <div role="alert" class="alert alert-error alert-soft max-w-lg flex-col items-start">
-            <h1 class="font-display text-xl font-bold">The local database didn’t open</h1>
+            <h1 class="font-display text-xl font-bold">The local database didn't open</h1>
             <p>{failure}</p>
             <p>Private browsing or blocked site storage can cause this. Allow storage for this site and reload.</p>
         </div>

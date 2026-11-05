@@ -94,7 +94,7 @@
         <p class="text-sm text-base-content/65">
             {linked
                 ? 'Paste the YouTube playlist this one should be linked to instead.'
-                : 'This playlist isn’t linked to a YouTube playlist yet. Paste the one it came from to compare them.'}
+                : "This playlist isn't linked to a YouTube playlist yet. Paste the one it came from to compare them."}
         </p>
         <form class="join mt-4 w-full" onsubmit={saveLink}>
             <label class="sr-only" for="sync-link">YouTube playlist link or ID</label>
@@ -111,7 +111,7 @@
         </form>
         {#if link.trim() && !parsePlaylistId(link)}
             <p class="mt-2 text-sm text-error" role="alert">
-                {listProblem(link) ?? 'That isn’t a YouTube playlist link or ID'}.
+                {listProblem(link) ?? "That isn't a YouTube playlist link or ID"}.
             </p>
         {/if}
         {#if editingLink}
@@ -150,13 +150,13 @@
                 </div>
             </div>
             {#if failed}
-                <p class="mt-3 text-sm text-error">Couldn’t read the YouTube playlist. Try again.</p>
+                <p class="mt-3 text-sm text-error">Couldn't read the YouTube playlist. Try again.</p>
             {/if}
         {:else}
             {#if !diff.complete}
                 <div role="alert" class="alert alert-warning alert-soft mt-3 text-sm">
                     YouTube only returned part of this playlist (set YOUTUBE_API_KEY on the API to read all of it), so
-                    videos removed there can’t be detected. New videos can still be added.
+                    videos removed there can't be detected. New videos can still be added.
                 </div>
             {/if}
 
@@ -181,7 +181,7 @@
                     </details>
                 {/snippet}
 
-                {@render section('New on YouTube', diff.added, 'Added in YouTube’s order.')}
+                {@render section('New on YouTube', diff.added, "Added in YouTube's order.")}
                 {@render section(
                     'Deleted or private on YouTube',
                     diff.nowUnavailable,

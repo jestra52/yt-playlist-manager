@@ -33,7 +33,7 @@ export const formatRecoveryCode = (text) => {
 export const recoveryCodeProblem = (text, { complete = false } = {}) => {
     const code = normalizeRecoveryCode(text);
     const wrong = [...new Set([...code].filter((c) => !ALPHABET.includes(c)))];
-    if (wrong.length) return `A recovery code doesn’t have ${wrong.join(', ')}.`;
+    if (wrong.length) return `A recovery code doesn't have ${wrong.join(', ')}.`;
     if (code.length > RECOVERY_CODE_LENGTH) {
         return `A recovery code has ${RECOVERY_CODE_LENGTH} characters; this has ${code.length}.`;
     }

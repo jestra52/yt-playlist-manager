@@ -23,7 +23,7 @@ const fromApi = (videos: SourceVideo[], extra = {}) => ({
 });
 
 describe('diffWithYouTube', () => {
-    it('adds new videos in YouTube’s order, after the video that precedes them there', () => {
+    it("adds new videos in YouTube's order, after the video that precedes them there", () => {
         const playlist = [video('a', 'aaaaaaaaaaa'), video('c', 'ccccccccccc')];
         const diff = diffWithYouTube(
             playlist,
@@ -66,7 +66,7 @@ describe('diffWithYouTube', () => {
         expect(diff.removed).toEqual([]);
     });
 
-    it('adds deleted videos the playlist doesn’t have only when asked', () => {
+    it("adds deleted videos the playlist doesn't have only when asked", () => {
         const source = fromApi([
             item('aaaaaaaaaaa'),
             item('ddddddddddd', { title: 'Deleted video', unavailable: true }),
@@ -90,7 +90,7 @@ describe('diffWithYouTube', () => {
         expect(diff.removed.map((v) => v.id)).toEqual(['r']);
     });
 
-    it('doesn’t trust removals when YouTube only returned part of the playlist', () => {
+    it("doesn't trust removals when YouTube only returned part of the playlist", () => {
         const playlist = [video('a', 'aaaaaaaaaaa'), video('o', 'ooooooooooo')];
         const partial = diffWithYouTube(
             playlist,

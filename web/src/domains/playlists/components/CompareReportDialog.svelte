@@ -44,7 +44,7 @@
     <p class="text-sm text-base-content/65">
         Load a report saved from this app (<code>1: title | artist</code> per line, or <code>1: title</code> in older reports)
         to find the videos this playlist no longer has. Missing items come back in their old place, and you can paste each
-        one’s YouTube link later.
+        one's YouTube link later.
     </p>
 
     <div class="mt-4 flex flex-wrap items-center gap-3">

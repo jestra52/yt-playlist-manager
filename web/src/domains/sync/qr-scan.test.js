@@ -5,7 +5,7 @@ import { readScannedCode } from './qr-scan.js';
 const SECRET = 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8';
 
 describe('reading a scanned QR code', () => {
-    it('recognizes the chain code’s 24 words and pairing codes', () => {
+    it("recognizes the chain code's 24 words and pairing codes", () => {
         const words = secretToWords(SECRET);
         expect(readScannedCode(words.join(' '))).toEqual({ kind: 'chain', text: words.join(' ') });
         expect(readScannedCode(` ${words.join('\n')} `)).toEqual({ kind: 'chain', text: words.join(' ') });

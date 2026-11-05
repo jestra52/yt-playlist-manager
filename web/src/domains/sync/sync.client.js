@@ -28,7 +28,7 @@ const request = async (url, init, timeoutMs = 20000) => {
         res = await fetch(url, { ...init, signal: ctrl.signal });
     } catch {
         const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-        throw new SyncError(offline ? 'You’re offline' : 'Can’t reach the sync server', { offline });
+        throw new SyncError(offline ? "You're offline" : "Can't reach the sync server", { offline });
     } finally {
         clearTimeout(timer);
     }
