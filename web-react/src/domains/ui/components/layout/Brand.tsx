@@ -6,7 +6,7 @@ export const Brand = () => (
             <rect x="5" y="8" width="14" height="3.4" rx="1.7" fill="currentColor" />
             <rect x="5" y="14.3" width="14" height="3.4" rx="1.7" fill="currentColor" />
             <rect x="5" y="20.6" width="9" height="3.4" rx="1.7" fill="currentColor" />
-            <path d="M20.5 17.5v8.5l7-4.25z" fill="#ff5a4f" />
+            <path d="M20.5 17.5v8.5l7-4.25z" fill="var(--color-primary)" />
         </svg>
         <div>
             <p className={styles.name}>Yuzu Tapes</p>
