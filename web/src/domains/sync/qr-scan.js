@@ -50,9 +50,9 @@ const createDecoder = async () => {
 
 /** A message ready to show for a camera that couldn't be opened. */
 const cameraProblem = (err) => {
-    if (err?.name === 'NotAllowedError') return 'The camera isn’t allowed. Allow it in the browser, or type the code.';
+    if (err?.name === 'NotAllowedError') return "The camera isn't allowed. Allow it in the browser, or type the code.";
     if (err?.name === 'NotFoundError') return 'No camera found. Type the code instead.';
-    return 'The camera couldn’t be opened. Type the code instead.';
+    return "The camera couldn't be opened. Type the code instead.";
 };
 
 /**

@@ -161,7 +161,7 @@ describe('sync bookkeeping', () => {
         expect(sync.getSettings(db)).toMatchObject({ credential: '', chainId: '', deviceId: '' });
     });
 
-    it('joining a chain merges this device’s library into it; claiming keeps the cursor', () => {
+    it("joining a chain merges this device's library into it; claiming keeps the cursor", () => {
         const db = freshDb();
         const p = playlists.createPlaylist(db, { name: 'Mine' });
         sync.markPushed(db, sync.collectChanges(db));

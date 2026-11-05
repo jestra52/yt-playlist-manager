@@ -59,7 +59,7 @@ describe('canReplaceArtist', () => {
         expect(canReplaceArtist({ artistSource: 'guess' }, 'user')).toBe(true);
     });
 
-    it('treats a source this version doesn’t know as no source', () => {
+    it("treats a source this version doesn't know as no source", () => {
         expect(canReplaceArtist({ artistSource: 'from-the-future' }, 'guess')).toBe(true);
     });
 });

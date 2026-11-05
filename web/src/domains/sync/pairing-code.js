@@ -33,7 +33,7 @@ export const isPairingCode = (text) => {
 export const pairingCodeProblem = (text) => {
     const code = normalizePairingCode(text);
     const wrong = [...new Set([...code].filter((c) => !ALPHABET.includes(c)))];
-    if (wrong.length) return `A pairing code doesn’t have ${wrong.join(', ')}.`;
+    if (wrong.length) return `A pairing code doesn't have ${wrong.join(', ')}.`;
     if (code.length > PAIRING_CODE_LENGTH) {
         return `A pairing code has ${PAIRING_CODE_LENGTH} characters; this has ${code.length}.`;
     }

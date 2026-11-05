@@ -90,7 +90,7 @@ class PlaylistsService {
             return null;
         }
         const playlist = await this.createFromVideo(videoId);
-        if (playlist) notify('YouTube Mixes can’t be imported, so only this video was added', { timeout: 6000 });
+        if (playlist) notify("YouTube Mixes can't be imported, so only this video was added", { timeout: 6000 });
         return playlist;
     }
 

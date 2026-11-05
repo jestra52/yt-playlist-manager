@@ -19,7 +19,7 @@ describe('recovery codes', () => {
     it('explains what is wrong, but not while it is still being typed', () => {
         expect(recoveryCodeProblem('7K3QD-M9')).toBe('');
         expect(recoveryCodeProblem('7K3QD-M9', { complete: true })).toMatch(/has 20 characters; this has 7/);
-        expect(recoveryCodeProblem('UUUUU-#')).toBe('A recovery code doesn’t have U, #.');
+        expect(recoveryCodeProblem('UUUUU-#')).toBe("A recovery code doesn't have U, #.");
         expect(recoveryCodeProblem(`${CODE}-A`)).toMatch(/this has 21/);
         expect(isRecoveryCode('7K3QD')).toBe(false);
         expect(isRecoveryCode('UUUUUUUUUUUUUUUUUUUU')).toBe(false);

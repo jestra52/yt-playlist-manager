@@ -248,7 +248,7 @@ describe('playlists and videos services', () => {
         expect(ui.notices.at(-1).message).toBe('Synced with YouTube: 1 removed');
     });
 
-    it('says when deleted videos can’t be read without an API key', async () => {
+    it("says when deleted videos can't be read without an API key", async () => {
         await playlists.createFromInput('PLpartialpartialpartial', { includeUnavailable: true });
         expect(ui.notices.at(-1).message).toContain('YOUTUBE_API_KEY');
     });
@@ -262,7 +262,7 @@ describe('playlists and videos services', () => {
         expect(ui.notices.at(-1)).toMatchObject({ tone: 'error', message: 'Playlist not found, or it is private' });
     });
 
-    it('adds a playlist link’s videos to the open playlist and notes partial imports', async () => {
+    it("adds a playlist link's videos to the open playlist and notes partial imports", async () => {
         const p = playlists.create('Mixed');
         expect(await videos.addFromText(`dQw4w9WgXcQ PLpartialpartialpartial ${LIST}`, p.id)).toBe(true);
         expect(videos.forPlaylist(p.id).map((v) => v.youtubeId)).toEqual(['dQw4w9WgXcQ', '9bZkp7q19f0', 'kJQP7kiw5Fk']);
@@ -294,7 +294,7 @@ describe('playlists and videos services', () => {
             'https://www.youtube.com/watch?v=CMZRJb1jxzE&list=RDCMZRJb1jxzE&start_radio=1',
         );
         expect(videos.forPlaylist(mix.id).map((v) => v.youtubeId)).toEqual(['CMZRJb1jxzE']);
-        expect(ui.notices.at(-1).message).toContain('Mixes can’t be imported');
+        expect(ui.notices.at(-1).message).toContain("Mixes can't be imported");
 
         const before = playlists.items.length;
         expect(await playlists.createFromInput('https://www.youtube.com/playlist?list=WL')).toBeNull();
@@ -413,7 +413,7 @@ describe('playlists and videos services', () => {
         expect(videos.forPlaylist(p.id)[0]).toMatchObject({ artist: 'Anri', artistSource: 'guess' });
     });
 
-    it('restores missing items with the report’s artist, or a guess for legacy reports', () => {
+    it("restores missing items with the report's artist, or a guess for legacy reports", () => {
         const p = playlists.create('City Pop');
         videos.addEntries(p.id, [{ youtubeId: 'dQw4w9WgXcQ', title: 'Kept' }]);
         const withArtists = 'Format: number: title | artist\n1: Kept |\n2: Plastic Love | Mariya Takeuchi';

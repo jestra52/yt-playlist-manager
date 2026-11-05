@@ -18,7 +18,7 @@ beforeEach(() => {
     };
 });
 
-describe('following this device’s pairing code', () => {
+describe("following this device's pairing code", () => {
     it('reports each new status until the new device joins', async () => {
         replies = [
             reply(200, { status: 'waiting', requesterName: '', expiresAt: 9 }),
@@ -51,7 +51,7 @@ describe('following this device’s pairing code', () => {
 });
 
 describe('waiting for approval on the new device', () => {
-    it('asks with the request token until it’s decided', async () => {
+    it("asks with the request token until it's decided", async () => {
         replies = [
             reply(200, { status: 'requested' }),
             reply(200, { status: 'approved', chainId: 'c', deviceId: 'd', deviceCredential: 'k' }),

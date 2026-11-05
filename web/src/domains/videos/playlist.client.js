@@ -20,8 +20,8 @@ export const fetchYouTubePlaylist = async (listId, apiBase = '/api', { includeUn
     } catch {
         throw new PlaylistImportError(
             typeof navigator !== 'undefined' && navigator.onLine === false
-                ? 'You’re offline. Importing a playlist needs a connection.'
-                : 'Can’t reach the API to read the playlist. Is it running?',
+                ? "You're offline. Importing a playlist needs a connection."
+                : "Can't reach the API to read the playlist. Is it running?",
         );
     } finally {
         clearTimeout(timer);
@@ -35,11 +35,11 @@ export const fetchYouTubePlaylist = async (listId, apiBase = '/api', { includeUn
     }
     if (res.status === 404) {
         throw new PlaylistImportError(
-            body?.error ? capitalize(body.error) : 'That playlist wasn’t found. It may be private.',
+            body?.error ? capitalize(body.error) : "That playlist wasn't found. It may be private.",
         );
     }
     if (!res.ok || !body || !Array.isArray(body.videos)) {
-        throw new PlaylistImportError(body?.error ? capitalize(body.error) : 'YouTube didn’t return the playlist.');
+        throw new PlaylistImportError(body?.error ? capitalize(body.error) : "YouTube didn't return the playlist.");
     }
     return body;
 };

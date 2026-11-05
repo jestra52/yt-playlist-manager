@@ -13,7 +13,7 @@ describe('pairing codes', () => {
         expect(isPairingCode('7K3Q-D9X')).toBe(false);
         expect(isPairingCode('7K3Q-D9XU')).toBe(false);
         expect(pairingCodeProblem('7K3Q')).toBe('');
-        expect(pairingCodeProblem('7K3Q-U')).toBe('A pairing code doesn’t have U.');
+        expect(pairingCodeProblem('7K3Q-U')).toBe("A pairing code doesn't have U.");
         expect(pairingCodeProblem('7K3Q-D9X2-1')).toBe('A pairing code has 8 characters; this has 9.');
     });
 });

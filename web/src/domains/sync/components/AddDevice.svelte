@@ -45,8 +45,8 @@
             <div>
                 <p class="font-semibold">Adding devices with a pairing code is paused</p>
                 <p class="mt-1">
-                    Someone was refused several times while trying to join this chain, so pairing codes don’t work until
-                    {timeFormat.format(new Date(sync.pairingPaused))}. If you don’t know who it was, generate a new code
+                    Someone was refused several times while trying to join this chain, so pairing codes don't work until
+                    {timeFormat.format(new Date(sync.pairingPaused))}. If you don't know who it was, generate a new code
                     below; you can still add a device with the chain code.
                 </p>
             </div>
@@ -89,7 +89,7 @@
             <div>
                 <p id="pairing-ask" class="font-semibold">Allow {pairing.requesterName || 'this device'} to join?</p>
                 <p class="mt-1">
-                    It will sync every playlist in this chain. Only allow it if it’s your device and you just entered
+                    It will sync every playlist in this chain. Only allow it if it's your device and you just entered
                     the code on it. Answer within {countdown(pairing.expiresAt, now)}.
                 </p>
                 <div class="mt-2 flex flex-wrap gap-2">
@@ -117,7 +117,7 @@
             {#if pairing.status === 'joined'}
                 {pairing.requesterName || 'The new device'} joined the chain.
             {:else if pairing.status === 'denied'}
-                Refused. {pairing.requesterName || 'That device'} didn’t join.
+                Refused. {pairing.requesterName || 'That device'} didn't join.
             {:else}
                 The pairing code expired.
             {/if}

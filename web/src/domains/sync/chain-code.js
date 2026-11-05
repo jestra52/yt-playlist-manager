@@ -61,13 +61,13 @@ export const wordsToSecret = (text) => {
     const unknown = words.filter((w) => !wordlist.includes(w));
     if (unknown.length) {
         throw new ChainCodeError(
-            `${unknown.length === 1 ? 'This word isn’t' : 'These words aren’t'} in the list: ${unknown.join(', ')}.`,
+            `${unknown.length === 1 ? "This word isn't" : "These words aren't"} in the list: ${unknown.join(', ')}.`,
         );
     }
     try {
         return toBase64Url(mnemonicToEntropy(words.join(' '), wordlist));
     } catch {
-        throw new ChainCodeError('The words don’t match: one is mistyped or out of order.');
+        throw new ChainCodeError("The words don't match: one is mistyped or out of order.");
     }
 };
 
