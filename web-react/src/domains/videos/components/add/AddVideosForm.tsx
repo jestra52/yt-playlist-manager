@@ -46,13 +46,15 @@ export const AddVideosForm = ({ playlistId }: { playlistId: string }) => {
                 </Button>
             </div>
             {inPlaylist > 0 && (
-                <LinkChoice
-                    wholePlaylist={wholePlaylists}
-                    onChange={setWholePlaylists}
-                    videoLabel={inPlaylist === 1 ? 'Add this video' : 'Add these videos'}
-                    playlistLabel={inPlaylist === 1 ? 'Add the whole playlist' : 'Add the whole playlists'}
-                    disabled={importing}
-                />
+                <div className="mt-1">
+                    <LinkChoice
+                        wholePlaylist={wholePlaylists}
+                        onChange={setWholePlaylists}
+                        videoLabel={inPlaylist === 1 ? 'Add this video' : 'Add these videos'}
+                        playlistLabel={inPlaylist === 1 ? 'Add the whole playlist' : 'Add the whole playlists'}
+                        disabled={importing}
+                    />
+                </div>
             )}
         </form>
     );

@@ -1,34 +1,15 @@
-@use '../../../../styles/tokens' as *;
-
-.label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-}
-
+// daisyUI inputs have a fixed height; the title needs room for display type.
 .name {
-    flex: 1;
-    width: 100%;
-    min-width: 0;
-    padding: 2px 4px;
-    color: inherit;
-    font-family: $font-display;
-    font-size: 3rem;
+    height: auto;
+    margin-left: -0.75rem;
+    padding-block: 0.15rem;
+    font-family: var(--font-display);
+    font-size: 2.25rem;
     font-weight: 800;
+    line-height: 1.1;
     letter-spacing: -0.025em;
-    background: none;
-    border: 1px solid transparent;
-    border-radius: 6px;
 
-    &:focus {
-        background-color: var(--mui-palette-background-paper);
-        outline: 2px solid var(--mui-palette-text-primary);
-        outline-offset: 2px;
-    }
-
-    @media (max-width: 599px) {
-        font-size: 2rem;
+    @media (max-width: 767px) {
+        font-size: 1.5rem;
     }
 }

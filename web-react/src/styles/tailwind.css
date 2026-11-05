@@ -6,6 +6,15 @@
 @import 'tailwindcss/theme' layer(theme);
 @import 'tailwindcss/utilities' layer(utilities);
 
+@layer base {
+    button,
+    input,
+    select,
+    textarea {
+        font-family: inherit;
+    }
+}
+
 @plugin 'daisyui' {
     themes: false;
     exclude: rootcolor, rootscrollgutter, scrollbar, svg;
