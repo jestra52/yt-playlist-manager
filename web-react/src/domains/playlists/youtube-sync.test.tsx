@@ -141,7 +141,7 @@ describe('sync dialog', () => {
     it('opens fresh after closing', async () => {
         await compared();
         fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+        await waitFor(() => expect(document.querySelector('dialog')).not.toBeInTheDocument());
 
         fireEvent.click(screen.getByRole('button', { name: /YouTube playlist: sync from it/ }));
         expect(screen.getByRole('button', { name: 'Compare with YouTube' })).toBeInTheDocument();

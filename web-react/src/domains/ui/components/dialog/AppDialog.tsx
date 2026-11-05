@@ -1,10 +1,11 @@
-import CloseIcon from '@mui/icons-material/Close';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import IconButton from '@mui/material/IconButton';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Icon } from '../../../../shared/components/Icon';
 import styles from './AppDialog.module.scss';
+import { trackDialog } from './openDialogs';
 import type { DialogControls } from './useDialog';
+
+const LEAVE_MS = 300;
 
 interface AppDialogProps extends Omit<DialogControls, 'onExited'> {
     title: string;
@@ -13,23 +14,65 @@ interface AppDialogProps extends Omit<DialogControls, 'onExited'> {
     children: ReactNode;
 }
 
-export const AppDialog = ({ open, onClose, onExited, title, actions, children }: AppDialogProps) => (
-    <Dialog
-        open={open}
-        onClose={onClose}
-        fullWidth
-        transitionDuration={300}
-        classes={{ container: styles.container, paper: open ? styles.paper : `${styles.paper} ${styles.leaving}` }}
-        slotProps={{
-            backdrop: { className: styles.backdrop },
-            transition: { easing: 'ease-out', onExited },
-        }}
-    >
-        <IconButton className={styles.close} size="small" aria-label="Close" onClick={onClose}>
-            <CloseIcon fontSize="small" />
-        </IconButton>
-        <DialogTitle className={styles.title}>{title}</DialogTitle>
-        <div className={styles.content}>{children}</div>
-        {actions && <div className={styles.actions}>{actions}</div>}
-    </Dialog>
-);
+export const AppDialog = ({ open, onClose, onExited, title, actions, children }: AppDialogProps) => {
+    const dialogRef = useRef<HTMLDialogElement>(null);
+    const titleId = useId();
+    const [mounted, setMounted] = useState(open);
+    if (open && !mounted) setMounted(true);
+
+    const exited = useEffectEvent(() => {
+        setMounted(false);
+        onExited?.();
+    });
+
+    useEffect(() => {
+        const dialog = dialogRef.current;
+        if (!dialog) return undefined;
+        if (open) {
+            if (!dialog.open) dialog.showModal();
+            return trackDialog(dialog);
+        }
+        dialog.close();
+        const timer = setTimeout(exited, LEAVE_MS);
+        return () => clearTimeout(timer);
+    }, [open]);
+
+    if (!mounted) return null;
+
+    return createPortal(
+        <dialog
+            ref={dialogRef}
+            className={`modal modal-bottom sm:modal-middle ${styles.dialog}`}
+            aria-labelledby={titleId}
+            onCancel={(event) => {
+                event.preventDefault();
+                onClose();
+            }}
+            onClose={(event) => {
+                if (open && !event.currentTarget.open) onClose();
+            }}
+        >
+            <div className={`modal-box ${styles.box}`}>
+                <button
+                    className="btn btn-sm btn-circle btn-ghost absolute top-3 right-3"
+                    type="button"
+                    aria-label="Close"
+                    onClick={onClose}
+                >
+                    <Icon name="close" size={16} />
+                </button>
+                <h2 id={titleId} className={`font-display text-2xl font-bold tracking-tight ${styles.title}`}>
+                    {title}
+                </h2>
+                <div className="min-w-0">{children}</div>
+                {actions && <div className="modal-action">{actions}</div>}
+            </div>
+            <div className={`modal-backdrop ${styles.backdrop}`} aria-hidden="true">
+                <button type="button" tabIndex={-1} onClick={onClose}>
+                    Close
+                </button>
+            </div>
+        </dialog>,
+        document.body,
+    );
+};

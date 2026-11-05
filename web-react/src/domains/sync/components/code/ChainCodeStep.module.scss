@@ -112,9 +112,8 @@
     :global(body):has(.step) {
         visibility: hidden;
 
-        :global(.MuiDialog-root),
-        :global(.MuiDialog-container),
-        :global(.MuiDialog-paper) {
+        :global(.modal),
+        :global(.modal-box) {
             position: static;
             display: block;
             max-width: none;
@@ -122,7 +121,7 @@
             overflow: visible;
             background: none;
             box-shadow: none;
-            animation: none;
+            transition: none;
         }
 
         .step {
