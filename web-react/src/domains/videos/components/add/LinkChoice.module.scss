@@ -1,0 +1,16 @@
+.choice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 12px;
+    align-items: center;
+    margin-top: 4px;
+    font-size: 0.875rem;
+
+    :global(.MuiFormControlLabel-label) {
+        font-size: inherit;
+    }
+}
+
+.prompt {
+    opacity: 0.7;
+}

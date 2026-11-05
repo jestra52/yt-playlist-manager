@@ -1,10 +1,19 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, nanoid, type PayloadAction } from '@reduxjs/toolkit';
 
 export type ThemeChoice = 'system' | 'light' | 'dark';
+
+export interface Notice {
+    id: string;
+    message: string;
+    tone: 'info' | 'error';
+    timeout: number;
+}
 
 export interface UiState {
     theme: ThemeChoice;
     sidebarOpen: boolean;
+    importing: boolean;
+    notices: Notice[];
 }
 
 const THEME_KEY = 'ytpm:theme';
@@ -27,7 +36,7 @@ export const saveTheme = (theme: ThemeChoice): void => {
     }
 };
 
-const initialState: UiState = { theme: 'system', sidebarOpen: false };
+const initialState: UiState = { theme: 'system', sidebarOpen: false, importing: false, notices: [] };
 
 export const uiSlice = createSlice({
     name: 'ui',
@@ -39,7 +48,24 @@ export const uiSlice = createSlice({
         toggleSidebar: (state, { payload }: PayloadAction<boolean | undefined>) => {
             state.sidebarOpen = payload ?? !state.sidebarOpen;
         },
+        setImporting: (state, { payload }: PayloadAction<boolean>) => {
+            state.importing = payload;
+        },
+        notify: {
+            reducer: (state, { payload }: PayloadAction<Notice>) => {
+                state.notices.push(payload);
+            },
+            prepare: (
+                message: string,
+                { tone = 'info', timeout = 4000 }: Partial<Omit<Notice, 'id' | 'message'>> = {},
+            ) => ({
+                payload: { id: nanoid(), message, tone, timeout },
+            }),
+        },
+        dismissNotice: (state, { payload }: PayloadAction<string>) => {
+            state.notices = state.notices.filter((notice) => notice.id !== payload);
+        },
     },
 });
 
-export const { setTheme, toggleSidebar } = uiSlice.actions;
+export const { setTheme, toggleSidebar, setImporting, notify, dismissNotice } = uiSlice.actions;

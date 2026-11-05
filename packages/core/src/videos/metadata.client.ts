@@ -1,6 +1,21 @@
-import { thumbnailFor, watchUrl } from '@ytpm/core/videos/youtube';
+import { thumbnailFor, watchUrl } from './youtube';
 
-const fetchJson = async (url, timeoutMs) => {
+export interface VideoMetadata {
+    title: string;
+    author: string;
+    thumbnailUrl: string;
+    unavailable?: undefined;
+}
+
+interface OembedReply {
+    title?: string;
+    author?: string;
+    author_name?: string;
+    thumbnailUrl?: string;
+    notFound?: boolean;
+}
+
+const fetchJson = async (url: string, timeoutMs: number): Promise<OembedReply | null> => {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
@@ -20,7 +35,10 @@ const fetchJson = async (url, timeoutMs) => {
  * proxies YouTube oEmbed), then the public noembed.com service. Returns null
  * when neither is reachable, so the video keeps its placeholder title.
  */
-export const fetchVideoMetadata = async (youtubeId, apiBase = '/api') => {
+export const fetchVideoMetadata = async (
+    youtubeId: string,
+    apiBase = '/api',
+): Promise<VideoMetadata | { unavailable: true } | null> => {
     const base = apiBase.replace(/\/+$/, '');
     const fromApi = await fetchJson(`${base}/oembed?id=${encodeURIComponent(youtubeId)}`, 5000);
     if (fromApi?.title) {

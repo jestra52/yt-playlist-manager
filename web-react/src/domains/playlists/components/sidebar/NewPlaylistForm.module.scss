@@ -9,9 +9,17 @@
 }
 
 .form {
+    margin-top: 8px;
+
+    :global(.MuiRadio-root),
+    :global(.MuiCheckbox-root) {
+        color: inherit;
+    }
+}
+
+.row {
     display: flex;
     gap: 6px;
-    margin-top: 8px;
 }
 
 .label {
@@ -32,4 +40,12 @@
     background: #f7f9fb;
     border: 0;
     border-radius: 6px;
+}
+
+.withDeleted {
+    margin-top: 2px;
+
+    :global(.MuiFormControlLabel-label) {
+        font-size: 0.875rem;
+    }
 }
