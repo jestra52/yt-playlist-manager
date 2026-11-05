@@ -41,6 +41,15 @@ beforeEach(() => {
 });
 
 describe('playlist header', () => {
+    it('keeps the name on one line: Enter saves, and pasted line breaks become spaces', () => {
+        store.dispatch(createPlaylist({ name: 'A' }));
+        render(<App store={store} />);
+        const name = screen.getByLabelText('Playlist name');
+        fireEvent.change(name, { target: { value: 'One\n  Two' } });
+        expect(name).toHaveValue('One Two');
+        expect(fireEvent.keyDown(name, { key: 'Enter' })).toBe(false);
+    });
+
     it('renames and describes a playlist, and refuses an empty name', () => {
         const { id } = store.dispatch(createPlaylist({ name: 'City Pop' }))!;
         store.dispatch(renamePlaylist(id, ' Late night '));

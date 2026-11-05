@@ -24,12 +24,16 @@ export const PlaylistHeader = ({ playlist }: { playlist: Playlist }) => {
 
     return (
         <header className="pb-5">
-            <div className="flex items-center gap-2">
-                <ShowPlaylistsButton />
-                <PlaylistNameField key={playlist.name} playlist={playlist} />
-                <YouTubeButton playlist={playlist} />
-                <ReportButtons playlistId={playlist.id} />
-                <DeletePlaylistButton playlistId={playlist.id} />
+            <div className="flex flex-wrap items-center gap-2">
+                <div className="flex max-w-full min-w-0 flex-[0_1_auto] items-center gap-2">
+                    <ShowPlaylistsButton />
+                    <PlaylistNameField key={playlist.name} playlist={playlist} />
+                </div>
+                <div className="ml-auto flex flex-none items-center gap-2">
+                    <YouTubeButton playlist={playlist} />
+                    <ReportButtons playlistId={playlist.id} />
+                    <DeletePlaylistButton playlistId={playlist.id} />
+                </div>
             </div>
             <PlaylistDescriptionField key={playlist.description} playlist={playlist} />
             <div className="mt-4 flex items-center gap-4">
