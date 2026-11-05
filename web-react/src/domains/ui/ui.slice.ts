@@ -7,6 +7,7 @@ export interface Notice {
     message: string;
     tone: 'info' | 'error';
     timeout: number;
+    undoVideoId?: string;
 }
 
 export interface UiState {
@@ -57,9 +58,9 @@ export const uiSlice = createSlice({
             },
             prepare: (
                 message: string,
-                { tone = 'info', timeout = 4000 }: Partial<Omit<Notice, 'id' | 'message'>> = {},
+                { tone = 'info', timeout = 4000, undoVideoId }: Partial<Omit<Notice, 'id' | 'message'>> = {},
             ) => ({
-                payload: { id: nanoid(), message, tone, timeout },
+                payload: { id: nanoid(), message, tone, timeout, undoVideoId },
             }),
         },
         dismissNotice: (state, { payload }: PayloadAction<string>) => {

@@ -1,5 +1,6 @@
 import { useAppSelector } from '../../../../app/store';
 import { selectVideoIdsFor } from '../../videos.selectors';
+import { KnownArtists } from '../row/KnownArtists';
 import styles from './VideoList.module.scss';
 import { VideoRow } from './VideoRow';
 
@@ -13,10 +14,13 @@ export const VideoList = ({ playlistId }: { playlistId: string }) => {
     }
 
     return (
-        <ol className={styles.list}>
-            {ids.map((id, i) => (
-                <VideoRow key={id} id={id} number={i + 1} />
-            ))}
-        </ol>
+        <>
+            <ol className={styles.list}>
+                {ids.map((id, i) => (
+                    <VideoRow key={id} id={id} index={i} total={ids.length} />
+                ))}
+            </ol>
+            <KnownArtists />
+        </>
     );
 };

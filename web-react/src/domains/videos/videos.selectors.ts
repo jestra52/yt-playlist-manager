@@ -1,4 +1,5 @@
 import { createSelector } from '@reduxjs/toolkit';
+import { knownArtists } from '@ytpm/core/videos/artist';
 import type { RootState } from '../../app/store';
 import { videosAdapter } from './videos.slice';
 
@@ -6,6 +7,7 @@ const selectors = videosAdapter.getSelectors((state: RootState) => state.videos)
 
 const sameIds = (a: string[], b: string[]) => a.length === b.length && a.every((id, i) => id === b[i]);
 
+export const selectAllVideos = selectors.selectAll;
 export const selectVideoById = selectors.selectById;
 
 export const selectVideoIdsFor = createSelector(
@@ -28,3 +30,5 @@ export const selectProgressByPlaylist = createSelector([selectors.selectAll], (v
     }
     return progress;
 });
+
+export const selectKnownArtists = createSelector([selectors.selectAll], (videos) => knownArtists(videos));
