@@ -4,6 +4,7 @@ import { setDatabase } from '@ytpm/core/db/index';
 import initSqlJs, { type SqlJsStatic } from 'sql.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../../App';
+import { OpenFailed } from '../ui/components/feedback/OpenFailed';
 import { createStore, type AppStore } from '../../app/store';
 import { selectProgressByPlaylist, selectVideoById, selectVideoIdsFor } from '../videos/videos.selectors';
 import { addEntries, addVideosFromText, setWatched } from '../videos/videos.thunks';
@@ -57,6 +58,28 @@ afterAll(() => {
 beforeEach(() => {
     setDatabase(new Database(new SQL.Database()));
     store = createStore();
+});
+
+describe('the first screen', () => {
+    it('creates a playlist from its form, offers a link import and opens sync', async () => {
+        render(<App store={store} />);
+        const field = screen.getByLabelText('Playlist name or YouTube playlist link');
+        expect(field).toHaveValue('Watch later');
+
+        fireEvent.change(field, { target: { value: `https://www.youtube.com/playlist?list=${LIST}` } });
+        expect(screen.getByRole('button', { name: 'Import playlist' })).toBeInTheDocument();
+        expect(screen.getByText(/Import with deleted videos/)).toBeInTheDocument();
+
+        fireEvent.change(field, { target: { value: 'Road trip' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create playlist' }));
+        await waitFor(() => expect(selectSelectedPlaylist(store.getState())?.name).toBe('Road trip'));
+    });
+
+    it('explains when the database does not open', () => {
+        render(<OpenFailed reason="Storage is blocked" />);
+        expect(screen.getByRole('alert')).toHaveTextContent('Storage is blocked');
+        expect(screen.getByRole('alert')).toHaveTextContent('Allow storage for this site');
+    });
 });
 
 describe('switching playlists', () => {
@@ -174,9 +197,14 @@ describe('playlist page', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'Show playlists' }));
         fireEvent.click(screen.getByRole('button', { name: 'New playlist' }));
-        fireEvent.change(screen.getByLabelText('Playlist name or YouTube playlist link'), {
-            target: { value: 'Road trip' },
-        });
+        fireEvent.change(
+            within(screen.getByRole('navigation', { name: 'Playlists' })).getByLabelText(
+                'Playlist name or YouTube playlist link',
+            ),
+            {
+                target: { value: 'Road trip' },
+            },
+        );
         fireEvent.click(screen.getByRole('button', { name: 'Create' }));
         expect(await screen.findByRole('textbox', { name: 'Playlist name' })).toHaveValue('Road trip');
 

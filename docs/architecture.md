@@ -219,7 +219,7 @@ flowchart LR
 
     subgraph netlify["Netlify"]
         direction TB
-        cdn["CDN<br/>web/dist + _headers (CSP)"]
+        cdn["CDN<br/>web-react/dist + _headers (CSP)"]
         redirect{{"/api/* proxy<br/>(from API_ORIGIN)"}}
     end
 
@@ -255,7 +255,7 @@ Not shown: the browser also loads Google Fonts, and falls back to noembed.com fo
 | Node | What runs there | Notes |
 | --- | --- | --- |
 | User device | The web app, SQLite (sql.js) and IndexedDB | Works offline; every browser keeps its own copy of the data |
-| Netlify CDN | `web/dist` with the headers from `web/public/_headers` | Content-Security-Policy limits connections to the app's own API and noembed.com |
+| Netlify CDN | `web-react/dist` with the headers from `web-react/public/_headers` | Content-Security-Policy limits connections to the app's own API and noembed.com |
 | Netlify proxy | `/api/*` forwarded to the Render service | Written at build time from `API_ORIGIN`; requests time out after 26 seconds |
 | Render | The .NET API in a Docker container (`api/Dockerfile`, `render.yaml`) | Applies EF Core migrations on start; the free plan sleeps when idle |
 | Neon | The shared PostgreSQL database | One library per sync chain: playlists and videos are keyed by `chain_id` and ID, so each chain keeps its own copy of a row even when another chain has the same ID, and a device only reads and writes its own chain's rows. Chain codes, recovery codes, pairing codes and device credentials are stored only as HMACs keyed with `SYNC_PEPPER`; each chain has an audit log without secrets. Last-write-wins sync; each row has a `seq` the clients use as a cursor. It pauses when idle and closes its connections, and the API retries on a new one |

@@ -9,7 +9,7 @@ Keep your own playlists of videos (music, talks, recipes, anything you want to w
 - [Project layout](#project-layout)
   - [Layers](#layers) · [Styles](#styles) · [How sync works](#how-sync-works)
 - [Run it locally](#run-it-locally)
-  - [React beta (web-react)](#react-beta-web-react) · [Local settings](#local-settings)
+  - [The React app (web-react)](#the-react-app-web-react) · [Local settings](#local-settings)
 - [Deploy](#deploy)
   - [1. Neon](#1-create-the-database-on-neon) · [2. Render](#2-deploy-the-api-on-render) · [3. Netlify](#3-deploy-the-web-app-on-netlify) · [4. Connect your devices](#4-connect-your-devices) · [Automatic deploys](#automatic-deploys-only-what-changed)
 - [Importing YouTube playlists](#importing-youtube-playlists)
@@ -50,7 +50,7 @@ The screenshots use sample data and placeholder thumbnails.
 
 ```
 ┌──────────── Browser ────────────┐       ┌── Netlify ──┐       ┌────── Render ───────┐      ┌──── Neon ────┐
-│ Svelte components (daisyUI)     │       │ web app     │       │ ASP.NET Core API    │      │ PostgreSQL   │
+│ React components (Material UI)  │       │ web app     │       │ ASP.NET Core API    │      │ PostgreSQL   │
 │ ↓ call                          │ HTTPS │             │ HTTPS │  POST /api/sync     │ EF   │ playlists    │
 │ Domain services ($state)        │──────►│ /api/* proxy│──────►│  GET  /api/oembed   │─────►│ videos       │
 │ ↓ read / write                  │       └─────────────┘       │  GET  /api/playlist │ Core │ sync_counter │
@@ -87,9 +87,10 @@ packages/core/                shared logic in TypeScript, no UI (also for the Re
   src/playlists/              report.ts, report-compare.ts (reports), youtube-sync.ts (YouTube comparison)
   src/db/                     SQLite wrapper (sql.js + Drizzle), tables.ts, generated migrations, IndexedDB persistence
   src/*/…repository.ts        playlists and videos data access (Drizzle ORM queries)
-web/
+web-react/                   the deployed web app (React, Material UI, Redux Toolkit)
   scripts/write-redirects.mjs  writes the Netlify /api proxy rule from API_ORIGIN
   public/_headers            security headers (CSP) for Netlify
+web/                         the previous Svelte app, not deployed; removed in #92
   src/
     app/bootstrap.js         opens the database and loads every domain
     core/
@@ -189,9 +190,9 @@ In the app, open the sync settings at the bottom of the sidebar and choose **Cre
 
 **Using a hosted database locally:** if `DATABASE_URL` in `appsettings.Local.json` points at a hosted database instead of the local one, the API applies its pending migrations there when it starts. To try a branch that changes the database without touching production, point the API at a copy instead: on Neon, create a branch of the database and set `DATABASE_URL` to its connection string for that run (an environment variable wins over the settings file). Delete the branch when you're done. A Neon branch inherits its parent's roles **and passwords**, so its connection string carries the production password: keep it out of anything shared or committed, or create a separate role on the branch for testing.
 
-### React beta (web-react)
+### The React app (web-react)
 
-The app is being rewritten in React with Material UI, Redux Toolkit and TypeScript (#23), in `web-react/`, next to the Svelte app. It runs only locally and is never deployed: Netlify builds `web/`, and its build-skip check ignores `web-react/`.
+The deployed app is the React rewrite (#23) in `web-react/`, with Material UI, Redux Toolkit and TypeScript. The Svelte app in `web/` is no longer deployed and stays here until #92 removes it, so the layers described above for `web/` map to the same domains in `web-react/src/domains`.
 
 ```bash
 cp web-react/.env.example web-react/.env   # optional: API_URL for the dev proxy (defaults to http://localhost:8787)
@@ -199,7 +200,7 @@ npm install && npm run dev -w web-react    # http://localhost:5174
 npm test -w web-react                      # Vitest + React Testing Library
 ```
 
-It shares `packages/core` with the Svelte app and uses the `react` part of the shared lint rules. CI checks it in its own **Web app (React beta)** job, which isn't a required check.
+It uses `packages/core` and the `react` part of the shared lint rules, and CI checks it in its own job. `npm run build -w web-react && npm run preview -w web-react` serves the production build with the real security headers.
 
 ### Local settings
 

@@ -437,7 +437,7 @@ generated_code = true
 csharp_style_namespace_declarations = block_scoped:none
 
 # Netlify _headers: indentation is meaningful, keep it as written
-[web/public/_headers]
+[{web,web-react}/public/_headers]
 indent_size = 2
 
 ##########################################
