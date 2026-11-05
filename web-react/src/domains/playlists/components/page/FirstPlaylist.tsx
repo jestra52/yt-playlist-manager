@@ -78,9 +78,11 @@ export const FirstPlaylist = () => {
                         onChange={(e) => setWithDeleted(e.target.checked)}
                         disabled={importing}
                     />
-                    Import with deleted videos
-                    <span className="text-base-content/65">
-                        (added as Missing items, so you can paste another link later)
+                    <span>
+                        Import with deleted videos{' '}
+                        <span className="text-base-content/65">
+                            (added as Missing items, so you can paste another link later)
+                        </span>
                     </span>
                 </label>
             )}
