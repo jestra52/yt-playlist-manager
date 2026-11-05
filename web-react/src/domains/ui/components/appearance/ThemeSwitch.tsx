@@ -1,10 +1,8 @@
 import DarkModeOutlined from '@mui/icons-material/DarkModeOutlined';
 import DesktopWindowsOutlined from '@mui/icons-material/DesktopWindowsOutlined';
 import LightModeOutlined from '@mui/icons-material/LightModeOutlined';
-import { useColorScheme } from '@mui/material/styles';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
 import { setTheme, type ThemeChoice } from '../../ui.slice';
 import styles from './ThemeSwitch.module.scss';
@@ -18,11 +16,6 @@ const CHOICES: { value: ThemeChoice; label: string; icon: React.ReactNode }[] = 
 export const ThemeSwitch = () => {
     const theme = useAppSelector((state) => state.ui.theme);
     const dispatch = useAppDispatch();
-    const { setMode } = useColorScheme();
-
-    useEffect(() => {
-        setMode(theme);
-    }, [theme, setMode]);
 
     return (
         <ToggleButtonGroup

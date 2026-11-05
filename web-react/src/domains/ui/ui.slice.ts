@@ -17,7 +17,7 @@ export interface UiState {
     notices: Notice[];
 }
 
-const THEME_KEY = 'ytpm:theme';
+export const THEME_KEY = 'ytpm:theme';
 
 export const savedTheme = (): ThemeChoice => {
     try {
