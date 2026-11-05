@@ -1,0 +1,54 @@
+.line {
+    margin: 2px 0 0;
+    color: var(--mui-palette-text-secondary);
+    font-size: 0.875rem;
+}
+
+.label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+}
+
+.input {
+    width: 100%;
+    max-width: 320px;
+    padding: 2px 6px;
+    color: var(--mui-palette-text-primary);
+    font: inherit;
+    background-color: var(--mui-palette-background-default);
+    border: 1px solid var(--mui-palette-divider);
+    border-radius: 6px;
+}
+
+.artist,
+.add,
+.guessed {
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.artist {
+    color: var(--mui-palette-text-primary);
+    font-weight: 600;
+
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+.add {
+    text-decoration: underline;
+}
+
+.guessed {
+    margin-left: 4px;
+    font-size: 0.8125rem;
+    vertical-align: -1px;
+}

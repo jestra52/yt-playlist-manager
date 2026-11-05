@@ -1,12 +1,24 @@
 import { getDatabase } from '@ytpm/core/db/index';
-import { guessedArtistPatch } from '@ytpm/core/videos/artist';
+import type { Playlist } from '@ytpm/core/playlists/playlists.repository';
+import { guessedArtistPatch, knownArtists, matchKnownArtist } from '@ytpm/core/videos/artist';
 import { fetchVideoMetadata } from '@ytpm/core/videos/metadata.client';
 import { fetchYouTubePlaylist, PARTIAL_IMPORT_NOTE } from '@ytpm/core/videos/playlist.client';
-import { addVideos, getVideo, updateVideo, type Video, type VideoEntry } from '@ytpm/core/videos/videos.repository';
+import {
+    addVideos,
+    deleteVideo,
+    getVideo,
+    moveVideoToPlaylist,
+    reorderVideo,
+    restoreVideo as restoreVideoRow,
+    updateVideo,
+    type Video,
+    type VideoEntry,
+} from '@ytpm/core/videos/videos.repository';
 import { extractYouTubeIds } from '@ytpm/core/videos/youtube';
 import type { AppThunk } from '../../app/store';
 import { notify, setImporting } from '../ui/ui.slice';
-import { changed, upserted } from './videos.slice';
+import { selectAllVideos } from './videos.selectors';
+import { changed, removed, upserted } from './videos.slice';
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -102,5 +114,65 @@ export const setWatched =
     (id: string, watched: boolean): AppThunk =>
     (dispatch) => {
         const video = updateVideo(getDatabase(), id, { watched });
+        if (video) dispatch(changed(video));
+    };
+
+export const saveNotes =
+    (id: string, notes: string): AppThunk =>
+    (dispatch) => {
+        const video = updateVideo(getDatabase(), id, { notes: notes.slice(0, 5000) });
+        if (video) dispatch(changed(video));
+    };
+
+/**
+ * A hand edit wins over any guess or lookup, even when it clears the artist.
+ * An artist other videos already have keeps their spelling; the edited video
+ * itself doesn't count, so fixing its own spelling works.
+ */
+export const saveArtist =
+    (id: string, artist: string): AppThunk =>
+    (dispatch, getState) => {
+        const known = knownArtists(selectAllVideos(getState()).filter((v) => v.id !== id));
+        const video = updateVideo(getDatabase(), id, { artist: matchKnownArtist(artist, known), artistSource: 'user' });
+        if (video) dispatch(changed(video));
+    };
+
+/** Moves a video to a new index in its playlist's full order. */
+export const reorder =
+    (id: string, toIndex: number): AppThunk =>
+    (dispatch) => {
+        const video = reorderVideo(getDatabase(), id, toIndex);
+        if (video) dispatch(changed(video));
+    };
+
+export const moveToPlaylist =
+    (id: string, playlist: Playlist): AppThunk =>
+    (dispatch) => {
+        const { video, duplicate } = moveVideoToPlaylist(getDatabase(), id, playlist.id);
+        if (duplicate) {
+            dispatch(notify('That video is already in the other playlist', { tone: 'error' }));
+            return;
+        }
+        if (!video) return;
+        dispatch(changed(video));
+        dispatch(notify(`Moved to "${playlist.name}"`));
+    };
+
+export const removeVideo =
+    (id: string): AppThunk =>
+    (dispatch) => {
+        const db = getDatabase();
+        const video = getVideo(db, id);
+        if (!video) return;
+        deleteVideo(db, id);
+        dispatch(removed(id));
+        const message = video.title ? `Removed "${video.title}"` : 'Removed the video';
+        dispatch(notify(message, { timeout: 6000, undoVideoId: id }));
+    };
+
+export const restoreVideo =
+    (id: string): AppThunk =>
+    (dispatch) => {
+        const video = restoreVideoRow(getDatabase(), id);
         if (video) dispatch(changed(video));
     };

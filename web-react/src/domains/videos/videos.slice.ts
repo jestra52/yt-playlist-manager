@@ -12,7 +12,8 @@ export const videosSlice = createSlice({
         loaded: videosAdapter.setAll,
         upserted: videosAdapter.upsertMany,
         changed: videosAdapter.upsertOne,
+        removed: videosAdapter.removeOne,
     },
 });
 
-export const { loaded, upserted, changed } = videosSlice.actions;
+export const { loaded, upserted, changed, removed } = videosSlice.actions;
