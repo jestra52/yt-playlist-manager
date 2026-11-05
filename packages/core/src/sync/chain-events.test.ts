@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { describeEvent } from './chain-events.js';
+import { describeEvent } from './chain-events';
 
 describe('audit log sentences', () => {
     it('says what happened and from which device', () => {

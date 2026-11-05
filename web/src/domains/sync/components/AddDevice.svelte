@@ -2,7 +2,7 @@
     import QRCode from 'qrcode';
     import Icon from '../../../shared/components/Icon.svelte';
     import { sync } from '../sync.service.svelte.js';
-    import { countdown } from '../pairing.js';
+    import { countdown } from '@ytpm/core/sync/pairing';
 
     /**
      * Adding a device from this one with a short-lived pairing code: shows the code

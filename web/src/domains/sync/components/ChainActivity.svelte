@@ -1,6 +1,6 @@
 <script>
     import { sync } from '../sync.service.svelte.js';
-    import { describeEvent } from '../chain-events.js';
+    import { describeEvent } from '@ytpm/core/sync/chain-events';
 
     /** The chain's audit log: what happened and from which device. Never shows a secret. */
     const formatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });

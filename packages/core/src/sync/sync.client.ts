@@ -2,28 +2,84 @@
  * HTTP client for the sync API: sync chains and two-way sync. Requests from a
  * device in a chain carry its own credential as a bearer token; the chain
  * code's secret is only sent when creating or joining a chain.
- *
- * No framework code here: this module is shared as is with other apps (#23).
+
  */
+import type { LocalChanges, RemoteChanges } from './sync.repository';
+
+export interface SyncConnection {
+    apiUrl: string;
+    credential?: string;
+}
+
+export interface ChainAccess {
+    chainId: string;
+    deviceId: string;
+    deviceCredential: string;
+    secret?: string;
+    recoveryCodes?: string[];
+}
+
+export interface ChainDevice {
+    id: string;
+    name: string;
+    createdAt: number;
+    lastSeenAt: number;
+}
+
+export interface Chain {
+    chainId: string;
+    deviceId: string;
+    devices: ChainDevice[];
+    recoveryCodesLeft: number;
+    pairingLockedUntil?: number | null;
+}
+
+export interface ChainEvent {
+    at: number;
+    kind: string;
+    deviceName: string;
+    detail?: string;
+}
+
+export type PairingStatus = 'waiting' | 'requested' | 'approved' | 'joined' | 'denied' | 'expired';
+
+export interface Pairing {
+    status: PairingStatus;
+    requesterName: string;
+    expiresAt?: number;
+}
+
+export type PairingAnswer =
+    | { status: 'requested' | 'denied' | 'expired' }
+    | ({ status: 'approved' } & Omit<ChainAccess, 'secret' | 'recoveryCodes'>);
+
+export interface SyncResponse {
+    changes?: RemoteChanges;
+    cursor: number;
+    hasMore?: boolean;
+}
 
 export class SyncError extends Error {
-    constructor(message, { status = 0, offline = false } = {}) {
+    status: number;
+    offline: boolean;
+
+    constructor(message: string, { status = 0, offline = false } = {}) {
         super(message);
         this.status = status;
         this.offline = offline;
     }
 }
 
-const endpoint = (apiUrl, path) => {
+const endpoint = (apiUrl: string, path: string): string => {
     return `${(apiUrl || '/api').replace(/\/+$/, '')}${path}`;
 };
 
-const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+const capitalize = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
 
-const request = async (url, init, timeoutMs = 20000) => {
+const request = async <T>(url: string, init: RequestInit, timeoutMs = 20000): Promise<T> => {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-    let res;
+    let res: Response;
     try {
         res = await fetch(url, { ...init, signal: ctrl.signal });
     } catch {
@@ -32,10 +88,10 @@ const request = async (url, init, timeoutMs = 20000) => {
     } finally {
         clearTimeout(timer);
     }
-    if (res.status === 204) return null;
-    let body = null;
+    if (res.status === 204) return null as T;
+    let body: (T & { error?: string }) | null = null;
     try {
-        body = await res.json();
+        body = (await res.json()) as T & { error?: string };
     } catch {
         /* non-JSON error page */
     }
@@ -48,7 +104,7 @@ const request = async (url, init, timeoutMs = 20000) => {
     return body;
 };
 
-const json = (method, body, credential) => ({
+const json = (method: string, body?: unknown, credential?: string): RequestInit => ({
     method,
     headers: {
         'Content-Type': 'application/json',
@@ -58,26 +114,33 @@ const json = (method, body, credential) => ({
 });
 
 /** Pushes local changes and pulls server changes newer than `since`, in this device's chain. */
-export const postSync = ({ apiUrl, credential }, payload) => {
+export const postSync = (
+    { apiUrl, credential }: SyncConnection,
+    payload: { since: number; changes: LocalChanges },
+): Promise<SyncResponse> => {
     return request(endpoint(apiUrl, '/sync'), json('POST', payload, credential));
 };
 
-export const getHealth = ({ apiUrl }) => {
+export const getHealth = ({ apiUrl }: SyncConnection): Promise<{ syncConfigured: boolean }> => {
     return request(endpoint(apiUrl, '/health'), { method: 'GET' }, 8000);
 };
 
 /** Creates a chain with this device in it. Resolves to { chainId, deviceId, deviceCredential, secret, recoveryCodes }. */
-export const createChain = ({ apiUrl }, deviceName) => {
+export const createChain = ({ apiUrl }: SyncConnection, deviceName: string): Promise<ChainAccess> => {
     return request(endpoint(apiUrl, '/chains'), json('POST', { deviceName }));
 };
 
 /** Joins the chain with this code's secret. Resolves to { chainId, deviceId, deviceCredential }. */
-export const joinChain = ({ apiUrl }, secret, deviceName) => {
+export const joinChain = ({ apiUrl }: SyncConnection, secret: string, deviceName: string): Promise<ChainAccess> => {
     return request(endpoint(apiUrl, '/chains/join'), json('POST', { secret, deviceName }));
 };
 
 /** Turns the library synced with the old SYNC_TOKEN into a chain, once. Resolves like createChain. */
-export const claimLegacyChain = ({ apiUrl }, syncToken, deviceName) => {
+export const claimLegacyChain = (
+    { apiUrl }: SyncConnection,
+    syncToken: string,
+    deviceName: string,
+): Promise<ChainAccess> => {
     return request(endpoint(apiUrl, '/chains/claim'), json('POST', { deviceName }, syncToken));
 };
 
@@ -85,7 +148,11 @@ export const claimLegacyChain = ({ apiUrl }, syncToken, deviceName) => {
  * Recovers the chain with one of its recovery codes: the chain gets a new code and new
  * recovery codes, every old device is removed and this device joins. Resolves like createChain.
  */
-export const recoverChain = ({ apiUrl }, recoveryCode, deviceName) => {
+export const recoverChain = (
+    { apiUrl }: SyncConnection,
+    recoveryCode: string,
+    deviceName: string,
+): Promise<ChainAccess> => {
     return request(endpoint(apiUrl, '/chains/recover'), json('POST', { recoveryCode, deviceName }));
 };
 
@@ -93,12 +160,12 @@ export const recoverChain = ({ apiUrl }, recoveryCode, deviceName) => {
  * This device's chain and its devices:
  * { chainId, deviceId, devices: [{ id, name, createdAt, lastSeenAt }], recoveryCodesLeft }.
  */
-export const getChain = ({ apiUrl, credential }) => {
+export const getChain = ({ apiUrl, credential }: SyncConnection): Promise<Chain> => {
     return request(endpoint(apiUrl, '/chain'), json('GET', undefined, credential));
 };
 
 /** Removes a device from this device's chain (this device's own ID leaves the chain). */
-export const removeDevice = ({ apiUrl, credential }, deviceId) => {
+export const removeDevice = ({ apiUrl, credential }: SyncConnection, deviceId: string): Promise<null> => {
     return request(
         endpoint(apiUrl, `/chain/devices/${encodeURIComponent(deviceId)}`),
         json('DELETE', undefined, credential),
@@ -106,42 +173,45 @@ export const removeDevice = ({ apiUrl, credential }, deviceId) => {
 };
 
 /** A new code and recovery codes for this device's chain; every other device is removed. Resolves to { secret, recoveryCodes }. */
-export const replaceChainCode = ({ apiUrl, credential }) => {
+export const replaceChainCode = ({
+    apiUrl,
+    credential,
+}: SyncConnection): Promise<{ secret: string; recoveryCodes: string[] }> => {
     return request(endpoint(apiUrl, '/chain/replace'), json('POST', undefined, credential));
 };
 
 /** New recovery codes for this device's chain; the old ones stop working. Resolves to { codes }. */
-export const renewRecoveryCodes = ({ apiUrl, credential }) => {
+export const renewRecoveryCodes = ({ apiUrl, credential }: SyncConnection): Promise<{ codes: string[] }> => {
     return request(endpoint(apiUrl, '/chain/recovery-codes'), json('POST', undefined, credential));
 };
 
 /** The chain's audit log, newest first: [{ at, kind, deviceName, detail }]. Never includes a secret. */
-export const getChainEvents = ({ apiUrl, credential }, limit = 50) => {
+export const getChainEvents = ({ apiUrl, credential }: SyncConnection, limit = 50): Promise<ChainEvent[]> => {
     return request(endpoint(apiUrl, `/chain/events?limit=${limit}`), json('GET', undefined, credential));
 };
 
 /** A new pairing code for this device's chain, replacing this device's previous one. Resolves to { code, expiresAt }. */
-export const startPairing = ({ apiUrl, credential }) => {
+export const startPairing = ({ apiUrl, credential }: SyncConnection): Promise<{ code: string; expiresAt: number }> => {
     return request(endpoint(apiUrl, '/chain/pairing'), json('POST', undefined, credential));
 };
 
 /** Where this device's pairing code stands: { status, requesterName, expiresAt }; 404 when it has none. */
-export const getPairing = ({ apiUrl, credential }) => {
+export const getPairing = ({ apiUrl, credential }: SyncConnection): Promise<Pairing> => {
     return request(endpoint(apiUrl, '/chain/pairing'), json('GET', undefined, credential), 8000);
 };
 
 /** Lets the device that entered this device's pairing code join. */
-export const approvePairing = ({ apiUrl, credential }) => {
+export const approvePairing = ({ apiUrl, credential }: SyncConnection): Promise<null> => {
     return request(endpoint(apiUrl, '/chain/pairing/approve'), json('POST', undefined, credential));
 };
 
 /** Refuses the device that entered this device's pairing code. */
-export const denyPairing = ({ apiUrl, credential }) => {
+export const denyPairing = ({ apiUrl, credential }: SyncConnection): Promise<null> => {
     return request(endpoint(apiUrl, '/chain/pairing/deny'), json('POST', undefined, credential));
 };
 
 /** Cancels this device's pairing code. */
-export const cancelPairing = ({ apiUrl, credential }) => {
+export const cancelPairing = ({ apiUrl, credential }: SyncConnection): Promise<null> => {
     return request(endpoint(apiUrl, '/chain/pairing'), json('DELETE', undefined, credential));
 };
 
@@ -149,7 +219,11 @@ export const cancelPairing = ({ apiUrl, credential }) => {
  * Asks to join the chain whose device showed this pairing code, from a device that
  * isn't in a chain. Resolves to { requestToken, expiresAt }.
  */
-export const requestPairing = ({ apiUrl }, code, deviceName) => {
+export const requestPairing = (
+    { apiUrl }: SyncConnection,
+    code: string,
+    deviceName: string,
+): Promise<{ requestToken: string; expiresAt: number }> => {
     return request(endpoint(apiUrl, '/chains/pair'), json('POST', { code, deviceName }));
 };
 
@@ -157,11 +231,11 @@ export const requestPairing = ({ apiUrl }, code, deviceName) => {
  * Whether the pairing request was approved: { status: 'requested' | 'denied' | 'expired' },
  * or once approved { status: 'approved', chainId, deviceId, deviceCredential }, only once.
  */
-export const getPairingStatus = ({ apiUrl }, requestToken) => {
+export const getPairingStatus = ({ apiUrl }: SyncConnection, requestToken: string): Promise<PairingAnswer> => {
     return request(endpoint(apiUrl, '/pairing/status'), json('POST', undefined, requestToken), 8000);
 };
 
 /** Deletes this device's chain, its devices and all its synced data. */
-export const deleteChain = ({ apiUrl, credential }) => {
+export const deleteChain = ({ apiUrl, credential }: SyncConnection): Promise<null> => {
     return request(endpoint(apiUrl, '/chain'), json('DELETE', undefined, credential));
 };

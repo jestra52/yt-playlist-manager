@@ -1,21 +1,25 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { countdown, waitForApproval, watchPairing } from './pairing.js';
+import { countdown, waitForApproval, watchPairing } from './pairing';
 
 const settings = { apiUrl: '/api', credential: 'device-credential' };
-const reply = (status, body) => ({ ok: status < 400, status, json: async () => body });
+const reply = (status: number, body: unknown) => ({ ok: status < 400, status, json: async () => body });
 
 /** Fake API answering each request with the next reply of `replies` (the last one repeats). */
-let replies;
-let calls;
+let replies: (ReturnType<typeof reply> | 'offline')[];
+let calls: { path: string; method?: string; auth?: string }[];
 
 beforeEach(() => {
     calls = [];
-    globalThis.fetch = async (url, init = {}) => {
-        calls.push({ path: String(url), method: init.method, auth: init.headers?.Authorization });
+    globalThis.fetch = (async (url: string, init: RequestInit = {}) => {
+        calls.push({
+            path: String(url),
+            method: init.method,
+            auth: (init.headers as Record<string, string> | undefined)?.Authorization,
+        });
         const next = replies.length > 1 ? replies.shift() : replies[0];
         if (next === 'offline') throw new TypeError('Failed to fetch');
         return next;
-    };
+    }) as unknown as typeof fetch;
 });
 
 describe("following this device's pairing code", () => {
@@ -28,16 +32,16 @@ describe("following this device's pairing code", () => {
             reply(200, { status: 'approved', requesterName: 'Chrome on Android', expiresAt: 9 }),
             reply(200, { status: 'joined', requesterName: 'Chrome on Android', expiresAt: 9 }),
         ];
-        const seen = [];
+        const seen: string[] = [];
         const last = await watchPairing(settings, { intervalMs: 0, onChange: (p) => seen.push(p.status) });
         expect(seen).toEqual(['waiting', 'requested', 'approved', 'joined']);
-        expect(last.requesterName).toBe('Chrome on Android');
+        expect(last?.requesterName).toBe('Chrome on Android');
         expect(calls[0]).toMatchObject({ path: '/api/chain/pairing', method: 'GET', auth: 'Bearer device-credential' });
     });
 
     it('treats a cancelled code as expired, and stops when aborted', async () => {
         replies = [reply(404, { error: 'this device has no pairing code' })];
-        expect((await watchPairing(settings, { intervalMs: 0 })).status).toBe('expired');
+        expect((await watchPairing(settings, { intervalMs: 0 }))?.status).toBe('expired');
 
         replies = [reply(200, { status: 'waiting', requesterName: '', expiresAt: 9 })];
         const ctrl = new AbortController();
@@ -46,7 +50,7 @@ describe("following this device's pairing code", () => {
             setTimeout(resolve, 0);
         });
         ctrl.abort();
-        expect((await watching).status).toBe('waiting');
+        expect((await watching)?.status).toBe('waiting');
     });
 });
 
@@ -64,14 +68,14 @@ describe('waiting for approval on the new device', () => {
 
     it('ends on a refusal, an unknown request or an abort', async () => {
         replies = [reply(200, { status: 'denied' })];
-        expect(await waitForApproval({}, 'token', { intervalMs: 0 })).toEqual({ status: 'denied' });
+        expect(await waitForApproval(settings, 'token', { intervalMs: 0 })).toEqual({ status: 'denied' });
 
         replies = [reply(401, { error: 'unknown pairing request' })];
-        await expect(waitForApproval({}, 'token', { intervalMs: 0 })).rejects.toThrow('Unknown pairing request');
+        await expect(waitForApproval(settings, 'token', { intervalMs: 0 })).rejects.toThrow('Unknown pairing request');
 
         const ctrl = new AbortController();
         ctrl.abort();
-        expect(await waitForApproval({}, 'token', { signal: ctrl.signal })).toBeNull();
+        expect(await waitForApproval(settings, 'token', { signal: ctrl.signal })).toBeNull();
     });
 });
 

@@ -1,5 +1,5 @@
 <script>
-    import { scanCode } from '../qr-scan.js';
+    import { scanCode } from '@ytpm/core/sync/qr-scan';
 
     /**
      * The camera, looking for a chain code's or a pairing code's QR code. Calls

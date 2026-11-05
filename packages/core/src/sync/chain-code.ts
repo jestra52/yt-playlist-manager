@@ -6,26 +6,25 @@ import { wordlist } from '@scure/bip39/wordlists/english';
  * BIP-39 English list. The last word carries a checksum, so a mistyped or
  * swapped word is caught here, before anything is sent to the server. The
  * server only ever sees the secret (base64url), never the words.
- *
- * No framework code here: this module is shared as is with other apps (#23).
+
  */
 
 export const WORD_COUNT = 24;
 
-const toBase64Url = (bytes) => {
+const toBase64Url = (bytes: Uint8Array): string => {
     let binary = '';
     for (const b of bytes) binary += String.fromCharCode(b);
     return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 };
 
-const fromBase64Url = (text) => {
+const fromBase64Url = (text: string): Uint8Array => {
     const base64 = text.replace(/-/g, '+').replace(/_/g, '/');
     const binary = atob(base64 + '='.repeat((4 - (base64.length % 4)) % 4));
     return Uint8Array.from(binary, (c) => c.charCodeAt(0));
 };
 
 /** The 24 words for a secret from the server (32 bytes, base64url). */
-export const secretToWords = (secret) => {
+export const secretToWords = (secret: string): string[] => {
     const bytes = fromBase64Url(secret);
     if (bytes.length !== 32) throw new Error('A sync chain secret is 32 bytes');
     return entropyToMnemonic(bytes, wordlist).split(' ');
@@ -36,9 +35,9 @@ export const secretToWords = (secret) => {
  * commas and extra spaces. When the words are numbered, only the numbered ones
  * count, so the whole downloaded code file (with its explanation) can be pasted.
  */
-export const splitWords = (text) => {
+export const splitWords = (text: string | null | undefined): string[] => {
     const lower = (text ?? '').toLowerCase();
-    const numbered = [...lower.matchAll(/\b\d+\s*[.)]\s*([a-z]+)/g)].map((m) => m[1]);
+    const numbered = [...lower.matchAll(/\b\d+\s*[.)]\s*([a-z]+)/g)].map((m) => m[1]!);
     if (numbered.length >= WORD_COUNT) return numbered;
     return lower
         .replace(/\b\d+[.)]/g, ' ')
@@ -53,7 +52,7 @@ export class ChainCodeError extends Error {}
  * a message ready to show: wrong number of words, words that aren't in the
  * list, or a checksum that doesn't match (a word mistyped or out of order).
  */
-export const wordsToSecret = (text) => {
+export const wordsToSecret = (text: string): string => {
     const words = splitWords(text);
     if (words.length !== WORD_COUNT) {
         throw new ChainCodeError(`A sync chain code has ${WORD_COUNT} words; this has ${words.length}.`);
@@ -72,8 +71,8 @@ export const wordsToSecret = (text) => {
 };
 
 /** `count` different word positions (1-based, in order) to type back after saving the code. */
-export const confirmationPositions = (count = 3, random = Math.random) => {
-    const positions = new Set();
+export const confirmationPositions = (count = 3, random = Math.random): number[] => {
+    const positions = new Set<number>();
     while (positions.size < count) positions.add(1 + Math.floor(random() * WORD_COUNT));
     return [...positions].sort((a, b) => a - b);
 };
@@ -84,7 +83,10 @@ export const confirmationPositions = (count = 3, random = Math.random) => {
  * recovery codes aren't numbered, so pasting the whole file to join still only
  * reads the 24 words.
  */
-export const chainCodeFileText = ({ words = [], recoveryCodes = [] }, appName = 'Yuzu Tapes Playlist Manager') => {
+export const chainCodeFileText = (
+    { words = [], recoveryCodes = [] }: { words?: string[]; recoveryCodes?: string[] },
+    appName = 'Yuzu Tapes Playlist Manager',
+): string => {
     const lines = [`${appName}: ${words.length ? 'sync chain code' : 'recovery codes'}`, ''];
     if (words.length) {
         lines.push(
@@ -109,7 +111,7 @@ export const chainCodeFileText = ({ words = [], recoveryCodes = [] }, appName = 
 };
 
 /** A short name for this device, like "Chrome on Windows", from the browser's user agent. */
-export const defaultDeviceName = (userAgent = globalThis.navigator?.userAgent ?? '') => {
+export const defaultDeviceName = (userAgent = globalThis.navigator?.userAgent ?? ''): string => {
     const browser = /Edg\//.test(userAgent)
         ? 'Edge'
         : /OPR\//.test(userAgent)

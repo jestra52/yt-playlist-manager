@@ -17,7 +17,9 @@
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
+    "@scure/bip39": "^1.6.0",
     "drizzle-orm": "^0.45.4",
+    "jsqr": "^1.4.0",
     "sql.js": "^1.15.2"
   },
   "devDependencies": {

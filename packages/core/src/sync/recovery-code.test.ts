@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatRecoveryCode, isRecoveryCode, normalizeRecoveryCode, recoveryCodeProblem } from './recovery-code.js';
+import { formatRecoveryCode, isRecoveryCode, normalizeRecoveryCode, recoveryCodeProblem } from './recovery-code';
 
 const CODE = '7K3QD-M9X2A-0P1RT-VWYZ5';
 
