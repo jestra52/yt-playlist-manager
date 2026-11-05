@@ -12,6 +12,7 @@ import type { YouTubePlaylist } from '@ytpm/core/videos/playlist.client';
 import { useMemo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
 import { AppDialog } from '../../../ui/components/dialog/AppDialog';
+import type { DialogControls } from '../../../ui/components/dialog/useDialog';
 import { selectAllVideos } from '../../../videos/videos.selectors';
 import { applyYouTubeSync, linkToYouTube, readLinkedYouTubePlaylist } from '../../playlists.thunks';
 import { DiffSection } from './DiffSection';
@@ -20,7 +21,8 @@ import styles from './SyncYouTubeDialog.module.scss';
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-export const SyncYouTubeDialog = ({ playlist, onClose }: { playlist: Playlist; onClose: () => void }) => {
+export const SyncYouTubeDialog = ({ playlist, ...dialog }: { playlist: Playlist } & DialogControls) => {
+    const { onClose } = dialog;
     const [source, setSource] = useState<YouTubePlaylist | null>(null);
     const [reading, setReading] = useState(false);
     const [failed, setFailed] = useState(false);
@@ -69,8 +71,8 @@ export const SyncYouTubeDialog = ({ playlist, onClose }: { playlist: Playlist; o
 
     return (
         <AppDialog
+            {...dialog}
             title="Sync from YouTube"
-            onClose={onClose}
             actions={
                 <>
                     <Button color="inherit" onClick={onClose}>

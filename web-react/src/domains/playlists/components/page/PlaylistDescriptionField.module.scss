@@ -17,9 +17,9 @@
     border: 1px solid transparent;
     border-radius: 6px;
 
-    &:hover,
     &:focus {
-        border-color: var(--mui-palette-divider);
-        outline: none;
+        background-color: var(--mui-palette-background-paper);
+        outline: 2px solid var(--mui-palette-text-primary);
+        outline-offset: 2px;
     }
 }

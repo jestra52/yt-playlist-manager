@@ -4,16 +4,26 @@ import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
 import type { ReactNode } from 'react';
 import styles from './AppDialog.module.scss';
+import type { DialogControls } from './useDialog';
 
-interface AppDialogProps {
+interface AppDialogProps extends DialogControls {
     title: string;
-    onClose: () => void;
     actions: ReactNode;
     children: ReactNode;
 }
 
-export const AppDialog = ({ title, onClose, actions, children }: AppDialogProps) => (
-    <Dialog open onClose={onClose} fullWidth classes={{ container: styles.container, paper: styles.paper }}>
+export const AppDialog = ({ open, onClose, onExited, title, actions, children }: AppDialogProps) => (
+    <Dialog
+        open={open}
+        onClose={onClose}
+        fullWidth
+        transitionDuration={300}
+        classes={{ container: styles.container, paper: open ? styles.paper : `${styles.paper} ${styles.leaving}` }}
+        slotProps={{
+            backdrop: { className: styles.backdrop },
+            transition: { easing: 'ease-out', onExited },
+        }}
+    >
         <IconButton className={styles.close} size="small" aria-label="Close" onClick={onClose}>
             <CloseIcon fontSize="small" />
         </IconButton>

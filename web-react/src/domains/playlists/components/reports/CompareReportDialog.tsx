@@ -5,6 +5,7 @@ import { compareReport, FORMATS, parseReport } from '@ytpm/core/playlists/report
 import { useMemo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
 import { AppDialog } from '../../../ui/components/dialog/AppDialog';
+import type { DialogControls } from '../../../ui/components/dialog/useDialog';
 import { selectAllVideos } from '../../../videos/videos.selectors';
 import { addMissingFromReport } from '../../playlists.thunks';
 import styles from './CompareReportDialog.module.scss';
@@ -13,7 +14,8 @@ import { MissingEntries } from './MissingEntries';
 const EXAMPLE =
     'Total videos: 153\nFormat: number: title | artist\n1: Plastic Love | Mariya Takeuchi\n2: Windy Summer | Anri';
 
-export const CompareReportDialog = ({ playlistId, onClose }: { playlistId: string; onClose: () => void }) => {
+export const CompareReportDialog = ({ playlistId, ...dialog }: { playlistId: string } & DialogControls) => {
+    const { onClose } = dialog;
     const [text, setText] = useState('');
     const [fileName, setFileName] = useState('');
     const all = useAppSelector(selectAllVideos);
@@ -43,8 +45,8 @@ export const CompareReportDialog = ({ playlistId, onClose }: { playlistId: strin
 
     return (
         <AppDialog
+            {...dialog}
             title="Compare with a report"
-            onClose={onClose}
             actions={
                 <>
                     <Button color="inherit" onClick={onClose}>
