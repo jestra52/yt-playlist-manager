@@ -17,8 +17,8 @@ import {
 import { extractYouTubeIds } from '@ytpm/core/videos/youtube';
 import type { AppThunk } from '../../app/store';
 import { notify, setImporting } from '../ui/ui.slice';
-import { selectAllVideos } from './videos.selectors';
-import { changed, removed, upserted } from './videos.slice';
+import { selectAllVideos, selectPlaying } from './videos.selectors';
+import { changed, played, playerClosed, removed, upserted } from './videos.slice';
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -176,3 +176,19 @@ export const restoreVideo =
         const video = restoreVideoRow(getDatabase(), id);
         if (video) dispatch(changed(video));
     };
+
+/** Marks the playing video watched and starts the next unwatched one. */
+export const finishAndPlayNext = (): AppThunk => (dispatch, getState) => {
+    const current = selectPlaying(getState());
+    if (!current) return;
+    dispatch(setWatched(current.id, true));
+    const queue = selectAllVideos(getState()).filter((v) => v.playlistId === current.playlistId);
+    const playable = (v: Video) => !v.watched && !v.missing;
+    const next = queue.find((v) => v.position > current.position && playable(v)) ?? queue.find(playable);
+    if (next) {
+        dispatch(played(next.id));
+    } else {
+        dispatch(playerClosed());
+        dispatch(notify("You've watched everything in this playlist"));
+    }
+};

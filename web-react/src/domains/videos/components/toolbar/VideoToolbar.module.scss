@@ -1,0 +1,50 @@
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 24px;
+}
+
+.tabs {
+    min-height: 36px;
+
+    :global(.MuiTab-root) {
+        min-width: 0;
+        min-height: 36px;
+        padding: 6px 12px;
+    }
+}
+
+.search {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    width: 288px;
+    max-width: 100%;
+    padding: 6px 10px;
+    color: var(--mui-palette-text-secondary);
+    background-color: var(--mui-palette-background-paper);
+    border: 1px solid var(--mui-palette-divider);
+    border-radius: 6px;
+}
+
+.label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+}
+
+.input {
+    flex: 1;
+    min-width: 0;
+    color: var(--mui-palette-text-primary);
+    font: inherit;
+    font-size: 0.875rem;
+    background: none;
+    border: 0;
+    outline: none;
+}
