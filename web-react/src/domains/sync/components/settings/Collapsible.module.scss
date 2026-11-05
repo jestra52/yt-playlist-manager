@@ -1,0 +1,21 @@
+.section {
+    margin-top: 16px;
+    font-size: 0.875rem;
+    background: none;
+    box-shadow: none;
+    border: 1px solid var(--mui-palette-divider);
+    border-radius: 12px;
+
+    &::before {
+        display: none;
+    }
+}
+
+.summary {
+    min-height: 0;
+    font-weight: 600;
+
+    :global(.MuiAccordionSummary-content) {
+        margin: 8px 0;
+    }
+}

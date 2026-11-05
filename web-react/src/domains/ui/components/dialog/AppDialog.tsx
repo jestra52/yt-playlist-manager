@@ -6,9 +6,10 @@ import type { ReactNode } from 'react';
 import styles from './AppDialog.module.scss';
 import type { DialogControls } from './useDialog';
 
-interface AppDialogProps extends DialogControls {
+interface AppDialogProps extends Omit<DialogControls, 'onExited'> {
     title: string;
-    actions: ReactNode;
+    onExited?: () => void;
+    actions?: ReactNode;
     children: ReactNode;
 }
 
@@ -29,6 +30,6 @@ export const AppDialog = ({ open, onClose, onExited, title, actions, children }:
         </IconButton>
         <DialogTitle className={styles.title}>{title}</DialogTitle>
         <div className={styles.content}>{children}</div>
-        <div className={styles.actions}>{actions}</div>
+        {actions && <div className={styles.actions}>{actions}</div>}
     </Dialog>
 );

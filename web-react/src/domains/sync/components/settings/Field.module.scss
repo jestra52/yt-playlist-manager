@@ -1,0 +1,65 @@
+.field {
+    display: block;
+}
+
+.legend {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.input {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    padding: 8px 10px;
+    color: var(--mui-palette-text-primary);
+    font: inherit;
+    background: none;
+    border: 1px solid var(--mui-palette-divider);
+    border-radius: 8px;
+}
+
+.code {
+    font-family: ui-monospace, monospace;
+    text-transform: uppercase;
+}
+
+.wide {
+    font-size: 1.125rem;
+    letter-spacing: 0.1em;
+}
+
+.words {
+    font-family: ui-monospace, monospace;
+    font-size: 0.875rem;
+    resize: vertical;
+}
+
+.hint,
+.problem {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.75rem;
+}
+
+.hint {
+    color: var(--mui-palette-text-secondary);
+}
+
+.problem {
+    color: var(--mui-palette-error-main);
+}
+
+.buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+.soft {
+    background-color: var(--mui-palette-background-default);
+}
