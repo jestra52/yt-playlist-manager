@@ -7,6 +7,8 @@ import {
     type NewPlaylist,
     type Playlist,
 } from '@ytpm/core/playlists/playlists.repository';
+import { buildPlaylistReport, reportFileName } from '@ytpm/core/playlists/report';
+import type { MissingEntry } from '@ytpm/core/playlists/report-compare';
 import { fetchVideoMetadata } from '@ytpm/core/videos/metadata.client';
 import {
     fetchYouTubePlaylist,
@@ -22,9 +24,11 @@ import {
     videoInPlaylist,
 } from '@ytpm/core/videos/youtube';
 import type { AppThunk } from '../../app/store';
+import { downloadTextFile } from '../../shared/download';
 import { notify, setImporting } from '../ui/ui.slice';
-import { loaded as videosLoaded, playlistDropped } from '../videos/videos.slice';
-import { addEntries } from '../videos/videos.thunks';
+import { selectAllVideos } from '../videos/videos.selectors';
+import { filterSet, loaded as videosLoaded, playlistDropped } from '../videos/videos.slice';
+import { addEntries, addFromReport } from '../videos/videos.thunks';
 import { selectPlaylistById, selectSelectedPlaylistId } from './playlists.selectors';
 import { added, changed, loaded, rememberedPlaylist, rememberPlaylist, removed, selected } from './playlists.slice';
 
@@ -164,4 +168,27 @@ export const deletePlaylist =
         dispatch(playlistDropped(id));
         rememberPlaylist(selectSelectedPlaylistId(getState()));
         dispatch(notify(`Deleted "${playlist.name}"`));
+    };
+
+export const downloadReport =
+    (id: string): AppThunk =>
+    (dispatch, getState) => {
+        const playlist = selectPlaylistById(getState(), id);
+        if (!playlist) return;
+        const fileName = reportFileName(playlist.name);
+        const videos = selectAllVideos(getState()).filter((v) => v.playlistId === id);
+        downloadTextFile(fileName, buildPlaylistReport(videos));
+        dispatch(notify(`Saved ${fileName}`));
+    };
+
+/** Adds the entries a comparison found missing back to the playlist. */
+export const addMissingFromReport =
+    (id: string, missing: readonly MissingEntry[]): AppThunk =>
+    (dispatch) => {
+        const added = dispatch(addFromReport(id, missing));
+        const waiting = added.filter((v) => v.missing).length;
+        const parts = [`Added ${plural(added.length, 'missing item')}`];
+        if (waiting) parts.push(`${waiting} need${waiting === 1 ? 's' : ''} a YouTube link`);
+        dispatch(notify(parts.join('. ')));
+        if (waiting) dispatch(filterSet('missing'));
     };

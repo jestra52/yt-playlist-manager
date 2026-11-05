@@ -1,12 +1,14 @@
 import { getDatabase } from '@ytpm/core/db/index';
 import type { Playlist } from '@ytpm/core/playlists/playlists.repository';
-import { guessedArtistPatch, knownArtists, matchKnownArtist } from '@ytpm/core/videos/artist';
+import type { MissingEntry } from '@ytpm/core/playlists/report-compare';
+import { cleanArtist, guessedArtistPatch, knownArtists, matchKnownArtist } from '@ytpm/core/videos/artist';
 import { fetchVideoMetadata } from '@ytpm/core/videos/metadata.client';
 import { fetchYouTubePlaylist, PARTIAL_IMPORT_NOTE } from '@ytpm/core/videos/playlist.client';
 import {
     addVideos,
     deleteVideo,
     getVideo,
+    insertVideosAfter,
     moveVideoToPlaylist,
     reorderVideo,
     restoreVideo as restoreVideoRow,
@@ -226,4 +228,27 @@ export const completeVideo =
             if (updated) dispatch(changed(updated));
         }
         return true;
+    };
+
+/**
+ * Puts back entries missing since an old report near their old place. Entries
+ * with a YouTube link become videos; the rest become placeholders that wait for
+ * a link. An entry's artist comes from a report with artists; for older reports
+ * it's guessed from the title. Returns the inserted videos.
+ */
+export const addFromReport =
+    (playlistId: string, missing: readonly MissingEntry[]): AppThunk<Video[]> =>
+    (dispatch) => {
+        const entries = missing.map((entry) => {
+            // A link stands in for an unknown title; YouTube's title replaces it below.
+            const title = entry.youtubeId ? '' : entry.title;
+            const artist = entry.artist
+                ? { artist: cleanArtist(entry.artist), artistSource: 'user' }
+                : guessedArtistPatch({ title, author: '', artist: '', artistSource: '' });
+            return { youtubeId: entry.youtubeId ?? '', title, afterId: entry.afterId, ...artist };
+        });
+        const added = insertVideosAfter(getDatabase(), playlistId, entries);
+        if (added.length) dispatch(upserted(added));
+        dispatch(enrichMetadata(added.filter((v) => !v.missing && !v.title)));
+        return added;
     };

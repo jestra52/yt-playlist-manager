@@ -1,0 +1,32 @@
+.list {
+    max-height: 14rem;
+    margin: 12px 0 0;
+    padding: 0;
+    overflow-y: auto;
+    font-size: 0.875rem;
+    list-style: none;
+    border: 1px solid var(--mui-palette-divider);
+    border-radius: 6px;
+}
+
+.entry {
+    display: flex;
+    gap: 8px;
+    padding: 6px 12px;
+}
+
+.number {
+    flex: none;
+    width: 2.5rem;
+    color: var(--mui-palette-text-secondary);
+    text-align: right;
+}
+
+.title {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.artist {
+    color: var(--mui-palette-text-secondary);
+}
