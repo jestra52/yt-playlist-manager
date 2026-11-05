@@ -7,18 +7,24 @@ export const videosAdapter = createEntityAdapter<Video>({
     sortComparer: (a, b) => a.position - b.position,
 });
 
+const initialState = videosAdapter.getInitialState({
+    filter: 'all' as VideoFilter,
+    query: '',
+    playingId: null as string | null,
+});
+
+const setVideos = (state: typeof initialState, { payload }: PayloadAction<Video[]>) => {
+    videosAdapter.setAll(state, payload);
+    if (state.playingId && !state.entities[state.playingId]) state.playingId = null;
+};
+
 export const videosSlice = createSlice({
     name: 'videos',
-    initialState: videosAdapter.getInitialState({
-        filter: 'all' as VideoFilter,
-        query: '',
-        playingId: null as string | null,
-    }),
+    initialState,
     reducers: {
-        loaded: (state, { payload }: PayloadAction<Video[]>) => {
-            videosAdapter.setAll(state, payload);
-            if (state.playingId && !state.entities[state.playingId]) state.playingId = null;
-        },
+        loaded: setVideos,
+        /** Like `loaded`, after an edit made here to many videos at once. */
+        replaced: setVideos,
         upserted: videosAdapter.upsertMany,
         changed: videosAdapter.upsertOne,
         removed: (state, { payload }: PayloadAction<string>) => {
@@ -47,5 +53,15 @@ export const videosSlice = createSlice({
     },
 });
 
-export const { loaded, upserted, changed, removed, playlistDropped, filterSet, querySet, played, playerClosed } =
-    videosSlice.actions;
+export const {
+    loaded,
+    replaced,
+    upserted,
+    changed,
+    removed,
+    playlistDropped,
+    filterSet,
+    querySet,
+    played,
+    playerClosed,
+} = videosSlice.actions;

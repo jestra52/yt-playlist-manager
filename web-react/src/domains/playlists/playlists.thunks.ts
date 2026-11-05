@@ -28,6 +28,7 @@ import {
 } from '@ytpm/core/videos/youtube';
 import type { AppThunk } from '../../app/store';
 import { downloadTextFile } from '../../shared/download';
+import { selectApiUrl } from '../sync/sync.selectors';
 import { notify, setImporting } from '../ui/ui.slice';
 import { selectAllVideos } from '../videos/videos.selectors';
 import { filterSet, loaded as videosLoaded, playlistDropped } from '../videos/videos.slice';
@@ -41,6 +42,13 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 export const loadLibrary = (): AppThunk => (dispatch) => {
     const db = getDatabase();
     dispatch(loaded({ playlists: listPlaylists(db), preferredId: rememberedPlaylist() }));
+    dispatch(videosLoaded(listVideos(db)));
+};
+
+/** Reads everything again after a change from elsewhere, keeping the open playlist when it's still there. */
+export const reloadLibrary = (): AppThunk => (dispatch) => {
+    const db = getDatabase();
+    dispatch(loaded({ playlists: listPlaylists(db), preferredId: null }));
     dispatch(videosLoaded(listVideos(db)));
 };
 
@@ -65,10 +73,10 @@ export const selectPlaylist =
 
 export const createFromVideo =
     (youtubeId: string): AppThunk<Promise<Playlist | null>> =>
-    async (dispatch) => {
+    async (dispatch, getState) => {
         dispatch(setImporting(true));
         try {
-            const meta = await fetchVideoMetadata(youtubeId);
+            const meta = await fetchVideoMetadata(youtubeId, selectApiUrl(getState()));
             const title = meta && !meta.unavailable ? meta.title.trim() : '';
             const playlist = dispatch(createPlaylist({ name: title || 'New playlist' }));
             if (playlist) {
@@ -87,10 +95,10 @@ export const createFromVideo =
  */
 export const importFromYouTube =
     (listId: string, { includeUnavailable = false } = {}): AppThunk<Promise<Playlist | null>> =>
-    async (dispatch) => {
+    async (dispatch, getState) => {
         dispatch(setImporting(true));
         try {
-            const source = await fetchYouTubePlaylist(listId, '/api', { includeUnavailable });
+            const source = await fetchYouTubePlaylist(listId, selectApiUrl(getState()), { includeUnavailable });
             const name = source.title?.trim() || 'YouTube playlist';
             const description = source.author ? `Imported from YouTube (${source.author})` : 'Imported from YouTube';
             const playlist = dispatch(createPlaylist({ name, description, source: 'youtube', sourceId: listId }));
@@ -234,7 +242,9 @@ export const readLinkedYouTubePlaylist =
         const playlist = selectPlaylistById(getState(), id);
         if (playlist?.source !== 'youtube' || !playlist.sourceId) return null;
         try {
-            return await fetchYouTubePlaylist(playlist.sourceId, '/api', { includeUnavailable: true });
+            return await fetchYouTubePlaylist(playlist.sourceId, selectApiUrl(getState()), {
+                includeUnavailable: true,
+            });
         } catch (err) {
             dispatch(notify((err as Error).message, { tone: 'error', timeout: 6000 }));
             return null;
