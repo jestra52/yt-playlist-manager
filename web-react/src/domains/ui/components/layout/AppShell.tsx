@@ -1,5 +1,4 @@
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
-import { Icon } from '../../../../shared/components/Icon';
 import { toggleSidebar } from '../../ui.slice';
 import { Sidebar } from './Sidebar';
 
@@ -10,7 +9,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
     const dispatch = useAppDispatch();
 
     return (
-        <div className="drawer md:drawer-open min-h-screen">
+        <div className="drawer lg:drawer-open min-h-screen">
             <input
                 id={TOGGLE_ID}
                 type="checkbox"
@@ -22,14 +21,6 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
             />
             <div className="drawer-content min-w-0">
                 <main className="px-4 pt-5 pb-24 sm:px-8 md:pt-10 lg:px-14">
-                    <button
-                        type="button"
-                        className="btn btn-ghost btn-square -ml-2 mb-2 md:hidden"
-                        aria-label="Show playlists"
-                        onClick={() => dispatch(toggleSidebar(true))}
-                    >
-                        <Icon name="menu" size={22} />
-                    </button>
                     <div className="max-w-4xl">{children}</div>
                 </main>
             </div>

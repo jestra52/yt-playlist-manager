@@ -1,7 +1,6 @@
-import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
-import Button from '@mui/material/Button';
 import { useEffect, useState } from 'react';
 import { useAppDispatch } from '../../../../app/store';
+import { Icon } from '../../../../shared/components/Icon';
 import { deletePlaylist } from '../../playlists.thunks';
 
 export const DeletePlaylistButton = ({ playlistId }: { playlistId: string }) => {
@@ -15,18 +14,19 @@ export const DeletePlaylistButton = ({ playlistId }: { playlistId: string }) => 
     }, [confirming]);
 
     return (
-        <Button
-            size="small"
-            color={confirming ? 'error' : 'inherit'}
-            variant={confirming ? 'contained' : 'text'}
-            startIcon={<DeleteOutlined />}
+        <button
+            type="button"
+            className={`btn btn-sm ${confirming ? 'btn-error btn-soft' : 'btn-ghost'}`}
             aria-label={confirming ? 'Confirm deleting this playlist' : 'Delete playlist'}
             onClick={() => {
                 if (confirming) dispatch(deletePlaylist(playlistId));
                 else setConfirming(true);
             }}
         >
-            {confirming ? 'Delete it and its videos' : 'Delete'}
-        </Button>
+            <Icon name="trash" size={16} />
+            <span className={confirming ? '' : 'max-md:hidden'}>
+                {confirming ? 'Delete it and its videos' : 'Delete'}
+            </span>
+        </button>
     );
 };

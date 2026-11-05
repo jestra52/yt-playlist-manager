@@ -1,8 +1,6 @@
-import Button from '@mui/material/Button';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
 import { selectFilter, selectQuery } from '../../videos.selectors';
 import { filterSet, querySet, type VideoFilter } from '../../videos.slice';
-import styles from './NoResults.module.scss';
 
 const MESSAGES: Record<VideoFilter, string> = {
     all: 'Nothing here.',
@@ -18,15 +16,17 @@ export const NoResults = () => {
     const searching = Boolean(query.trim());
 
     return (
-        <div className={styles.empty}>
-            <p className={styles.message}>{searching ? `Nothing matches "${query.trim()}".` : MESSAGES[filter]}</p>
-            <Button
-                variant="outlined"
-                size="small"
+        <div className="rounded-box border-base-300 border border-dashed px-6 py-10">
+            <p className="font-display mt-0 mb-4 text-2xl font-bold tracking-tight">
+                {searching ? `Nothing matches "${query.trim()}".` : MESSAGES[filter]}
+            </p>
+            <button
+                className="btn btn-sm"
+                type="button"
                 onClick={() => dispatch(searching ? querySet('') : filterSet('all'))}
             >
                 {searching ? 'Clear search' : 'Show all videos'}
-            </Button>
+            </button>
         </div>
     );
 };

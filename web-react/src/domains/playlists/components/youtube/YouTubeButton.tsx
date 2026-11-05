@@ -1,7 +1,5 @@
-import LinkIcon from '@mui/icons-material/Link';
-import SyncIcon from '@mui/icons-material/Sync';
-import Button from '@mui/material/Button';
 import type { Playlist } from '@ytpm/core/playlists/playlists.repository';
+import { Icon } from '../../../../shared/components/Icon';
 import { useDialog } from '../../../ui/components/dialog/useDialog';
 import { SyncYouTubeDialog } from './SyncYouTubeDialog';
 
@@ -11,10 +9,9 @@ export const YouTubeButton = ({ playlist }: { playlist: Playlist }) => {
 
     return (
         <>
-            <Button
-                size="small"
-                color="inherit"
-                startIcon={linked ? <SyncIcon /> : <LinkIcon />}
+            <button
+                type="button"
+                className="btn btn-ghost btn-sm"
                 title={
                     linked
                         ? 'Linked to a YouTube playlist: sync from it'
@@ -27,8 +24,9 @@ export const YouTubeButton = ({ playlist }: { playlist: Playlist }) => {
                 }
                 onClick={dialog.show}
             >
-                YouTube
-            </Button>
+                <Icon name={linked ? 'sync' : 'link'} size={16} />
+                <span className="max-md:hidden">YouTube</span>
+            </button>
             {dialog.mounted && <SyncYouTubeDialog playlist={playlist} {...dialog.controls} />}
         </>
     );

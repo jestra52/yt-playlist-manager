@@ -1,43 +1,40 @@
-@use '../../../../styles/tokens' as *;
+$text: var(--color-neutral-content);
 
+// daisyUI's menu rows wrap, so a long name would push the counts past the panel edge.
 .list {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
+    flex-wrap: nowrap;
 
-.item {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    padding: 8px 12px;
-    color: inherit;
-    font: inherit;
-    font-size: 0.875rem;
-    text-align: left;
-    background: none;
-    border: 0;
-    border-left: 3px solid transparent;
-    border-radius: 6px;
-    cursor: pointer;
-
-    &:hover {
-        background-color: rgba(231, 236, 245, 0.08);
+    li {
+        flex-wrap: nowrap;
     }
 }
 
-.active {
+// daisyUI's active item uses the neutral color, which is this panel's background.
+.item {
+    display: flex;
+    gap: 0.75rem;
+    align-items: baseline;
+    color: color-mix(in srgb, $text 70%, transparent);
+    border: 0;
+    border-left: 3px solid transparent;
+    border-radius: 0 var(--radius-field) var(--radius-field) 0;
+
+    &:hover {
+        color: $text;
+        background: color-mix(in srgb, $text 8%, transparent);
+    }
+}
+
+.active,
+.active:hover {
+    color: $text;
     font-weight: 600;
-    background-color: $sidebar-selected;
-    border-left-color: #ff5a4f;
+    background: color-mix(in srgb, $text 12%, transparent);
+    border-left-color: var(--color-primary);
 }
 
 .name {
+    flex-grow: 1;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -45,7 +42,11 @@
 }
 
 .count {
-    flex-shrink: 0;
-    font-size: 0.75rem;
-    opacity: 0.8;
+    flex: none;
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.of {
+    opacity: 0.6;
 }

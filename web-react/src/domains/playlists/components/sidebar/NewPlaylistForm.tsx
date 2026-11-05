@@ -1,10 +1,7 @@
-import AddIcon from '@mui/icons-material/Add';
-import Button from '@mui/material/Button';
-import Checkbox from '@mui/material/Checkbox';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import { parsePlaylistId, videoInPlaylist } from '@ytpm/core/videos/youtube';
 import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
+import { Icon } from '../../../../shared/components/Icon';
 import { toggleSidebar } from '../../../ui/ui.slice';
 import { LinkChoice } from '../../../videos/components/add/LinkChoice';
 import { createFromInput } from '../../playlists.thunks';
@@ -23,15 +20,19 @@ export const NewPlaylistForm = () => {
 
     if (!open) {
         return (
-            <Button className={styles.open} startIcon={<AddIcon />} onClick={() => setOpen(true)}>
-                New playlist
-            </Button>
+            <button
+                type="button"
+                className={`btn btn-ghost btn-sm mt-2 justify-start ${styles.open}`}
+                onClick={() => setOpen(true)}
+            >
+                <Icon name="plus" size={16} /> New playlist
+            </button>
         );
     }
 
     return (
         <form
-            className={styles.form}
+            className="mt-2"
             onSubmit={async (event) => {
                 event.preventDefault();
                 const options = { includeUnavailable: withDeleted, justVideo: fromList && !wholePlaylist };
@@ -42,13 +43,13 @@ export const NewPlaylistForm = () => {
                 }
             }}
         >
-            <div className={styles.row}>
-                <label className={styles.label} htmlFor="new-playlist">
+            <div className="join w-full">
+                <label className="sr-only" htmlFor="new-playlist">
                     Playlist name or YouTube playlist link
                 </label>
                 <input
                     id="new-playlist"
-                    className={styles.input}
+                    className="input input-sm join-item text-base-content min-w-0 flex-1"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
@@ -59,32 +60,40 @@ export const NewPlaylistForm = () => {
                     disabled={importing}
                     autoFocus
                 />
-                <Button type="submit" variant="contained" size="small" disabled={!name.trim() || importing}>
-                    {isLink ? 'Import' : 'Create'}
-                </Button>
+                <button className="btn btn-primary btn-sm join-item" type="submit" disabled={!name.trim() || importing}>
+                    {importing ? (
+                        <>
+                            <span className="loading loading-spinner loading-xs" />
+                            <span className="sr-only">Importing</span>
+                        </>
+                    ) : (
+                        <>{isLink ? 'Import' : 'Create'}</>
+                    )}
+                </button>
             </div>
             {fromList && (
-                <LinkChoice
-                    wholePlaylist={wholePlaylist}
-                    onChange={setWholePlaylist}
-                    videoLabel="Just this video"
-                    playlistLabel="Whole playlist"
-                    disabled={importing}
-                />
+                <div className="mt-2 px-1">
+                    <LinkChoice
+                        wholePlaylist={wholePlaylist}
+                        onChange={setWholePlaylist}
+                        videoLabel="Just this video"
+                        playlistLabel="Whole playlist"
+                        disabled={importing}
+                        size="xs"
+                    />
+                </div>
             )}
             {isLink && (
-                <FormControlLabel
-                    className={styles.withDeleted}
-                    label="Import with deleted videos"
-                    disabled={importing}
-                    control={
-                        <Checkbox
-                            size="small"
-                            checked={withDeleted}
-                            onChange={(e) => setWithDeleted(e.target.checked)}
-                        />
-                    }
-                />
+                <label className={`mt-2 flex items-center gap-2 px-1 text-sm ${styles.withDeleted}`}>
+                    <input
+                        type="checkbox"
+                        className="checkbox checkbox-xs"
+                        checked={withDeleted}
+                        onChange={(e) => setWithDeleted(e.target.checked)}
+                        disabled={importing}
+                    />
+                    Import with deleted videos
+                </label>
             )}
         </form>
     );

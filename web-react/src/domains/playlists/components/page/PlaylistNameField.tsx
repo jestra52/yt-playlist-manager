@@ -15,12 +15,12 @@ export const PlaylistNameField = ({ playlist }: { playlist: Playlist }) => {
 
     return (
         <>
-            <label className={styles.label} htmlFor="playlist-name">
+            <label className="sr-only" htmlFor="playlist-name">
                 Playlist name
             </label>
             <input
                 id="playlist-name"
-                className={styles.name}
+                className={`input input-ghost min-w-0 flex-1 ${styles.name}`}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onBlur={save}

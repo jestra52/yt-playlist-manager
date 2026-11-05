@@ -3,7 +3,6 @@ import { useAppSelector } from '../../../../app/store';
 import { selectVisibleVideos } from '../../videos.selectors';
 import { KnownArtists } from '../row/KnownArtists';
 import { NoResults } from './NoResults';
-import styles from './VideoList.module.scss';
 import { VideoRow } from './VideoRow';
 
 // Enough to fill a tall screen, so opening a long playlist paints right away.
@@ -19,14 +18,19 @@ export const VideoList = ({ playlistId }: { playlistId: string }) => {
 
     if (!total) {
         return (
-            <p className={styles.empty}>This playlist is empty. Paste a YouTube link above to add your first video.</p>
+            <div className="rounded-box border-base-300 border border-dashed px-6 py-10">
+                <p className="font-display m-0 text-2xl font-bold tracking-tight">This playlist is empty.</p>
+                <p className="text-base-content/65 mt-1 mb-0">
+                    Paste a YouTube link above to add your first video. You can paste several at once.
+                </p>
+            </div>
         );
     }
     if (!rows.length) return <NoResults />;
 
     return (
         <>
-            <ol className={styles.list}>
+            <ol className="list rounded-box bg-base-100 m-0 p-0 shadow-sm">
                 {rows.slice(0, limit).map(({ id, index }) => (
                     <VideoRow key={id} id={id} index={index} total={total} />
                 ))}

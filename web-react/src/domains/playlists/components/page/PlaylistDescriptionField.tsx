@@ -2,7 +2,6 @@ import type { Playlist } from '@ytpm/core/playlists/playlists.repository';
 import { useState } from 'react';
 import { useAppDispatch } from '../../../../app/store';
 import { describePlaylist } from '../../playlists.thunks';
-import styles from './PlaylistDescriptionField.module.scss';
 
 export const PlaylistDescriptionField = ({ playlist }: { playlist: Playlist }) => {
     const [description, setDescription] = useState(playlist.description);
@@ -10,12 +9,12 @@ export const PlaylistDescriptionField = ({ playlist }: { playlist: Playlist }) =
 
     return (
         <>
-            <label className={styles.label} htmlFor="playlist-description">
+            <label className="sr-only" htmlFor="playlist-description">
                 Description
             </label>
             <input
                 id="playlist-description"
-                className={styles.description}
+                className="input input-ghost input-sm text-base-content/65 mt-1 -ml-3 w-full"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 onBlur={() => {

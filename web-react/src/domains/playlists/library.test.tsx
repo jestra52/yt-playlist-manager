@@ -96,7 +96,7 @@ describe('switching playlists', () => {
         act(() => {
             store.dispatch(selectPlaylist(first.id));
         });
-        expect(await screen.findAllByRole('checkbox', { name: /^Watched:/ })).toHaveLength(30);
+        expect(await screen.findAllByRole('button', { name: /^Mark ".*" as watched$/ })).toHaveLength(30);
 
         act(() => {
             store.dispatch(selectPlaylist(second.id));
@@ -214,7 +214,7 @@ describe('playlist page', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Add' }));
         expect(await screen.findByText('Added 1 video')).toBeInTheDocument();
 
-        fireEvent.click(await screen.findByLabelText('Watched: Kenji Mori - Song dQw4w9WgXcQ'));
+        fireEvent.click(await screen.findByRole('button', { name: 'Mark "Kenji Mori - Song dQw4w9WgXcQ" as watched' }));
         expect(screen.getByText('All 1 watched')).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Show playlists' }));
         const sidebar = screen.getByRole('navigation', { name: 'Playlists' });
