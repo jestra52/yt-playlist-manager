@@ -1,0 +1,18 @@
+.description {
+    margin: 8px 0 0;
+    color: var(--mui-palette-text-secondary);
+}
+
+.progress {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-top: 20px;
+    white-space: nowrap;
+}
+
+.bar {
+    flex: 1;
+    height: 8px;
+    border-radius: 4px;
+}

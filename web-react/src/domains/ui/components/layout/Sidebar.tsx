@@ -1,4 +1,6 @@
 import Link from '@mui/material/Link';
+import { NewPlaylistForm } from '../../../playlists/components/sidebar/NewPlaylistForm';
+import { PlaylistList } from '../../../playlists/components/sidebar/PlaylistList';
 import { Brand } from './Brand';
 import styles from './Sidebar.module.scss';
 import { ThemeSwitch } from '../appearance/ThemeSwitch';
@@ -8,7 +10,8 @@ const SOURCE_URL = 'https://github.com/jestra52/yt-playlist-manager';
 export const Sidebar = () => (
     <nav className={styles.sidebar} aria-label="Playlists">
         <Brand />
-        <p className={styles.hint}>Playlists come in the next step.</p>
+        <PlaylistList />
+        <NewPlaylistForm />
         <div className={styles.footer}>
             <div className={styles.footerRow}>
                 <span>Appearance</span>
