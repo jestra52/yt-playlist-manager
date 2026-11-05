@@ -10,12 +10,3 @@
         font-size: 1.5rem;
     }
 }
-
-// Tailwind's preflight does this until Material UI goes (#109).
-.connect {
-    padding: 0;
-    font: inherit;
-    font-weight: 600;
-    background: none;
-    border: 0;
-}

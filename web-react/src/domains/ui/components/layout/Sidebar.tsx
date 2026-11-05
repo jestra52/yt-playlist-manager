@@ -9,7 +9,7 @@ const SOURCE_URL = 'https://github.com/jestra52/yt-playlist-manager';
 
 export const Sidebar = () => (
     <nav
-        className={`bg-neutral text-neutral-content flex min-h-full w-72 flex-col px-3 pt-5 pb-4 ${styles.sidebar}`}
+        className="bg-neutral text-neutral-content flex min-h-full w-72 flex-col px-3 pt-5 pb-4"
         aria-label="Playlists"
     >
         <Brand />

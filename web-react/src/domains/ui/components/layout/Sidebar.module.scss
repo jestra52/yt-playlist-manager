@@ -1,11 +1,5 @@
-// Tailwind's preflight does this until Material UI goes (#109).
-.sidebar {
-    box-sizing: border-box;
-}
-
 .sourceLink {
     color: color-mix(in srgb, var(--color-neutral-content) 55%, transparent);
-    text-decoration: none;
 
     &:hover,
     &:focus-visible {

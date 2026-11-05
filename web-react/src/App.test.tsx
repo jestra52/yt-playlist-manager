@@ -26,8 +26,7 @@ describe('ui slice', () => {
 });
 
 describe('App', () => {
-    it('follows a theme chosen in another tab, and leaves storage to the store', () => {
-        localStorage.setItem('mui-mode', 'dark');
+    it('follows a theme chosen in another tab', () => {
         localStorage.setItem('ytpm:theme', 'light');
         const store = createStore();
         render(<App store={store} />);
@@ -40,10 +39,6 @@ describe('App', () => {
         expect(store.getState().ui.theme).toBe('dark');
         expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
 
-        act(() => {
-            dispatchEvent(new StorageEvent('storage', { key: 'mui-mode', newValue: 'light' }));
-        });
-        expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
         localStorage.clear();
     });
 
