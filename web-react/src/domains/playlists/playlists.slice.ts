@@ -42,7 +42,15 @@ export const playlistsSlice = createSlice({
         selected: (state, { payload }: PayloadAction<string>) => {
             if (state.entities[payload]) state.selectedId = payload;
         },
+        changed: playlistsAdapter.upsertOne,
+        removed: (state, { payload }: PayloadAction<string>) => {
+            const index = state.ids.indexOf(payload);
+            playlistsAdapter.removeOne(state, payload);
+            if (state.selectedId === payload) {
+                state.selectedId = state.ids[Math.min(index, state.ids.length - 1)] ?? null;
+            }
+        },
     },
 });
 
-export const { loaded, added, selected } = playlistsSlice.actions;
+export const { loaded, added, selected, changed, removed } = playlistsSlice.actions;

@@ -1,0 +1,21 @@
+.thumb {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    gap: 2px;
+    align-items: center;
+    justify-content: center;
+    width: 120px;
+    aspect-ratio: 16 / 9;
+    color: var(--mui-palette-text-secondary);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: 2px dashed var(--mui-palette-divider);
+    border-radius: 6px;
+
+    @media (max-width: 599px) {
+        width: 80px;
+    }
+}

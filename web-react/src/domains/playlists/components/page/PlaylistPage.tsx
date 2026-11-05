@@ -28,7 +28,7 @@ export const PlaylistPage = () => {
     return (
         <section className={styles.page}>
             <PlayerPanel />
-            <PlaylistHeader playlist={playlist} />
+            <PlaylistHeader key={`${playlist.id}:${playlist.updatedAt}`} playlist={playlist} />
             <AddVideosForm key={playlist.id} playlistId={playlist.id} />
             <VideoToolbar playlistId={playlist.id} />
             <VideoList playlistId={playlist.id} />

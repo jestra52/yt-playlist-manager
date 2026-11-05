@@ -1,7 +1,9 @@
 import { getDatabase } from '@ytpm/core/db/index';
 import {
     createPlaylist as createPlaylistRow,
+    deletePlaylist as deletePlaylistRow,
     listPlaylists,
+    updatePlaylist,
     type NewPlaylist,
     type Playlist,
 } from '@ytpm/core/playlists/playlists.repository';
@@ -21,9 +23,10 @@ import {
 } from '@ytpm/core/videos/youtube';
 import type { AppThunk } from '../../app/store';
 import { notify, setImporting } from '../ui/ui.slice';
-import { loaded as videosLoaded } from '../videos/videos.slice';
+import { loaded as videosLoaded, playlistDropped } from '../videos/videos.slice';
 import { addEntries } from '../videos/videos.thunks';
-import { added, loaded, rememberedPlaylist, rememberPlaylist, selected } from './playlists.slice';
+import { selectPlaylistById, selectSelectedPlaylistId } from './playlists.selectors';
+import { added, changed, loaded, rememberedPlaylist, rememberPlaylist, removed, selected } from './playlists.slice';
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -133,4 +136,32 @@ export const createFromInput =
             dispatch(notify("YouTube Mixes can't be imported, so only this video was added", { timeout: 6000 }));
         }
         return playlist;
+    };
+
+const update =
+    (id: string, patch: { name?: string; description?: string }): AppThunk =>
+    (dispatch) => {
+        try {
+            const playlist = updatePlaylist(getDatabase(), id, patch);
+            if (playlist) dispatch(changed(playlist));
+        } catch (err) {
+            dispatch(notify((err as Error).message, { tone: 'error' }));
+        }
+    };
+
+export const renamePlaylist = (id: string, name: string): AppThunk => update(id, { name });
+
+export const describePlaylist = (id: string, description: string): AppThunk => update(id, { description });
+
+/** Deletes a playlist and its videos, and opens the playlist next to it. */
+export const deletePlaylist =
+    (id: string): AppThunk =>
+    (dispatch, getState) => {
+        const playlist = selectPlaylistById(getState(), id);
+        if (!playlist) return;
+        deletePlaylistRow(getDatabase(), id);
+        dispatch(removed(id));
+        dispatch(playlistDropped(id));
+        rememberPlaylist(selectSelectedPlaylistId(getState()));
+        dispatch(notify(`Deleted "${playlist.name}"`));
     };
