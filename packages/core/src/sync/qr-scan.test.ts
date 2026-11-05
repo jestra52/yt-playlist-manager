@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { secretToWords } from './chain-code.js';
-import { readScannedCode } from './qr-scan.js';
+import { secretToWords } from './chain-code';
+import { readScannedCode } from './qr-scan';
 
 const SECRET = 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8';
 

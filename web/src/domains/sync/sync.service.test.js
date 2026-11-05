@@ -5,7 +5,7 @@ import { setDatabase } from '@ytpm/core/db/index';
 import { playlists } from '../playlists/playlists.service.svelte.js';
 import { videos } from '../videos/videos.service.svelte.js';
 import { ui } from '../ui/ui.service.svelte.js';
-import { secretToWords } from './chain-code.js';
+import { secretToWords } from '@ytpm/core/sync/chain-code';
 import { sync } from './sync.service.svelte.js';
 
 const SECRET = 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8';

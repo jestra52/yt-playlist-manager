@@ -3,17 +3,29 @@
  * until a new device enters it (and asks the person to approve), and the new
  * device waits for that approval, then gets its own credential. Both sides ask
  * the server every couple of seconds; the request token never leaves memory.
- *
- * No framework code here: this module is shared as is with other apps (#23).
+
  */
-import { SyncError, getPairing, getPairingStatus } from './sync.client.js';
+import {
+    SyncError,
+    getPairing,
+    getPairingStatus,
+    type Pairing,
+    type PairingAnswer,
+    type SyncConnection,
+} from './sync.client';
 
 export const PAIRING_POLL_MS = 2000;
 
-/** Statuses after which nothing more happens to a pairing. */
-const FINAL = new Set(['joined', 'denied', 'expired']);
+interface WatchOptions {
+    signal?: AbortSignal;
+    onChange?: (pairing: Pairing) => void;
+    intervalMs?: number;
+}
 
-const sleep = (ms, signal) => {
+/** Statuses after which nothing more happens to a pairing. */
+const FINAL = new Set<string | undefined>(['joined', 'denied', 'expired']);
+
+const sleep = (ms: number, signal?: AbortSignal): Promise<void> => {
     return new Promise((resolve) => {
         const timer = setTimeout(resolve, ms);
         signal?.addEventListener('abort', () => {
@@ -24,17 +36,20 @@ const sleep = (ms, signal) => {
 };
 
 /** A dropped connection is worth asking again; anything else ends the wait. */
-const retriable = (err) => err instanceof SyncError && err.status === 0;
+const retriable = (err: unknown): boolean => err instanceof SyncError && err.status === 0;
 
 /**
  * Follows this device's pairing code: calls `onChange` with { status, requesterName,
  * expiresAt } each time its status changes, until it's joined, denied or expired
  * (a cancelled code counts as expired), or `signal` aborts. Resolves to the last status.
  */
-export const watchPairing = async (settings, { signal, onChange, intervalMs = PAIRING_POLL_MS } = {}) => {
-    let last = null;
+export const watchPairing = async (
+    settings: SyncConnection,
+    { signal, onChange, intervalMs = PAIRING_POLL_MS }: WatchOptions = {},
+): Promise<Pairing | null> => {
+    let last: Pairing | null = null;
     while (!signal?.aborted) {
-        let pairing;
+        let pairing: Pairing | undefined;
         try {
             pairing = await getPairing(settings);
         } catch (err) {
@@ -58,7 +73,11 @@ export const watchPairing = async (settings, { signal, onChange, intervalMs = PA
  * ({ status: 'approved', chainId, deviceId, deviceCredential }, or { status:
  * 'denied' | 'expired' }), or null when `signal` aborts first.
  */
-export const waitForApproval = async (settings, requestToken, { signal, intervalMs = PAIRING_POLL_MS } = {}) => {
+export const waitForApproval = async (
+    settings: SyncConnection,
+    requestToken: string,
+    { signal, intervalMs = PAIRING_POLL_MS }: WatchOptions = {},
+): Promise<PairingAnswer | null> => {
     while (!signal?.aborted) {
         try {
             const result = await getPairingStatus(settings, requestToken);
@@ -72,7 +91,7 @@ export const waitForApproval = async (settings, requestToken, { signal, interval
 };
 
 /** Time left until `expiresAt` as m:ss, never below 0:00. */
-export const countdown = (expiresAt, now = Date.now()) => {
+export const countdown = (expiresAt: number, now = Date.now()): string => {
     const seconds = Math.max(0, Math.ceil((expiresAt - now) / 1000));
     return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 };

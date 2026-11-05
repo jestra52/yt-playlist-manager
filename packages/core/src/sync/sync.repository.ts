@@ -1,5 +1,7 @@
 import { and, asc, count, eq, gt, sql } from 'drizzle-orm';
-import { meta, playlists, videos } from '@ytpm/core/db/tables';
+import type { Database } from '../db/database';
+import { meta, playlists, videos } from '../db/tables';
+import type { ChainAccess } from './sync.client';
 
 /**
  * Sync bookkeeping in the local SQLite database: settings, this device's sync
@@ -7,6 +9,50 @@ import { meta, playlists, videos } from '@ytpm/core/db/tables';
  * synced rows. The chain code itself is never stored, only this device's own
  * credential.
  */
+
+export interface SyncSettings {
+    apiUrl: string;
+    credential: string;
+    chainId: string;
+    deviceId: string;
+    legacyToken: string;
+    autoSync: boolean;
+}
+
+interface SyncedRow {
+    id: string;
+    position?: number;
+    createdAt: number;
+    updatedAt: number;
+    deleted?: boolean;
+}
+
+export interface RemotePlaylist extends SyncedRow {
+    name: string;
+    description?: string;
+    source?: string;
+    sourceId?: string;
+}
+
+export interface RemoteVideo extends SyncedRow {
+    playlistId: string;
+    youtubeId: string;
+    title?: string;
+    author?: string;
+    artist?: string;
+    artistSource?: string;
+    thumbnailUrl?: string;
+    notes?: string;
+    watched?: boolean;
+    unavailable?: boolean;
+}
+
+export interface RemoteChanges {
+    playlists?: RemotePlaylist[];
+    videos?: RemoteVideo[];
+}
+
+export type LocalChanges = ReturnType<typeof collectChanges>;
 
 const KEYS = {
     apiUrl: 'sync.apiUrl',
@@ -22,11 +68,11 @@ const KEYS = {
     codeCheckedAt: 'sync.codeCheckedAt',
 };
 
-const getMeta = (db, key) => {
+const getMeta = (db: Database, key: string): string | null => {
     return db.orm.select({ value: meta.value }).from(meta).where(eq(meta.key, key)).get()?.value ?? null;
 };
 
-const setMeta = (db, key, value) => {
+const setMeta = (db: Database, key: string, value: string | number | null): void => {
     const text = value == null ? null : String(value);
     db.write(
         db.orm
@@ -36,7 +82,7 @@ const setMeta = (db, key, value) => {
     );
 };
 
-export const getSettings = (db) => {
+export const getSettings = (db: Database): SyncSettings => {
     return {
         apiUrl: getMeta(db, KEYS.apiUrl) ?? '/api',
         credential: getMeta(db, KEYS.credential) ?? '',
@@ -48,13 +94,16 @@ export const getSettings = (db) => {
 };
 
 /** Pull everything again and push every local row: the next sync starts from scratch. */
-const startOver = (db) => {
+const startOver = (db: Database): void => {
     setMeta(db, KEYS.cursor, 0);
     db.write(db.orm.update(playlists).set({ dirty: true }));
     db.write(db.orm.update(videos).set({ dirty: true }));
 };
 
-export const saveSettings = (db, { apiUrl, autoSync }) => {
+export const saveSettings = (
+    db: Database,
+    { apiUrl, autoSync }: Pick<SyncSettings, 'apiUrl' | 'autoSync'>,
+): SyncSettings => {
     const previous = getSettings(db);
     const nextApiUrl = apiUrl.trim() || '/api';
     db.transaction(() => {
@@ -74,7 +123,11 @@ export const saveSettings = (db, { apiUrl, autoSync }) => {
  * change history, so the next sync starts over and merges this device's library
  * into the chain; claiming the library this device already synced keeps the cursor.
  */
-export const setChainAccess = (db, { chainId, deviceId, deviceCredential }, { claimed = false } = {}) => {
+export const setChainAccess = (
+    db: Database,
+    { chainId, deviceId, deviceCredential }: ChainAccess,
+    { claimed = false } = {},
+): SyncSettings => {
     db.transaction(() => {
         setMeta(db, KEYS.chainId, chainId);
         setMeta(db, KEYS.deviceId, deviceId);
@@ -89,7 +142,7 @@ export const setChainAccess = (db, { chainId, deviceId, deviceCredential }, { cl
 };
 
 /** Forgets this device's chain (left, removed, or the chain was deleted). Local data stays. */
-export const clearChainAccess = (db) => {
+export const clearChainAccess = (db: Database): SyncSettings => {
     db.transaction(() => {
         setMeta(db, KEYS.chainId, null);
         setMeta(db, KEYS.deviceId, null);
@@ -100,42 +153,42 @@ export const clearChainAccess = (db) => {
 };
 
 /** When the person last confirmed they still have the chain code and recovery codes, or null. */
-export const getCodeCheckedAt = (db) => {
+export const getCodeCheckedAt = (db: Database): number | null => {
     const v = getMeta(db, KEYS.codeCheckedAt);
     return v ? Number(v) : null;
 };
 
-export const setCodeCheckedAt = (db, t) => {
+export const setCodeCheckedAt = (db: Database, t: number): void => {
     setMeta(db, KEYS.codeCheckedAt, t);
 };
 
-export const getCursor = (db) => {
+export const getCursor = (db: Database): number => {
     return Number(getMeta(db, KEYS.cursor) ?? 0);
 };
 
-export const setCursor = (db, cursor) => {
+export const setCursor = (db: Database, cursor: number): void => {
     setMeta(db, KEYS.cursor, cursor);
 };
 
-export const getLastSyncedAt = (db) => {
+export const getLastSyncedAt = (db: Database): number | null => {
     const v = getMeta(db, KEYS.lastSyncedAt);
     return v ? Number(v) : null;
 };
 
-export const setLastSyncedAt = (db, t) => {
+export const setLastSyncedAt = (db: Database, t: number): void => {
     setMeta(db, KEYS.lastSyncedAt, t);
 };
 
-const countDirty = (db, table) => {
-    return db.orm.select({ n: count() }).from(table).where(eq(table.dirty, true)).get().n;
+const countDirty = (db: Database, table: typeof playlists | typeof videos): number => {
+    return db.orm.select({ n: count() }).from(table).where(eq(table.dirty, true)).get()?.n ?? 0;
 };
 
-export const countPending = (db) => {
+export const countPending = (db: Database): number => {
     return countDirty(db, playlists) + countDirty(db, videos);
 };
 
 /** Local rows that changed since the last successful push (incl. deletions). */
-export const collectChanges = (db, limit = 2000) => {
+export const collectChanges = (db: Database, limit = 2000) => {
     const changedPlaylists = db.orm
         .select({
             id: playlists.id,
@@ -183,7 +236,7 @@ export const collectChanges = (db, limit = 2000) => {
  * Clears the dirty flag of pushed rows, unless they were edited again while
  * the request was in flight (their updated_at moved on).
  */
-export const markPushed = (db, changes) => {
+export const markPushed = (db: Database, changes: LocalChanges): void => {
     for (const p of changes.playlists) {
         db.write(
             db.orm
@@ -203,10 +256,10 @@ export const markPushed = (db, changes) => {
 };
 
 /** The value an upsert tried to insert into `column` (SQLite's `excluded` row). */
-const excluded = (column) => sql`excluded.${sql.identifier(column.name)}`;
+const excluded = (column: { name: string }) => sql`excluded.${sql.identifier(column.name)}`;
 
 /** Applies server rows with last-write-wins; returns how many rows changed. */
-export const applyRemote = (db, changes) => {
+export const applyRemote = (db: Database, changes: RemoteChanges): number => {
     let applied = 0;
     for (const p of changes.playlists ?? []) {
         // A server from before imports were remembered leaves the source out: keep the local one.

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { CHECK_IN_INTERVAL_MS, isCheckInDue, needsRecoveryNotice, pairingPausedUntil } from './chain-reminders.js';
+import { CHECK_IN_INTERVAL_MS, isCheckInDue, needsRecoveryNotice, pairingPausedUntil } from './chain-reminders';
 
-const device = (id) => ({ id, name: id, createdAt: 1, lastSeenAt: 1 });
+const device = (id: string) => ({ id, name: id, createdAt: 1, lastSeenAt: 1 });
 
 describe('chain reminders', () => {
     it('warns when the only device has no recovery codes left', () => {

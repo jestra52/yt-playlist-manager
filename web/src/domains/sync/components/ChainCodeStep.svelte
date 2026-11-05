@@ -3,7 +3,7 @@
     import Icon from '../../../shared/components/Icon.svelte';
     import { downloadTextFile } from '../../../shared/download.js';
     import { notify } from '../../ui/ui.service.svelte.js';
-    import { chainCodeFileText, confirmationPositions } from '../chain-code.js';
+    import { chainCodeFileText, confirmationPositions } from '@ytpm/core/sync/chain-code';
 
     /**
      * Shows new codes once and makes sure they were saved: the chain code's 24 words with

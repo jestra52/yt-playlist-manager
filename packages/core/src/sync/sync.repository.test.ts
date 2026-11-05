@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import initSqlJs from 'sql.js';
-import { Database } from '@ytpm/core/db/database';
-import { meta } from '@ytpm/core/db/tables';
-import * as playlists from '@ytpm/core/playlists/playlists.repository';
-import * as videos from '@ytpm/core/videos/videos.repository';
-import * as sync from './sync.repository.js';
+import initSqlJs, { type SqlJsStatic } from 'sql.js';
+import { Database } from '../db/database';
+import { meta } from '../db/tables';
+import * as playlists from '../playlists/playlists.repository';
+import * as videos from '../videos/videos.repository';
+import * as sync from './sync.repository';
 
-let SQL;
+let SQL: SqlJsStatic;
 beforeAll(async () => {
     SQL = await initSqlJs();
 });
@@ -15,7 +15,7 @@ const freshDb = () => new Database(new SQL.Database());
 describe('local repositories', () => {
     it('creates playlists, adds videos without duplicates and reorders', () => {
         const db = freshDb();
-        const p = playlists.createPlaylist(db, { name: '  Cooking  ' });
+        const p = playlists.createPlaylist(db, { name: '  Cooking  ' })!;
         expect(p.name).toBe('Cooking');
 
         const { added, skipped } = videos.addVideos(db, p.id, ['dQw4w9WgXcQ', '9bZkp7q19f0', 'kJQP7kiw5Fk']);
@@ -24,7 +24,7 @@ describe('local repositories', () => {
         expect(videos.addVideos(db, p.id, ['dQw4w9WgXcQ']).skipped).toEqual(['dQw4w9WgXcQ']);
 
         // move the last video to the top
-        videos.reorderVideo(db, added[2].id, 0);
+        videos.reorderVideo(db, added[2]!.id, 0);
         const order = videos
             .listVideos(db)
             .sort((a, b) => a.position - b.position)
@@ -34,14 +34,14 @@ describe('local repositories', () => {
 
     it('soft-deletes a playlist together with its videos', () => {
         const db = freshDb();
-        const p = playlists.createPlaylist(db, { name: 'Temp' });
+        const p = playlists.createPlaylist(db, { name: 'Temp' })!;
         videos.addVideos(db, p.id, ['dQw4w9WgXcQ']);
         playlists.deletePlaylist(db, p.id);
         expect(playlists.listPlaylists(db)).toEqual([]);
         expect(videos.listVideos(db)).toEqual([]);
         const pending = sync.collectChanges(db);
-        expect(pending.playlists[0].deleted).toBe(true);
-        expect(pending.videos[0].deleted).toBe(true);
+        expect(pending.playlists[0]!.deleted).toBe(true);
+        expect(pending.videos[0]!.deleted).toBe(true);
     });
 });
 
@@ -50,8 +50,8 @@ describe('sync bookkeeping', () => {
         const phone = freshDb();
         const laptop = freshDb();
 
-        const p = playlists.createPlaylist(phone, { name: 'Shared' });
-        const [v] = videos.addVideos(phone, p.id, ['dQw4w9WgXcQ']).added;
+        const p = playlists.createPlaylist(phone, { name: 'Shared' })!;
+        const v = videos.addVideos(phone, p.id, ['dQw4w9WgXcQ']).added[0]!;
 
         // phone pushes; the "server" hands the same rows to the laptop
         const pushed = sync.collectChanges(phone);
@@ -59,79 +59,78 @@ describe('sync bookkeeping', () => {
         expect(sync.countPending(phone)).toBe(0);
         expect(sync.applyRemote(laptop, pushed)).toBe(2);
         expect(sync.countPending(laptop)).toBe(0);
-        expect(videos.listVideos(laptop)[0].youtubeId).toBe('dQw4w9WgXcQ');
+        expect(videos.listVideos(laptop)[0]!.youtubeId).toBe('dQw4w9WgXcQ');
 
         // laptop marks watched later; an older edit from the phone must not win
         videos.updateVideo(laptop, v.id, { watched: true });
         const fromLaptop = sync.collectChanges(laptop);
-        const stale = { playlists: [], videos: [{ ...fromLaptop.videos[0], watched: false, updatedAt: v.updatedAt }] };
+        const stale = { playlists: [], videos: [{ ...fromLaptop.videos[0]!, watched: false, updatedAt: v.updatedAt }] };
         expect(sync.applyRemote(laptop, stale)).toBe(0);
-        expect(videos.getVideo(laptop, v.id).watched).toBe(true);
+        expect(videos.getVideo(laptop, v.id)!.watched).toBe(true);
 
         expect(sync.applyRemote(phone, fromLaptop)).toBe(1);
-        expect(videos.getVideo(phone, v.id).watched).toBe(true);
+        expect(videos.getVideo(phone, v.id)!.watched).toBe(true);
     });
 
     it('syncs the artist and where it came from', () => {
         const phone = freshDb();
         const laptop = freshDb();
-        const p = playlists.createPlaylist(phone, { name: 'Shared' });
-        const [v] = videos.addVideos(phone, p.id, [
+        const p = playlists.createPlaylist(phone, { name: 'Shared' })!;
+        const v = videos.addVideos(phone, p.id, [
             { youtubeId: 'dQw4w9WgXcQ', title: 'Windy Summer', artist: 'Anri', artistSource: 'guess' },
-        ]).added;
+        ]).added[0]!;
         sync.applyRemote(laptop, sync.collectChanges(phone));
-        expect(videos.getVideo(laptop, v.id)).toMatchObject({ artist: 'Anri', artistSource: 'guess' });
+        expect(videos.getVideo(laptop, v.id)!).toMatchObject({ artist: 'Anri', artistSource: 'guess' });
 
         videos.updateVideo(laptop, v.id, { artist: '杏里', artistSource: 'user' });
         sync.applyRemote(phone, sync.collectChanges(laptop));
-        expect(videos.getVideo(phone, v.id)).toMatchObject({ artist: '杏里', artistSource: 'user' });
+        expect(videos.getVideo(phone, v.id)!).toMatchObject({ artist: '杏里', artistSource: 'user' });
     });
 
     it('keeps local artists when the server sends rows without them', () => {
         const db = freshDb();
-        const p = playlists.createPlaylist(db, { name: 'A' });
-        const [v] = videos.addVideos(db, p.id, [
-            { youtubeId: 'dQw4w9WgXcQ', artist: 'Anri', artistSource: 'user' },
-        ]).added;
-        const { artist, artistSource, ...fromOldServer } = sync.collectChanges(db).videos[0];
+        const p = playlists.createPlaylist(db, { name: 'A' })!;
+        const v = videos.addVideos(db, p.id, [{ youtubeId: 'dQw4w9WgXcQ', artist: 'Anri', artistSource: 'user' }])
+            .added[0]!;
+        const { artist, artistSource, ...fromOldServer } = sync.collectChanges(db).videos[0]!;
         expect([artist, artistSource]).toEqual(['Anri', 'user']);
 
         sync.applyRemote(db, { videos: [{ ...fromOldServer, watched: true, updatedAt: v.updatedAt + 1 }] });
-        expect(videos.getVideo(db, v.id)).toMatchObject({ watched: true, artist: 'Anri', artistSource: 'user' });
+        expect(videos.getVideo(db, v.id)!).toMatchObject({ watched: true, artist: 'Anri', artistSource: 'user' });
     });
 
     it('syncs where a playlist came from and which videos are gone from YouTube', () => {
         const phone = freshDb();
         const laptop = freshDb();
-        const p = playlists.createPlaylist(phone, { name: 'Road trip', source: 'youtube', sourceId: 'PLabcdefghij' });
-        const [v] = videos.addVideos(phone, p.id, [
+        const p = playlists.createPlaylist(phone, { name: 'Road trip', source: 'youtube', sourceId: 'PLabcdefghij' })!;
+        const v = videos.addVideos(phone, p.id, [
             { youtubeId: 'aaaaaaaaaaa', title: 'Deleted video', unavailable: true },
-        ]).added;
+        ]).added[0]!;
         sync.applyRemote(laptop, sync.collectChanges(phone));
-        expect(playlists.getPlaylist(laptop, p.id)).toMatchObject({ source: 'youtube', sourceId: 'PLabcdefghij' });
-        expect(videos.getVideo(laptop, v.id)).toMatchObject({ unavailable: true, missing: true });
+        expect(playlists.getPlaylist(laptop, p.id)!).toMatchObject({ source: 'youtube', sourceId: 'PLabcdefghij' });
+        expect(videos.getVideo(laptop, v.id)!).toMatchObject({ unavailable: true, missing: true });
     });
 
     it('keeps the source and the unavailable flag when the server sends rows without them', () => {
         const db = freshDb();
-        const p = playlists.createPlaylist(db, { name: 'Road trip', source: 'youtube', sourceId: 'PLabcdefghij' });
-        const [v] = videos.addVideos(db, p.id, [{ youtubeId: 'aaaaaaaaaaa', unavailable: true }]).added;
+        const p = playlists.createPlaylist(db, { name: 'Road trip', source: 'youtube', sourceId: 'PLabcdefghij' })!;
+        const v = videos.addVideos(db, p.id, [{ youtubeId: 'aaaaaaaaaaa', unavailable: true }]).added[0]!;
         const pending = sync.collectChanges(db);
-        const { source, sourceId, ...oldPlaylist } = pending.playlists[0];
-        const { unavailable, ...oldVideo } = pending.videos[0];
+        const { source, sourceId, ...oldPlaylist } = pending.playlists[0]!;
+        const { unavailable, ...oldVideo } = pending.videos[0]!;
         expect([source, sourceId, unavailable]).toEqual(['youtube', 'PLabcdefghij', true]);
 
         sync.applyRemote(db, {
             playlists: [{ ...oldPlaylist, name: 'Renamed', updatedAt: p.updatedAt + 1 }],
             videos: [{ ...oldVideo, watched: true, updatedAt: v.updatedAt + 1 }],
         });
-        expect(playlists.getPlaylist(db, p.id)).toMatchObject({ name: 'Renamed', source: 'youtube' });
-        expect(videos.getVideo(db, v.id)).toMatchObject({ watched: true, unavailable: true });
+        expect(playlists.getPlaylist(db, p.id)!).toMatchObject({ name: 'Renamed', source: 'youtube' });
+        expect(videos.getVideo(db, v.id)!).toMatchObject({ watched: true, unavailable: true });
     });
 
     it('keeps rows dirty when they were edited while a push was in flight', () => {
         const db = freshDb();
-        const p = playlists.createPlaylist(db, { name: 'A' });
+        const p = playlists.createPlaylist(db, { name: 'A' })!;
         const inFlight = sync.collectChanges(db);
         playlists.updatePlaylist(db, p.id, { name: 'B' });
         sync.markPushed(db, inFlight);
@@ -163,7 +162,7 @@ describe('sync bookkeeping', () => {
 
     it("joining a chain merges this device's library into it; claiming keeps the cursor", () => {
         const db = freshDb();
-        const p = playlists.createPlaylist(db, { name: 'Mine' });
+        const p = playlists.createPlaylist(db, { name: 'Mine' })!;
         sync.markPushed(db, sync.collectChanges(db));
         sync.setCursor(db, 42);
 

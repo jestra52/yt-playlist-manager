@@ -5,11 +5,17 @@
     import { getDatabase } from '@ytpm/core/db/index';
     import { sync } from '../sync.service.svelte.js';
     import { ui } from '../../ui/ui.service.svelte.js';
-    import { ChainCodeError, WORD_COUNT, defaultDeviceName, splitWords, wordsToSecret } from '../chain-code.js';
-    import { RECOVERY_CODE_LENGTH, isRecoveryCode, recoveryCodeProblem } from '../recovery-code.js';
-    import { isPairingCode, pairingCodeProblem } from '../pairing-code.js';
-    import { countdown } from '../pairing.js';
-    import { canScan } from '../qr-scan.js';
+    import {
+        ChainCodeError,
+        WORD_COUNT,
+        defaultDeviceName,
+        splitWords,
+        wordsToSecret,
+    } from '@ytpm/core/sync/chain-code';
+    import { RECOVERY_CODE_LENGTH, isRecoveryCode, recoveryCodeProblem } from '@ytpm/core/sync/recovery-code';
+    import { isPairingCode, pairingCodeProblem } from '@ytpm/core/sync/pairing-code';
+    import { countdown } from '@ytpm/core/sync/pairing';
+    import { canScan } from '@ytpm/core/sync/qr-scan';
     import AddDevice from './AddDevice.svelte';
     import ChainActivity from './ChainActivity.svelte';
     import ChainCodeStep from './ChainCodeStep.svelte';

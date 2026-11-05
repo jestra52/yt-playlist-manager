@@ -1,11 +1,11 @@
 /**
  * Sentences for the entries of a sync chain's audit log, e.g. "Chrome on Windows
  * removed Phone". The server only sends names and kinds, never a secret.
- *
- * No framework code here: this module is shared as is with other apps (#23).
- */
 
-const SENTENCES = {
+ */
+import type { ChainEvent } from './sync.client';
+
+const SENTENCES: Record<string, (who: string, detail: string) => string> = {
     created: (who) => `${who} created the sync chain`,
     claimed: (who) => `${who} turned the synced playlists into a sync chain`,
     device_joined: (who) => `${who} joined`,
@@ -22,7 +22,7 @@ const SENTENCES = {
 };
 
 /** One entry ({ kind, deviceName, detail }) as a sentence; devices removed by a new code are named after it. */
-export const describeEvent = ({ kind, deviceName, detail }) => {
+export const describeEvent = ({ kind, deviceName, detail = '' }: Omit<ChainEvent, 'at'>): string => {
     const who = deviceName || 'A device';
     const sentence = SENTENCES[kind]?.(who, detail) ?? `${who}: ${kind}`;
     const removed = (kind === 'code_replaced' || kind === 'recovered') && detail ? ` (${detail})` : '';

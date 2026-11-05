@@ -8,7 +8,7 @@ import {
     secretToWords,
     splitWords,
     wordsToSecret,
-} from './chain-code.js';
+} from './chain-code';
 
 // A secret as the server sends it: 32 bytes, base64url without padding (43 characters).
 const SECRET = 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8';
@@ -44,7 +44,7 @@ describe('chain code words', () => {
         expect(() => wordsToSecret(words.slice(0, 23).join(' '))).toThrow(/24 words; this has 23/);
         expect(() => wordsToSecret([...words.slice(0, 23), 'notaword'].join(' '))).toThrow(/notaword/);
         const swapped = [...words];
-        [swapped[0], swapped[1]] = [swapped[1], swapped[0]];
+        [swapped[0], swapped[1]] = [swapped[1]!, swapped[0]!];
         if (swapped.join(' ') !== words.join(' ')) {
             expect(() => wordsToSecret(swapped.join(' '))).toThrow(ChainCodeError);
         }
@@ -63,7 +63,7 @@ describe('confirmationPositions', () => {
     it('picks distinct positions within the code, in order', () => {
         let n = 0;
         const sequence = [0.5, 0.5, 0.01, 0.99, 0.3];
-        const positions = confirmationPositions(3, () => sequence[n++ % sequence.length]);
+        const positions = confirmationPositions(3, () => sequence[n++ % sequence.length]!);
         expect(positions).toEqual([1, 13, 24]);
     });
 });

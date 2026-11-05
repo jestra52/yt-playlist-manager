@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatPairingCode, isPairingCode, normalizePairingCode, pairingCodeProblem } from './pairing-code.js';
+import { formatPairingCode, isPairingCode, normalizePairingCode, pairingCodeProblem } from './pairing-code';
 
 describe('pairing codes', () => {
     it('reads typed codes like the server does', () => {
