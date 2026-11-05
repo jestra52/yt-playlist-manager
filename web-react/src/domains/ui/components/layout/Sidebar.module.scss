@@ -30,6 +30,12 @@
 }
 
 .sourceLink {
-    color: inherit;
-    opacity: 0.7;
+    color: rgba($sidebar-text, 0.55);
+    font-size: 0.75rem;
+
+    &:hover,
+    &:focus-visible {
+        color: $sidebar-text;
+        text-decoration: underline;
+    }
 }
