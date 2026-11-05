@@ -3,11 +3,11 @@ import { useAppDispatch, useAppSelector } from '../../../../app/store';
 import { codeSaved, loadEvents } from '../../chain.thunks';
 import { selectConfigured } from '../../sync.selectors';
 import { loadChain } from '../../sync.thunks';
+import { ConnectedView } from '../chain/ConnectedView';
 import { ChainCodeStep } from '../code/ChainCodeStep';
 import { ConnectionPanel } from '../connection/ConnectionPanel';
 import { ExportDatabase } from '../connection/ExportDatabase';
 import { StartScreen } from '../start/StartScreen';
-import styles from './SyncSettings.module.scss';
 
 export const SyncSettings = () => {
     const newCode = useAppSelector((state) => state.sync.newCode);
@@ -29,15 +29,11 @@ export const SyncSettings = () => {
         );
     }
 
+    if (configured) return <ConnectedView />;
+
     return (
         <>
-            {configured ? (
-                <p className={styles.intro}>
-                    This device is in a sync chain: your playlists sync with the other devices in it.
-                </p>
-            ) : (
-                <StartScreen />
-            )}
+            <StartScreen />
             <ConnectionPanel />
             <ExportDatabase />
         </>
