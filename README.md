@@ -40,7 +40,7 @@ Keep your own playlists of videos (music, talks, recipes, anything you want to w
 
 <img src="docs/screenshots/phone.png" alt="The playlist on a phone in the dark theme, with buttons for YouTube, compare, report and delete in the header" width="300" align="right" />
 
-**On a phone** the sidebar folds away behind the menu button, and the header buttons shrink to icons: YouTube, compare, download report, delete.
+**On a phone** the sidebar folds away behind the menu button, as it does in any window under 1024px, and the header buttons shrink to icons: YouTube, compare, download report, delete.
 
 The screenshots use sample data and placeholder thumbnails.
 
