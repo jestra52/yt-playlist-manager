@@ -163,7 +163,7 @@ Tailwind v4 and daisyUI are loaded from plain CSS (`styles/tailwind.css`), becau
 * Newer fields are optional on both sides, so devices and servers of different versions keep working together: when a device's app is older and doesn't send a field (e.g. a video's `artist`, a playlist's `source`), the server keeps the stored value, and the web app keeps its local value when an older server doesn't send it.
 * When the database closes a connection (Neon does when it pauses after being idle), the API retries the request on a new connection.
 
-Sync runs after edits (2.5 s debounce), every minute while the tab is visible, when the network comes back, and from the sync button.
+Sync runs after edits (2.5 s debounce), on opening the app, when the tab or the network comes back, and from the sync button. There is no timer, so a device left open picks up other devices' changes when you come back to it.
 
 ## Run it locally
 
