@@ -6,6 +6,7 @@ import { AppDialog } from '../../../ui/components/dialog/AppDialog';
 import type { DialogControls } from '../../../ui/components/dialog/useDialog';
 import { selectAllVideos } from '../../../videos/videos.selectors';
 import { addMissingFromReport } from '../../playlists.thunks';
+import { BackupList } from './BackupList';
 import { MissingEntries } from './MissingEntries';
 
 const NO_LINES = 'No numbered lines found. Each video needs a line like "12: title".';
@@ -79,9 +80,9 @@ export const CompareReportDialog = ({ playlistId, ...dialog }: { playlistId: str
             }
         >
             <p className="text-base-content/65 m-0 text-sm">
-                Load a report saved from this app to find the videos this playlist no longer has. Missing items come
-                back in their old place. JSON reports bring back their links and notes too; with a text report, you can
-                paste each one's YouTube link later.
+                Load a report or a backup to find the videos this playlist no longer has. Missing items come back in
+                their old place. JSON reports bring back their links and notes too; with a text report, you can paste
+                each one's YouTube link later.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
                 <label className="btn btn-sm">
@@ -95,6 +96,13 @@ export const CompareReportDialog = ({ playlistId, ...dialog }: { playlistId: str
                 </label>
                 <span className="text-base-content/65 min-w-0 truncate text-sm">{fileName || 'or paste it below'}</span>
             </div>
+            <BackupList
+                playlistId={playlistId}
+                onLoad={(report, label) => {
+                    setText(report);
+                    setFileName(label);
+                }}
+            />
             <label className="sr-only" htmlFor="report-text">
                 Report text
             </label>

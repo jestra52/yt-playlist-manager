@@ -3,6 +3,7 @@ import { pairingPausedUntil } from '@ytpm/core/sync/chain-reminders';
 import * as client from '@ytpm/core/sync/sync.client';
 import * as repo from '@ytpm/core/sync/sync.repository';
 import type { AppThunk } from '../../app/store';
+import { uploadBackups } from '../playlists/backups.thunks';
 import { reloadLibrary } from '../playlists/playlists.thunks';
 import { notify } from '../ui/ui.slice';
 import { selectConfigured, selectSyncSettings } from './sync.selectors';
@@ -166,6 +167,7 @@ const run =
             await db.flush();
             if (pulled > 0) dispatch(reloadLibrary());
             dispatch(syncFinished({ lastSyncedAt, pending: repo.countPending(db) }));
+            void dispatch(uploadBackups());
             // So every device hears of a pause in pairing, not only the one showing the settings.
             if (Date.now() - getState().sync.chainLoadedAt >= CHAIN_REFRESH_MS) dispatch(loadChain());
             if (!quiet) {
