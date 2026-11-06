@@ -654,6 +654,24 @@ public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFix
     }
 
     [Fact]
+    public async Task SyncIsRateLimitedPerDevice()
+    {
+        using var client = this.Client();
+        for (var i = 0; i < 120; i++)
+        {
+            using var allowed = await client.SendAsync(SyncRequest("{}", "busy-device"));
+            Assert.NotEqual(HttpStatusCode.TooManyRequests, allowed.StatusCode);
+        }
+
+        using var limited = await client.SendAsync(SyncRequest("{}", "busy-device"));
+        Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
+        Assert.NotNull(limited.Headers.RetryAfter?.Delta);
+
+        using var other = await client.SendAsync(SyncRequest("{}", "quiet-device"));
+        Assert.NotEqual(HttpStatusCode.TooManyRequests, other.StatusCode);
+    }
+
+    [Fact]
     public async Task ChainsAreUnavailableWithoutAPepper()
     {
         using var client = this.Client();
