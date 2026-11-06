@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using YtPlaylist.Application.Chains;
+using YtPlaylist.Application.Reports;
 using YtPlaylist.Application.Sync;
 using YtPlaylist.Application.YouTube;
 using YtPlaylist.Infrastructure.Persistence;
@@ -32,6 +33,7 @@ public static class DependencyInjection
                 options => options.UseNpgsql(connectionString, npgsql => npgsql.EnableRetryOnFailure()));
             services.AddScoped<ISyncStore, EfSyncStore>();
             services.AddScoped<IChainStore, EfChainStore>();
+            services.AddScoped<IReportStore, EfReportStore>();
         }
 
         services.AddOptions<ChainSecurityOptions>()

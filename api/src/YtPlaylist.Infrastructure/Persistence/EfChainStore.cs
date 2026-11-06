@@ -158,6 +158,7 @@ public sealed class EfChainStore(AppDbContext db) : IChainStore
             async () =>
             {
                 // Children first, so it doesn't depend on the database enforcing cascades.
+                await db.Reports.Where(r => r.ChainId == chainId).ExecuteDeleteAsync(cancellationToken);
                 await db.Videos.Where(v => v.ChainId == chainId).ExecuteDeleteAsync(cancellationToken);
                 await db.Playlists.Where(p => p.ChainId == chainId).ExecuteDeleteAsync(cancellationToken);
                 await db.SyncPairings.Where(p => p.ChainId == chainId).ExecuteDeleteAsync(cancellationToken);

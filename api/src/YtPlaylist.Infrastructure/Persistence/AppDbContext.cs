@@ -14,6 +14,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<SyncRecoveryCode> SyncRecoveryCodes => this.Set<SyncRecoveryCode>();
     public DbSet<SyncChainEvent> SyncChainEvents => this.Set<SyncChainEvent>();
     public DbSet<SyncPairing> SyncPairings => this.Set<SyncPairing>();
+    public DbSet<Report> Reports => this.Set<Report>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
