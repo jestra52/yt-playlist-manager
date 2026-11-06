@@ -77,7 +77,7 @@ afterAll(() => {
 });
 
 afterEach(() => {
-    store.dispatch(saveSyncSettings({ apiUrl: '/api', autoSync: false }));
+    store.dispatch(saveSyncSettings({ autoSync: false }));
 });
 
 beforeEach(() => {
@@ -225,11 +225,14 @@ describe('activity and settings', () => {
         expect(await dialog.findByText('Laptop removed Phone')).toBeInTheDocument();
     });
 
-    it('keeps the connection and the export in Settings', async () => {
+    it('keeps auto-sync and the export in Settings, and saves auto-sync at once', async () => {
         const dialog = await open();
         expect(dialog.queryByRole('button', { name: 'Export database' })).not.toBeInTheDocument();
         tab(dialog, 'Settings');
-        expect(button(dialog, 'Connection')).toBeInTheDocument();
         expect(button(dialog, 'Export database')).toBeInTheDocument();
+
+        const before = store.getState().sync.settings.autoSync;
+        fireEvent.click(dialog.getByRole('switch', { name: /Sync automatically/ }));
+        expect(store.getState().sync.settings.autoSync).toBe(!before);
     });
 });

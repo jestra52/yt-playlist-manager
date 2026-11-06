@@ -41,6 +41,9 @@ export const checkedCodes = (): AppThunk => (dispatch) => {
 /** Reads the sync settings and bookkeeping from the local database into the store. */
 export const loadSync = (): AppThunk => (dispatch, getState) => {
     const db = getDatabase();
+    // The address can't be changed anymore. A chain on another address doesn't exist on this one.
+    const { apiUrl, autoSync } = repo.getSettings(db);
+    if (apiUrl !== '/api') repo.saveSettings(db, { autoSync });
     dispatch(
         loaded({
             settings: repo.getSettings(db),
@@ -54,7 +57,7 @@ export const loadSync = (): AppThunk => (dispatch, getState) => {
 };
 
 export const saveSyncSettings =
-    (settings: Pick<repo.SyncSettings, 'apiUrl' | 'autoSync'>): AppThunk =>
+    (settings: Pick<repo.SyncSettings, 'autoSync'>): AppThunk =>
     (dispatch) => {
         const db = getDatabase();
         dispatch(settingsSaved({ settings: repo.saveSettings(db, settings), pending: repo.countPending(db) }));
@@ -62,19 +65,6 @@ export const saveSyncSettings =
 
 export const refreshPending = (): AppThunk => (dispatch) => {
     dispatch(pendingCounted(repo.countPending(getDatabase())));
-};
-
-/** Checks that the API is reachable and configured, without syncing. */
-export const testConnection = async (settings: client.SyncConnection): Promise<{ ok: boolean; message: string }> => {
-    try {
-        const health = await client.getHealth(settings);
-        if (!health.syncConfigured) {
-            return { ok: false, message: 'The API is up, but the server has no database or SYNC_PEPPER set yet.' };
-        }
-        return { ok: true, message: 'Connected. The sync server is ready.' };
-    } catch (err) {
-        return { ok: false, message: (err as Error).message };
-    }
 };
 
 /** Forgets this device's chain; its playlists stay here. */

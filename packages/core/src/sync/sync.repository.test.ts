@@ -158,6 +158,10 @@ describe('sync bookkeeping', () => {
         sync.saveSettings(db, { apiUrl: 'https://other.example/api', autoSync: true });
         expect(sync.getCursor(db)).toBe(0);
         expect(sync.getSettings(db)).toMatchObject({ credential: '', chainId: '', deviceId: '' });
+
+        sync.setChainAccess(db, access);
+        sync.saveSettings(db, { autoSync: false });
+        expect(sync.getSettings(db)).toMatchObject({ apiUrl: '/api', autoSync: false });
     });
 
     it("joining a chain merges this device's library into it; claiming keeps the cursor", () => {

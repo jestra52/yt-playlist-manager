@@ -5,7 +5,6 @@ import { selectConfigured } from '../../sync.selectors';
 import { loadChain } from '../../sync.thunks';
 import { ConnectedView } from '../chain/ConnectedView';
 import { ChainCodeStep } from '../code/ChainCodeStep';
-import { ConnectionPanel } from '../connection/ConnectionPanel';
 import { ExportDatabase } from '../connection/ExportDatabase';
 import { StartScreen } from '../start/StartScreen';
 
@@ -34,7 +33,6 @@ export const SyncSettings = () => {
     return (
         <>
             <StartScreen />
-            <ConnectionPanel />
             <ExportDatabase />
         </>
     );

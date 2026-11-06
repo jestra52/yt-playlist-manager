@@ -1,9 +1,9 @@
-import { ConnectionPanel } from '../connection/ConnectionPanel';
+import { AutoSyncToggle } from '../connection/AutoSyncToggle';
 import { ExportDatabase } from '../connection/ExportDatabase';
 
 export const SettingsTab = () => (
     <>
-        <ConnectionPanel />
+        <AutoSyncToggle />
         <ExportDatabase />
     </>
 );
