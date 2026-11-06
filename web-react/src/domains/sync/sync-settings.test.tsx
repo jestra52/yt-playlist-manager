@@ -90,6 +90,16 @@ describe('sidebar status', () => {
         expect(store.getState().ui.settingsOpen).toBe(false);
     });
 
+    it('pauses Sync now for a moment after pressing it', async () => {
+        setChainAccess(db, access);
+        store.dispatch(loadSync());
+        render(<App store={store} />);
+        const button = screen.getByRole('button', { name: 'Sync now' });
+        fireEvent.click(button);
+        await waitFor(() => expect(store.getState().sync.status).not.toBe('syncing'));
+        expect(button).toBeDisabled();
+    });
+
     it('names the state of a device in a chain, with the reason for a failure', () => {
         setChainAccess(db, access);
         store.dispatch(loadSync());

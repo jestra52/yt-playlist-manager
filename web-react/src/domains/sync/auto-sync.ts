@@ -9,7 +9,7 @@ import { syncRequested } from './sync.slice';
 import { loadSync, refreshPending, syncNow } from './sync.thunks';
 
 const PUSH_DELAY_MS = 2500;
-const POLL_INTERVAL_MS = 60_000;
+const RETURN_QUIET_MS = 30_000;
 
 // Only edits made here count: a sync's own writes must not schedule another sync.
 const isLocalEdit = isAnyOf(added, playlistChanged, playlistRemoved, upserted, videoChanged, videoRemoved, replaced);
@@ -33,22 +33,19 @@ export const autoSyncMiddleware = (): Middleware => {
     return listener.middleware;
 };
 
-/** Syncs every minute while the tab is visible, and when the tab or the network comes back. Returns a stop function. */
-export const startAutoSync = (): AppThunk<() => void> => (dispatch) => {
-    const visible = () => document.visibilityState === 'visible';
+/** Syncs on opening, and when the tab or the network comes back. Returns a stop function. */
+export const startAutoSync = (): AppThunk<() => void> => (dispatch, getState) => {
     const onOnline = () => dispatch(syncRequested(500));
     const onVisible = () => {
-        if (visible()) dispatch(syncRequested(500));
+        const { lastSyncedAt } = getState().sync;
+        const recent = lastSyncedAt !== null && Date.now() - lastSyncedAt < RETURN_QUIET_MS;
+        if (document.visibilityState === 'visible' && !recent) dispatch(syncRequested(500));
     };
     addEventListener('online', onOnline);
     document.addEventListener('visibilitychange', onVisible);
-    const poll = setInterval(() => {
-        if (visible()) dispatch(syncRequested(0));
-    }, POLL_INTERVAL_MS);
     dispatch(syncRequested(300));
 
     return () => {
-        clearInterval(poll);
         removeEventListener('online', onOnline);
         document.removeEventListener('visibilitychange', onVisible);
     };

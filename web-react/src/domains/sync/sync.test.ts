@@ -27,7 +27,8 @@ import {
     selectRecoveryNotice,
     selectSyncSettings,
 } from './sync.selectors';
-import { codeChecked, syncRequested } from './sync.slice';
+import { startAutoSync } from './auto-sync';
+import { codeChecked, syncFinished, syncRequested } from './sync.slice';
 import { checkedCodes, loadChain, loadSync, saveSyncSettings, syncNow } from './sync.thunks';
 
 const SECRET = 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8';
@@ -386,6 +387,30 @@ describe('auto-sync', () => {
             setTimeout(resolve, 300);
         });
         expect(syncCalls()).toHaveLength(before + 1);
+    }, 8000);
+
+    it('syncs on return, unless it synced moments ago, and never on a timer', async () => {
+        await inChain();
+        const timers = vi.spyOn(globalThis, 'setInterval');
+        const stop = store.dispatch(startAutoSync());
+        expect(timers).not.toHaveBeenCalled();
+        timers.mockRestore();
+        await new Promise((resolve) => {
+            setTimeout(resolve, 500);
+        });
+
+        const before = syncCalls().length;
+        store.dispatch(syncFinished({ lastSyncedAt: Date.now(), pending: 0 }));
+        document.dispatchEvent(new Event('visibilitychange'));
+        await new Promise((resolve) => {
+            setTimeout(resolve, 700);
+        });
+        expect(syncCalls()).toHaveLength(before);
+
+        store.dispatch(syncFinished({ lastSyncedAt: Date.now() - 60_000, pending: 0 }));
+        document.dispatchEvent(new Event('visibilitychange'));
+        await vi.waitFor(() => expect(syncCalls()).toHaveLength(before + 1), { timeout: 2000 });
+        stop();
     }, 8000);
 
     it('does nothing without a chain, or with auto-sync turned off', async () => {

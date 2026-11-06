@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
 import { Icon } from '../../../../shared/components/Icon';
 import { timeAgo } from '../../../../shared/time';
@@ -7,12 +8,21 @@ import { selectConfigured, selectSync } from '../../sync.selectors';
 import { syncNow } from '../../sync.thunks';
 import styles from './SyncStatus.module.scss';
 
+const SYNC_NOW_PAUSE_MS = 5000;
+
 export const SyncStatus = () => {
     const { status, offline, pending, lastSyncedAt, error } = useAppSelector(selectSync);
     const configured = useAppSelector(selectConfigured);
     const dispatch = useAppDispatch();
     const now = useNow(30_000);
     const syncing = status === 'syncing';
+    const [paused, setPaused] = useState(false);
+
+    useEffect(() => {
+        if (!paused) return undefined;
+        const timer = setTimeout(() => setPaused(false), SYNC_NOW_PAUSE_MS);
+        return () => clearTimeout(timer);
+    }, [paused]);
 
     const label = () => {
         if (!configured) return 'Only on this device';
@@ -49,8 +59,11 @@ export const SyncStatus = () => {
                     type="button"
                     title="Sync now"
                     aria-label="Sync now"
-                    disabled={syncing}
-                    onClick={() => dispatch(syncNow())}
+                    disabled={syncing || paused}
+                    onClick={() => {
+                        setPaused(true);
+                        dispatch(syncNow());
+                    }}
                 >
                     {syncing ? <span className="loading loading-spinner loading-xs" /> : <Icon name="sync" size={16} />}
                 </button>

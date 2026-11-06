@@ -54,7 +54,7 @@ export const ConnectionPanel = () => {
                         checked={autoSync}
                         onChange={(e) => setAutoSync(e.target.checked)}
                     />
-                    Sync automatically after changes and every minute
+                    Sync automatically after changes
                 </label>
                 {result && (
                     <div
