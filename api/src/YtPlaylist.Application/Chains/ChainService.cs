@@ -219,7 +219,7 @@ public sealed partial class ChainService(ISecretHasher hasher, TimeProvider time
     /// </summary>
     /// <remarks>
     /// #53 extends this: the connected accounts' tokens are deleted in the same transaction,
-    /// and their grants are revoked at Google and Spotify once it's committed.
+    /// and their grants are revoked at Google once it's committed.
     /// </remarks>
     private async Task<ChainSecret?> RunRecoveryHookAsync(
         string chainId,

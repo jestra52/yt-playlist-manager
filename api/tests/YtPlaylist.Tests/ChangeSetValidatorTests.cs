@@ -77,7 +77,7 @@ public sealed class ChangeSetValidatorTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("guess")]
-    [InlineData("spotify")]
+    [InlineData("musicbrainz")]
     public void AcceptsKnownAndFutureArtistSources(string? source) =>
         ChangeSetValidator.Validate(new ChangeSet { Videos = [Video() with { Artist = "Anri", ArtistSource = source }] });
 
