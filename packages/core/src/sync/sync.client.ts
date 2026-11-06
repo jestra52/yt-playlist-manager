@@ -62,11 +62,13 @@ export interface SyncResponse {
 export class SyncError extends Error {
     status: number;
     offline: boolean;
+    retryAfterMs: number;
 
-    constructor(message: string, { status = 0, offline = false } = {}) {
+    constructor(message: string, { status = 0, offline = false, retryAfterMs = 0 } = {}) {
         super(message);
         this.status = status;
         this.offline = offline;
+        this.retryAfterMs = retryAfterMs;
     }
 }
 
@@ -98,6 +100,7 @@ const request = async <T>(url: string, init: RequestInit, timeoutMs = 20000): Pr
     if (!res.ok) {
         throw new SyncError(body?.error ? capitalize(body.error) : `Sync server answered ${res.status}`, {
             status: res.status,
+            retryAfterMs: res.status === 429 ? Number(res.headers.get('Retry-After') ?? 60) * 1000 : 0,
         });
     }
     if (!body) throw new SyncError('The sync server sent an unexpected response', { status: res.status });

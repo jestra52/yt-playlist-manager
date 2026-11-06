@@ -60,6 +60,7 @@ let SQL: SqlJsStatic;
 let store: AppStore;
 let calls: Call[];
 let rejectSync: boolean;
+let limitedSyncs: number;
 let recoveryCodesLeft: number;
 let pairingLockedUntil: number | null;
 let pairingInfo: object;
@@ -101,6 +102,13 @@ const answer = (path: string, method: string | undefined, body: Call['body']): R
     }
     if (path.endsWith('/sync')) {
         if (rejectSync) return reply(401, { error: "this device isn't in a sync chain" });
+        if (limitedSyncs > 0) {
+            limitedSyncs -= 1;
+            return new Response(JSON.stringify({ error: 'too many attempts' }), {
+                status: 429,
+                headers: { 'Retry-After': '1' },
+            });
+        }
         const changes = incoming;
         incoming = {};
         return reply(200, { cursor: 7, hasMore: false, applied: 0, changes });
@@ -140,6 +148,7 @@ afterEach(() => {
 beforeEach(() => {
     calls = [];
     rejectSync = false;
+    limitedSyncs = 0;
     recoveryCodesLeft = 10;
     pairingLockedUntil = null;
     pairingInfo = { status: 'waiting', requesterName: '', expiresAt: Date.now() + 600_000 };
@@ -412,6 +421,19 @@ describe('auto-sync', () => {
         await vi.waitFor(() => expect(syncCalls()).toHaveLength(before + 1), { timeout: 2000 });
         stop();
     }, 8000);
+
+    it('waits and retries by itself when the server says too many requests', async () => {
+        await inChain();
+        const before = syncCalls().length;
+        limitedSyncs = 1;
+        store.dispatch(syncRequested(0));
+        await vi.waitFor(() => expect(sync().waitMs).toBe(1000));
+        expect(sync().status).toBe('error');
+
+        await vi.waitFor(() => expect(syncCalls()).toHaveLength(before + 2), { timeout: 8000 });
+        await vi.waitFor(() => expect(sync().status).toBe('idle'));
+        expect(sync().waitMs).toBe(0);
+    }, 12000);
 
     it('does nothing without a chain, or with auto-sync turned off', async () => {
         store.dispatch(syncRequested(0));

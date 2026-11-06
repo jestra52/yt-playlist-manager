@@ -191,8 +191,8 @@ const run =
                 dispatch(syncStopped());
                 return false;
             }
-            const { message } = err as Error;
-            dispatch(syncFailed({ error: message, offline: Boolean((err as client.SyncError).offline) }));
+            const { message, offline, retryAfterMs: waitMs } = err as client.SyncError;
+            dispatch(syncFailed({ error: message, offline: Boolean(offline), waitMs }));
             if (!quiet) dispatch(notify(message, { tone: 'error' }));
             return false;
         }

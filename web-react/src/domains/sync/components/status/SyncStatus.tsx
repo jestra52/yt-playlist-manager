@@ -11,7 +11,7 @@ import styles from './SyncStatus.module.scss';
 const SYNC_NOW_PAUSE_MS = 5000;
 
 export const SyncStatus = () => {
-    const { status, offline, pending, lastSyncedAt, error } = useAppSelector(selectSync);
+    const { status, offline, waitMs, pending, lastSyncedAt, error } = useAppSelector(selectSync);
     const configured = useAppSelector(selectConfigured);
     const dispatch = useAppDispatch();
     const now = useNow(30_000);
@@ -27,6 +27,7 @@ export const SyncStatus = () => {
     const label = () => {
         if (!configured) return 'Only on this device';
         if (syncing) return 'Syncing…';
+        if (status === 'error' && waitMs > 0) return 'Waiting to sync';
         if (status === 'error') return offline ? 'Offline. Changes are saved here.' : 'Sync failed';
         if (pending > 0) return `${pending} change${pending === 1 ? '' : 's'} to sync`;
         return `Synced ${timeAgo(lastSyncedAt, now)}`;
@@ -34,7 +35,8 @@ export const SyncStatus = () => {
 
     const tone = () => {
         if (!configured) return styles.idle;
-        if (status === 'error') return 'status-error';
+        if (status === 'error' && waitMs === 0) return 'status-error';
+        if (status === 'error') return 'status-warning';
         return pending > 0 ? 'status-warning' : 'status-success';
     };
 
