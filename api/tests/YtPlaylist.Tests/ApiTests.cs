@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using YtPlaylist.Application.Chains;
+using YtPlaylist.Application.Reports;
 using YtPlaylist.Application.Sync;
 using YtPlaylist.Application.YouTube;
 
@@ -46,6 +47,7 @@ public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFix
                 {
                     services.AddSingleton(store);
                     services.AddSingleton<IChainStore>(chains ?? new FakeChainStore());
+                    services.AddSingleton<IReportStore>(new FakeReportStore());
                 }
                 if (clock is not null)
                 {
@@ -204,6 +206,114 @@ public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFix
         var access = await CreateChainAsync(client);
         using var response = await client.SendAsync(SyncRequest(body, Credential(access)));
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    private static HttpRequestMessage ReportRequest(HttpMethod method, string path, string? token, object? body = null)
+    {
+        var request = new HttpRequestMessage(method, path);
+        if (token is not null)
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        if (body is not null)
+        {
+            request.Content = JsonContent.Create(body);
+        }
+        return request;
+    }
+
+    private static object Report(string id = "r1", string content = "{}", string reason = "added") => new
+    {
+        id,
+        playlistId = "p1",
+        playlistName = "House",
+        reason,
+        videoCount = 2,
+        createdAt = 100,
+        content,
+    };
+
+    [Fact]
+    public async Task SavesListsAndReturnsReportsInAChain()
+    {
+        using var client = this.Client(new FakeSyncStore());
+        var token = Credential(await CreateChainAsync(client));
+
+        using var post = ReportRequest(HttpMethod.Post, "/api/reports", token, Report(content: """{"format":"x"}"""));
+        using var saved = await client.SendAsync(post);
+        Assert.Equal(HttpStatusCode.NoContent, saved.StatusCode);
+
+        // Sending it again changes nothing.
+        using var again = ReportRequest(HttpMethod.Post, "/api/reports", token, Report(content: "{}"));
+        Assert.Equal(HttpStatusCode.NoContent, (await client.SendAsync(again)).StatusCode);
+
+        using var list = ReportRequest(HttpMethod.Get, "/api/reports?playlistId=p1", token);
+        using var listed = await client.SendAsync(list);
+        var items = await listed.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(1, items.GetArrayLength());
+        Assert.Equal("House", items[0].GetProperty("playlistName").GetString());
+        Assert.False(items[0].TryGetProperty("content", out _));
+
+        using var get = ReportRequest(HttpMethod.Get, "/api/reports/r1", token);
+        using var report = await client.SendAsync(get);
+        Assert.Equal("""{"format":"x"}""", await report.Content.ReadAsStringAsync());
+        Assert.Equal("no-store", report.Headers.CacheControl?.ToString());
+    }
+
+    [Fact]
+    public async Task ReportsStayInTheirChain()
+    {
+        using var client = this.Client(new FakeSyncStore());
+        var mine = Credential(await CreateChainAsync(client));
+        var other = Credential(await CreateChainAsync(client));
+        using var post = ReportRequest(HttpMethod.Post, "/api/reports", mine, Report());
+        await client.SendAsync(post);
+
+        using var get = ReportRequest(HttpMethod.Get, "/api/reports/r1", other);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.SendAsync(get)).StatusCode);
+    }
+
+    [Fact]
+    public async Task ReportsNeedADevice()
+    {
+        using var client = this.Client(new FakeSyncStore());
+        using var get = ReportRequest(HttpMethod.Get, "/api/reports", null);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.SendAsync(get)).StatusCode);
+    }
+
+    [Fact]
+    public async Task ReportsAreUnavailableWithoutADatabase()
+    {
+        using var client = this.Client();
+        using var get = ReportRequest(HttpMethod.Get, "/api/reports", "token");
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, (await client.SendAsync(get)).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("bad id", "{}", "added")]
+    [InlineData("r1", "", "added")]
+    [InlineData("r1", "{}", "")]
+    public async Task RejectsInvalidReports(string id, string content, string reason)
+    {
+        using var client = this.Client(new FakeSyncStore());
+        var token = Credential(await CreateChainAsync(client));
+        using var post = ReportRequest(HttpMethod.Post, "/api/reports", token, Report(id, content, reason));
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(post)).StatusCode);
+    }
+
+    [Fact]
+    public async Task ReportsAreRateLimited()
+    {
+        using var client = this.Client(new FakeSyncStore());
+        var token = Credential(await CreateChainAsync(client));
+        HttpStatusCode last = default;
+        for (var i = 0; i < 61; i++)
+        {
+            using var get = ReportRequest(HttpMethod.Get, "/api/reports", token);
+            using var response = await client.SendAsync(get);
+            last = response.StatusCode;
+        }
+        Assert.Equal(HttpStatusCode.TooManyRequests, last);
     }
 
     [Fact]

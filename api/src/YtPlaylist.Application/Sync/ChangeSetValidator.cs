@@ -67,7 +67,7 @@ public static partial class ChangeSetValidator
         RequireTimestamps("video", v.Id, v.CreatedAt, v.UpdatedAt);
     }
 
-    private static void RequireId(string field, string? id)
+    internal static void RequireId(string field, string? id)
     {
         if (string.IsNullOrEmpty(id) || id.Length > SyncLimits.MaxIdLength || !RowId().IsMatch(id))
         {
