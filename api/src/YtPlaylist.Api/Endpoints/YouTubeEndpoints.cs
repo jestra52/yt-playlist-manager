@@ -56,7 +56,7 @@ public static class YouTubeEndpoints
         try
         {
             var playlist = await source.GetPlaylistAsync(id ?? "", includeUnavailable ?? false, cancellationToken);
-            http.Response.Headers.CacheControl = "public, max-age=600";
+            http.Response.Headers.CacheControl = "no-store";
             return Results.Json(playlist);
         }
         catch (DomainValidationException)

@@ -661,6 +661,16 @@ public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFix
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
 
+    [Fact]
+    public async Task PlaylistReadsAreNeverCached()
+    {
+        using var client = this.Client();
+
+        using var response = await client.GetAsync("/api/playlist?id=PLabcdefghijklmnop");
+
+        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
+    }
+
     [Theory]
     [InlineData("/api/oembed?id=dQw4w9WgXcQ", HttpStatusCode.OK)]
     [InlineData("/api/oembed?id=bad", HttpStatusCode.BadRequest)]
