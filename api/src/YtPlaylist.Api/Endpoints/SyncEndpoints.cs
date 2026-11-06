@@ -10,13 +10,16 @@ namespace YtPlaylist.Api.Endpoints;
 
 public static class SyncEndpoints
 {
+    /// <summary>Requests per device: well above a new device pulling a big library page by page.</summary>
+    public const string RateLimit = "sync";
+
     /// <summary>
     /// POST /api/sync: push local changes, pull server changes newer than <c>since</c>, both in
     /// the sync chain of the device whose credential is sent as a bearer token.
     /// </summary>
     public static IEndpointRouteBuilder MapSyncEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/sync", SyncAsync);
+        app.MapPost("/api/sync", SyncAsync).RequireRateLimiting(RateLimit);
         return app;
     }
 

@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using YtPlaylist.Application.Chains;
@@ -17,6 +19,15 @@ internal static class DeviceAuth
             ? header[scheme.Length..].Trim()
             : null;
     }
+
+    /// <summary>
+    /// Who a request counts against when rate limiting: the device, by a hash so the credential
+    /// isn't kept in memory, or the IP address when it sends none.
+    /// </summary>
+    public static string RateLimitKey(HttpContext http) =>
+        BearerToken(http.Request) is { } token
+            ? Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)))
+            : http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
     /// <summary>
     /// The device whose credential the request carries, or the error to answer with:
