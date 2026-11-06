@@ -45,6 +45,7 @@ export interface RemoteVideo extends SyncedRow {
     notes?: string;
     watched?: boolean;
     unavailable?: boolean;
+    replacedYoutubeId?: string;
 }
 
 export interface RemoteChanges {
@@ -219,6 +220,7 @@ export const collectChanges = (db: Database, limit = 2000) => {
             notes: videos.notes,
             watched: videos.watched,
             unavailable: videos.unavailable,
+            replacedYoutubeId: videos.replacedYoutubeId,
             position: videos.position,
             createdAt: videos.createdAt,
             updatedAt: videos.updatedAt,
@@ -298,10 +300,11 @@ export const applyRemote = (db: Database, changes: RemoteChanges): number => {
         );
     }
     for (const v of changes.videos ?? []) {
-        // A server from before artists (or the unavailable flag) existed leaves them out:
+        // A server from before artists (or a newer field) leaves them out:
         // keep the local values.
         const hasArtist = v.artist !== undefined;
         const hasUnavailable = v.unavailable !== undefined;
+        const hasReplacedId = v.replacedYoutubeId !== undefined;
         applied += db.write(
             db.orm
                 .insert(videos)
@@ -317,6 +320,7 @@ export const applyRemote = (db: Database, changes: RemoteChanges): number => {
                     notes: v.notes ?? '',
                     watched: Boolean(v.watched),
                     unavailable: Boolean(v.unavailable),
+                    replacedYoutubeId: v.replacedYoutubeId ?? '',
                     position: v.position ?? 0,
                     createdAt: v.createdAt,
                     updatedAt: v.updatedAt,
@@ -338,6 +342,7 @@ export const applyRemote = (db: Database, changes: RemoteChanges): number => {
                         notes: excluded(videos.notes),
                         watched: excluded(videos.watched),
                         ...(hasUnavailable && { unavailable: excluded(videos.unavailable) }),
+                        ...(hasReplacedId && { replacedYoutubeId: excluded(videos.replacedYoutubeId) }),
                         position: excluded(videos.position),
                         updatedAt: excluded(videos.updatedAt),
                         deleted: excluded(videos.deleted),

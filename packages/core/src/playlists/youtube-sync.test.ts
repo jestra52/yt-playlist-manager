@@ -48,6 +48,29 @@ describe('diffWithYouTube', () => {
         });
     });
 
+    it('treats a video with a changed link as the one it replaced', () => {
+        const videos = [
+            { id: 'a', youtubeId: 'aaaaaaaaaaa' },
+            { id: 'b', youtubeId: 'nnnnnnnnnnn', replacedYoutubeId: 'bbbbbbbbbbb' },
+        ];
+        const diff = diffWithYouTube(
+            videos,
+            {
+                source: 'api',
+                videos: [{ youtubeId: 'aaaaaaaaaaa' }, { youtubeId: 'bbbbbbbbbbb' }, { youtubeId: 'ccccccccccc' }],
+            },
+            { includeUnavailable: true },
+        );
+        expect(diff.removed).toEqual([]);
+        expect(diff.added).toMatchObject([{ youtubeId: 'ccccccccccc', afterId: 'b' }]);
+    });
+
+    it('removes a changed video once the one it replaced has left YouTube', () => {
+        const video = { id: 'b', youtubeId: 'nnnnnnnnnnn', replacedYoutubeId: 'bbbbbbbbbbb' };
+        const diff = diffWithYouTube([video], { source: 'api', videos: [{ youtubeId: 'aaaaaaaaaaa' }] });
+        expect(diff.removed).toEqual([video]);
+    });
+
     it('marks videos deleted on YouTube, and clears the mark when they come back', () => {
         const playlist = [video('a', 'aaaaaaaaaaa'), video('b', 'bbbbbbbbbbb', { unavailable: true })];
         const diff = diffWithYouTube(

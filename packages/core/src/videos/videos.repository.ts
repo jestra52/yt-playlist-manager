@@ -11,6 +11,7 @@ const fields = {
     author: videos.author,
     artist: videos.artist,
     artistSource: videos.artistSource,
+    replacedYoutubeId: videos.replacedYoutubeId,
     thumbnailUrl: videos.thumbnailUrl,
     notes: videos.notes,
     watched: videos.watched,
@@ -28,6 +29,7 @@ interface StoredVideo {
     author: string;
     artist: string;
     artistSource: string;
+    replacedYoutubeId: string;
     thumbnailUrl: string;
     notes: string;
     watched: boolean;
@@ -66,6 +68,7 @@ export type VideoPatch = Partial<
         | 'author'
         | 'artist'
         | 'artistSource'
+        | 'replacedYoutubeId'
         | 'thumbnailUrl'
         | 'notes'
         | 'watched'
@@ -261,6 +264,7 @@ const EDITABLE = [
     'author',
     'artist',
     'artistSource',
+    'replacedYoutubeId',
     'thumbnailUrl',
     'notes',
     'watched',
@@ -270,6 +274,15 @@ const EDITABLE = [
 ] as const;
 
 const FLAGS = new Set<string>(['watched', 'unavailable']);
+
+/** Keeps the first ID a row had, through any number of changes, until it's back on that ID. */
+export const replacedIdPatch = (
+    video: Pick<Video, 'youtubeId' | 'replacedYoutubeId'>,
+    youtubeId: string,
+): { replacedYoutubeId: string } => {
+    const replaced = video.replacedYoutubeId || video.youtubeId;
+    return { replacedYoutubeId: replaced === youtubeId ? '' : replaced };
+};
 
 /** Updates the given fields and marks the row for sync. */
 export const updateVideo = (db: Database, id: string, patch: VideoPatch): Video | null => {

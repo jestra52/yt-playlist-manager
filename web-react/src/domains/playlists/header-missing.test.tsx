@@ -131,6 +131,16 @@ describe('changing a link', () => {
         });
     });
 
+    it('remembers the first ID through several changes, until it goes back to it', async () => {
+        const video = saved();
+        await store.dispatch(changeVideoLink(video.id, 'bbbbbbbbbbb'));
+        await store.dispatch(changeVideoLink(video.id, 'ddddddddddd'));
+        expect(current(video.id)).toMatchObject({ youtubeId: 'ddddddddddd', replacedYoutubeId: 'aaaaaaaaaaa' });
+
+        await store.dispatch(changeVideoLink(video.id, 'aaaaaaaaaaa'));
+        expect(current(video.id)).toMatchObject({ youtubeId: 'aaaaaaaaaaa', replacedYoutubeId: '' });
+    });
+
     it('keeps an artist set by hand', async () => {
         const video = saved();
         updateVideo(getDatabase(), video.id, { artist: 'Mine', artistSource: 'user' });

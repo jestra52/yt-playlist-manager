@@ -58,6 +58,10 @@ public static partial class ChangeSetValidator
         {
             throw new DomainValidationException($"video {v.Id} has an invalid youtubeId");
         }
+        if (!string.IsNullOrEmpty(v.ReplacedYouTubeId) && !YouTubeIds.IsVideoId(v.ReplacedYouTubeId))
+        {
+            throw new DomainValidationException($"video {v.Id} has an invalid replacedYoutubeId");
+        }
         MaxLength("video title", v.Title, SyncLimits.MaxTitleLength);
         MaxLength("video author", v.Author, SyncLimits.MaxNameLength);
         MaxLength("video artist", v.Artist, SyncLimits.MaxNameLength);

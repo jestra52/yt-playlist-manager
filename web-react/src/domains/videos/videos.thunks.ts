@@ -19,6 +19,7 @@ import {
     listVideos,
     moveVideoToPlaylist,
     reorderVideo,
+    replacedIdPatch,
     restoreVideo as restoreVideoRow,
     updateVideo,
     type Video,
@@ -237,7 +238,12 @@ export const completeVideo =
         if (!video) return false;
         const youtubeId = dispatch(linkedYouTubeId(video, link));
         if (!youtubeId) return false;
-        const linked = updateVideo(db, id, { youtubeId, thumbnailUrl: thumbnailFor(youtubeId), unavailable: false });
+        const linked = updateVideo(db, id, {
+            ...replacedIdPatch(video, youtubeId),
+            youtubeId,
+            thumbnailUrl: thumbnailFor(youtubeId),
+            unavailable: false,
+        });
         if (linked) dispatch(changed(linked));
         const meta = await fetchVideoMetadata(youtubeId, selectApiUrl(getState()));
         const current = getVideo(getDatabase(), id);
@@ -276,6 +282,7 @@ export const changeVideoLink =
         const updated = updateVideo(getDatabase(), id, {
             ...meta,
             ...newVideoArtistPatch(current, meta),
+            ...replacedIdPatch(current, youtubeId),
             youtubeId,
             unavailable: false,
         });
