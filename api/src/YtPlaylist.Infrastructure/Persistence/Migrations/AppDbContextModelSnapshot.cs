@@ -436,6 +436,12 @@ namespace YtPlaylist.Infrastructure.Persistence.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("position");
 
+                    b.Property<string>("ReplacedYouTubeId")
+                        .IsRequired()
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)")
+                        .HasColumnName("replaced_youtube_id");
+
                     b.Property<long>("Seq")
                         .HasColumnType("bigint")
                         .HasColumnName("seq");

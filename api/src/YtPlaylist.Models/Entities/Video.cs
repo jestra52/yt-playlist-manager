@@ -19,6 +19,8 @@ public sealed class Video
     public bool Watched { get; set; }
     /// <summary>Deleted or made private on YouTube. The row keeps its YouTube ID so a later sync recognizes it.</summary>
     public bool Unavailable { get; set; }
+    /// <summary>The YouTube ID this row had before its link was changed, so a linked playlist still knows it.</summary>
+    public string ReplacedYouTubeId { get; set; } = "";
     public double Position { get; set; }
     public long CreatedAt { get; set; }
     public long UpdatedAt { get; set; }

@@ -2,7 +2,8 @@
  * Compares a playlist with its YouTube playlist, as /api/playlist returns it
  * when read with `includeUnavailable` (deleted and private videos in their
  * place, flagged). Only videos with a YouTube ID take part; placeholders from
- * old reports are left alone.
+ * old reports are left alone. A video whose link was changed in the app still
+ * counts as the video it replaced, so that one isn't offered back.
  *
  * Returns:
  *   complete        true when YouTube returned the whole playlist (read with an
@@ -19,6 +20,7 @@
 export interface LocalVideo {
     id: string;
     youtubeId: string;
+    replacedYoutubeId?: string;
     unavailable?: boolean;
 }
 
@@ -50,8 +52,10 @@ export const diffWithYouTube = <V extends LocalVideo>(
     { includeUnavailable = false } = {},
 ): YouTubeDiff<V> => {
     const local = new Map<string, V>();
+    const replaced = new Map<string, V>();
     for (const video of videos) {
         if (video.youtubeId && !local.has(video.youtubeId)) local.set(video.youtubeId, video);
+        if (video.replacedYoutubeId) replaced.set(video.replacedYoutubeId, video);
     }
     const onYouTube = new Set(source.videos.map((item) => item.youtubeId));
     const complete = source.source === 'api' && !source.partial;
@@ -71,6 +75,11 @@ export const diffWithYouTube = <V extends LocalVideo>(
             if (!item.unavailable && video.unavailable) availableAgain.push(video);
             continue;
         }
+        const replacement = replaced.get(item.youtubeId);
+        if (replacement) {
+            afterId = replacement.id;
+            continue;
+        }
         if (item.unavailable && !includeUnavailable) continue;
         added.push({
             ...item,
@@ -79,7 +88,11 @@ export const diffWithYouTube = <V extends LocalVideo>(
         });
     }
 
-    const removed = complete ? [...local.values()].filter((video) => !onYouTube.has(video.youtubeId)) : [];
+    const removed = complete
+        ? [...local.values()].filter(
+              (video) => !onYouTube.has(video.youtubeId) && !onYouTube.has(video.replacedYoutubeId ?? ''),
+          )
+        : [];
     return { complete, added, nowUnavailable, availableAgain, removed };
 };
 

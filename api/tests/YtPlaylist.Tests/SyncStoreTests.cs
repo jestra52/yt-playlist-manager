@@ -238,6 +238,7 @@ public abstract class SyncStoreTests
             YouTubeId = "aaaaaaaaaaa",
             Title = "Deleted video",
             Unavailable = true,
+            ReplacedYouTubeId = "bbbbbbbbbbb",
             CreatedAt = 1,
             UpdatedAt = 1,
         };
@@ -245,7 +246,7 @@ public abstract class SyncStoreTests
         var fromOlderApp = new ChangeSet
         {
             Playlists = [playlist with { Name = "Renamed", Source = null, SourceId = null, UpdatedAt = 2 }],
-            Videos = [video with { Watched = true, Unavailable = null, UpdatedAt = 2 }],
+            Videos = [video with { Watched = true, Unavailable = null, ReplacedYouTubeId = null, UpdatedAt = 2 }],
         };
         await store.ApplyAsync(chain, fromOlderApp, null, CancellationToken.None);
 
@@ -255,6 +256,7 @@ public abstract class SyncStoreTests
         var storedVideo = Assert.Single(page.Changes.Videos);
         Assert.True(storedVideo.Watched);
         Assert.True(storedVideo.Unavailable);
+        Assert.Equal("bbbbbbbbbbb", storedVideo.ReplacedYouTubeId);
     }
 
     [Fact]

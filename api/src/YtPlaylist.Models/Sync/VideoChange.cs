@@ -19,6 +19,9 @@ public sealed record VideoChange
     public bool Watched { get; init; }
     /// <summary>Null when the device's app is older than this flag; the stored value is kept then.</summary>
     public bool? Unavailable { get; init; }
+    /// <summary>Null when the device's app is older than this field; the stored value is kept then.</summary>
+    [JsonPropertyName("replacedYoutubeId")]
+    public string? ReplacedYouTubeId { get; init; }
     public double Position { get; init; }
     public long CreatedAt { get; init; }
     public long UpdatedAt { get; init; }

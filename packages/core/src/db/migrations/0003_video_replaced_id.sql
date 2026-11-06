@@ -1,0 +1,1 @@
+ALTER TABLE `videos` ADD `replaced_youtube_id` text DEFAULT '' NOT NULL;

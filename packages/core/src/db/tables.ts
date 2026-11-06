@@ -56,6 +56,8 @@ export const videos = sqliteTable(
         // Deleted or made private on YouTube. The row keeps its YouTube ID, so syncing
         // with the playlist again recognizes it, and waits for another link like a placeholder.
         unavailable: integer('unavailable', { mode: 'boolean' }).notNull().default(false),
+        // The YouTube ID this row had before its link was changed, so a linked playlist still knows it.
+        replacedYoutubeId: text('replaced_youtube_id').notNull().default(''),
         position: real('position').notNull().default(0),
         createdAt: integer('created_at').notNull(),
         updatedAt: integer('updated_at').notNull(),

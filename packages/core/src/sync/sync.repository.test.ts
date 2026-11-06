@@ -164,6 +164,24 @@ describe('sync bookkeeping', () => {
         expect(sync.getSettings(db)).toMatchObject({ apiUrl: '/api', autoSync: false });
     });
 
+    it('syncs the replaced ID, and keeps it when a device leaves it out', () => {
+        const db = freshDb();
+        const row = {
+            id: 'v1',
+            playlistId: 'p1',
+            youtubeId: 'bbbbbbbbbbb',
+            createdAt: 1,
+            updatedAt: 2,
+            replacedYoutubeId: 'aaaaaaaaaaa',
+        };
+        sync.applyRemote(db, { videos: [row] });
+        expect(sync.collectChanges(db).videos).toEqual([]);
+
+        const { replacedYoutubeId: _, ...older } = row;
+        sync.applyRemote(db, { videos: [{ ...older, updatedAt: 3 }] });
+        expect(videos.listVideos(db)[0]).toMatchObject({ replacedYoutubeId: 'aaaaaaaaaaa' });
+    });
+
     it("joining a chain merges this device's library into it; claiming keeps the cursor", () => {
         const db = freshDb();
         const p = playlists.createPlaylist(db, { name: 'Mine' })!;
