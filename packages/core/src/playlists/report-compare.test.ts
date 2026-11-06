@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { compareReport, parseReport, titleKey, type ComparedVideo, type ReportComparison } from './report-compare';
-import { buildPlaylistReport } from './report';
+import {
+    compareReport,
+    FORMATS,
+    parseReport,
+    titleKey,
+    type ComparedVideo,
+    type ReportComparison,
+} from './report-compare';
+import { buildJsonReport, buildPlaylistReport, JSON_REPORT_FORMAT } from './report';
 
 describe('parseReport', () => {
     it('reads a legacy report: numbered lines, skipping the total, blank lines and a BOM', () => {
@@ -224,5 +231,47 @@ describe('compareReport', () => {
         expect(strip(compare(legacy, playlist))).toEqual(strip(compare(withArtists, playlist)));
         expect(strip(compare(legacy, playlist)).map((m) => m.number)).toEqual([2, 4]);
         expect(compare(withArtists, playlist).missing[0]!.artist).toBe('Miki Matsubara');
+    });
+});
+
+describe('JSON reports', () => {
+    const report = (videos: unknown[], extra = {}) =>
+        JSON.stringify({ format: JSON_REPORT_FORMAT, version: 1, playlist: { name: 'House' }, videos, ...extra });
+    const video = {
+        youtubeId: 'aaaaaaaaaaa',
+        title: 'Lady',
+        artist: 'Modjo',
+        author: 'ModjoOfficial',
+        notes: 'Summer',
+        watched: true,
+        unavailable: false,
+    };
+
+    it('reads what the app wrote, in order', () => {
+        const written = buildJsonReport('House', [video, { ...video, youtubeId: '', title: 'Lost' }]);
+        expect(parseReport(JSON.stringify(written))).toEqual({
+            format: FORMATS.json,
+            entries: [
+                { ...video, number: 1 },
+                { ...video, number: 2, youtubeId: null, title: 'Lost' },
+            ],
+        });
+    });
+
+    it('matches by YouTube ID, even when the title changed', () => {
+        const parsed = parseReport(report([video, { ...video, youtubeId: 'bbbbbbbbbbb', title: 'Gone' }]));
+        const result = compareReport(parsed, [{ id: 'v1', youtubeId: 'aaaaaaaaaaa', title: 'Renamed' }]);
+        expect(result).toMatchObject({ found: 1, missing: [{ youtubeId: 'bbbbbbbbbbb', afterId: 'v1' }] });
+    });
+
+    it.each([
+        ['{ not json', "This file isn't valid JSON."],
+        ['{"format":"other","version":1,"videos":[]}', "This JSON file isn't a report from this app."],
+        [report([], { version: 2 }), 'This report is from a newer version of the app.'],
+        [report([{ youtubeId: 'bad id' }]), "This report is damaged: a video in it can't be read."],
+        [report([{ youtubeId: '' }]), "This report is damaged: a video in it can't be read."],
+        [report([], { videos: 'none' }), "This report is damaged: a video in it can't be read."],
+    ])('refuses %s', (source, error) => {
+        expect(parseReport(source)).toEqual({ format: FORMATS.json, entries: [], error });
     });
 });
