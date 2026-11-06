@@ -3,9 +3,9 @@ import { memo, useState } from 'react';
 import { useAppSelector } from '../../../../app/store';
 import { selectVideoById } from '../../videos.selectors';
 import { ArtistLine } from '../row/ArtistLine';
-import { CompleteLinkForm } from '../row/CompleteLinkForm';
 import { MissingThumb } from '../row/MissingThumb';
 import { VideoActions } from '../row/VideoActions';
+import { VideoLinkForm } from '../row/VideoLinkForm';
 import { VideoNotes } from '../row/VideoNotes';
 import { VideoThumb } from '../row/VideoThumb';
 import { WatchedMark } from '../row/WatchedMark';
@@ -15,6 +15,7 @@ export const VideoRow = memo(({ id, index, total }: { id: string; index: number;
     const video = useAppSelector((state) => selectVideoById(state, id));
     const playing = useAppSelector((state) => state.videos.playingId === id);
     const [editingNotes, setEditingNotes] = useState(false);
+    const [editingLink, setEditingLink] = useState(false);
     if (!video) return null;
     const title = video.title || (video.missing ? 'Untitled' : video.youtubeId);
 
@@ -33,7 +34,7 @@ export const VideoRow = memo(({ id, index, total }: { id: string; index: number;
                 {video.missing ? (
                     <>
                         <p className={styles.title}>{title}</p>
-                        <CompleteLinkForm video={video} title={title} />
+                        <VideoLinkForm video={video} title={title} />
                     </>
                 ) : (
                     <a
@@ -48,7 +49,18 @@ export const VideoRow = memo(({ id, index, total }: { id: string; index: number;
                 <ArtistLine video={video} title={title} />
                 <VideoNotes video={video} editing={editingNotes} onEditingChange={setEditingNotes} />
             </div>
-            <VideoActions video={video} index={index} total={total} onEditNotes={() => setEditingNotes(true)} />
+            <VideoActions
+                video={video}
+                index={index}
+                total={total}
+                onEditNotes={() => setEditingNotes(true)}
+                onEditLink={() => setEditingLink(true)}
+            />
+            {editingLink && !video.missing && (
+                <div className="col-span-full row-start-3">
+                    <VideoLinkForm video={video} title={title} onClose={() => setEditingLink(false)} />
+                </div>
+            )}
         </li>
     );
 });

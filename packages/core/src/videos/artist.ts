@@ -130,3 +130,13 @@ export const guessedArtistPatch = (
     if (!artist || artist === video?.artist) return {};
     return { artist, artistSource: 'guess' };
 };
+
+/** Like `guessedArtistPatch`, for a row that now holds another video: an old guess doesn't carry over. */
+export const newVideoArtistPatch = (
+    video: ArtistFields | null | undefined,
+    { title, author }: { title?: string; author?: string },
+): { artist?: string; artistSource?: ArtistSource } => {
+    if (!canReplaceArtist(video, 'guess')) return {};
+    const artist = guessArtist({ title, author });
+    return { artist, artistSource: artist ? 'guess' : '' };
+};

@@ -4,6 +4,7 @@ import {
     cleanArtist,
     guessArtist,
     guessedArtistPatch,
+    newVideoArtistPatch,
     knownArtists,
     matchKnownArtist,
 } from './artist';
@@ -61,6 +62,18 @@ describe('canReplaceArtist', () => {
 
     it("treats a source this version doesn't know as no source", () => {
         expect(canReplaceArtist({ artistSource: 'from-the-future' }, 'guess')).toBe(true);
+    });
+});
+
+describe('newVideoArtistPatch', () => {
+    it('replaces or clears a guess, and keeps an artist set by hand', () => {
+        const guessed = { title: 'Old', author: '', artist: 'Old Artist', artistSource: 'guess' as const };
+        expect(newVideoArtistPatch(guessed, { title: 'Anri - Windy Summer' })).toEqual({
+            artist: 'Anri',
+            artistSource: 'guess',
+        });
+        expect(newVideoArtistPatch(guessed, { title: 'Windy Summer' })).toEqual({ artist: '', artistSource: '' });
+        expect(newVideoArtistPatch({ ...guessed, artistSource: 'user' }, { title: 'Anri - Windy Summer' })).toEqual({});
     });
 });
 

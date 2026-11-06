@@ -2,7 +2,13 @@ import { getDatabase } from '@ytpm/core/db/index';
 import type { Playlist } from '@ytpm/core/playlists/playlists.repository';
 import type { MissingEntry } from '@ytpm/core/playlists/report-compare';
 import type { YouTubeDiff } from '@ytpm/core/playlists/youtube-sync';
-import { cleanArtist, guessedArtistPatch, knownArtists, matchKnownArtist } from '@ytpm/core/videos/artist';
+import {
+    cleanArtist,
+    guessedArtistPatch,
+    knownArtists,
+    matchKnownArtist,
+    newVideoArtistPatch,
+} from '@ytpm/core/videos/artist';
 import { fetchVideoMetadata } from '@ytpm/core/videos/metadata.client';
 import { fetchYouTubePlaylist, PARTIAL_IMPORT_NOTE } from '@ytpm/core/videos/playlist.client';
 import {
@@ -198,6 +204,26 @@ export const finishAndPlayNext = (): AppThunk => (dispatch, getState) => {
     }
 };
 
+/** The YouTube ID in `link`, or null with a notice when it's no link or already in the playlist. */
+const linkedYouTubeId =
+    (video: Video, link: string): AppThunk<string | null> =>
+    (dispatch, getState) => {
+        const youtubeId = parseYouTubeId(link.trim());
+        if (!youtubeId) {
+            dispatch(notify('Paste a YouTube video link, like https://youtu.be/...', { tone: 'error' }));
+            return null;
+        }
+        const duplicate = selectAllVideos(getState()).find(
+            (v) => v.playlistId === video.playlistId && v.youtubeId === youtubeId && v.id !== video.id,
+        );
+        if (duplicate) {
+            const name = duplicate.title || youtubeId;
+            dispatch(notify(`That video is already in this playlist: "${name}"`, { tone: 'error' }));
+            return null;
+        }
+        return youtubeId;
+    };
+
 /**
  * Completes a placeholder, or a video deleted on YouTube, with the YouTube video
  * at `link`: its ID, then the title, channel and thumbnail from YouTube.
@@ -209,19 +235,8 @@ export const completeVideo =
         const db = getDatabase();
         const video = getVideo(db, id);
         if (!video) return false;
-        const youtubeId = parseYouTubeId(link.trim());
-        if (!youtubeId) {
-            dispatch(notify('Paste a YouTube video link, like https://youtu.be/...', { tone: 'error' }));
-            return false;
-        }
-        const duplicate = selectAllVideos(getState()).find(
-            (v) => v.playlistId === video.playlistId && v.youtubeId === youtubeId && v.id !== id,
-        );
-        if (duplicate) {
-            const name = duplicate.title || youtubeId;
-            dispatch(notify(`That video is already in this playlist: "${name}"`, { tone: 'error' }));
-            return false;
-        }
+        const youtubeId = dispatch(linkedYouTubeId(video, link));
+        if (!youtubeId) return false;
         const linked = updateVideo(db, id, { youtubeId, thumbnailUrl: thumbnailFor(youtubeId), unavailable: false });
         if (linked) dispatch(changed(linked));
         const meta = await fetchVideoMetadata(youtubeId, selectApiUrl(getState()));
@@ -230,6 +245,41 @@ export const completeVideo =
             const updated = updateVideo(getDatabase(), id, { ...meta, ...guessedArtistPatch(current, meta) });
             if (updated) dispatch(changed(updated));
         }
+        return true;
+    };
+
+/**
+ * Points a video at the YouTube video at `link`, keeping its notes, watched mark,
+ * place and any artist set by hand. Nothing changes unless YouTube has the new
+ * video's details, so a video never shows another one's title. Resolves to true
+ * when the video has that link.
+ */
+export const changeVideoLink =
+    (id: string, link: string): AppThunk<Promise<boolean>> =>
+    async (dispatch, getState) => {
+        const video = getVideo(getDatabase(), id);
+        if (!video) return false;
+        const youtubeId = dispatch(linkedYouTubeId(video, link));
+        if (!youtubeId) return false;
+        if (youtubeId === video.youtubeId) return true;
+
+        const meta = await fetchVideoMetadata(youtubeId, selectApiUrl(getState()));
+        if (!meta || meta.unavailable) {
+            const message = meta
+                ? "That video isn't available on YouTube"
+                : "Couldn't get that video's details from YouTube. Try again.";
+            dispatch(notify(message, { tone: 'error' }));
+            return false;
+        }
+        const current = getVideo(getDatabase(), id);
+        if (!current) return false;
+        const updated = updateVideo(getDatabase(), id, {
+            ...meta,
+            ...newVideoArtistPatch(current, meta),
+            youtubeId,
+            unavailable: false,
+        });
+        if (updated) dispatch(changed(updated));
         return true;
     };
 
