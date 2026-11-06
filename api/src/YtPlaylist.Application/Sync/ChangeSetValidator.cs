@@ -58,6 +58,10 @@ public static partial class ChangeSetValidator
         {
             throw new DomainValidationException($"video {v.Id} has an invalid youtubeId");
         }
+        if (!string.IsNullOrEmpty(v.ReplacedYouTubeId) && !YouTubeIds.IsVideoId(v.ReplacedYouTubeId))
+        {
+            throw new DomainValidationException($"video {v.Id} has an invalid replacedYoutubeId");
+        }
         MaxLength("video title", v.Title, SyncLimits.MaxTitleLength);
         MaxLength("video author", v.Author, SyncLimits.MaxNameLength);
         MaxLength("video artist", v.Artist, SyncLimits.MaxNameLength);
@@ -67,7 +71,7 @@ public static partial class ChangeSetValidator
         RequireTimestamps("video", v.Id, v.CreatedAt, v.UpdatedAt);
     }
 
-    private static void RequireId(string field, string? id)
+    internal static void RequireId(string field, string? id)
     {
         if (string.IsNullOrEmpty(id) || id.Length > SyncLimits.MaxIdLength || !RowId().IsMatch(id))
         {

@@ -24,6 +24,28 @@ export interface ReportVideo {
 
 const EOL = '\r\n';
 
+/** What marks a JSON report, and the newest version of it this app reads. */
+export const JSON_REPORT_FORMAT = 'yuzu-tapes-report';
+export const JSON_REPORT_VERSION = 1;
+
+export interface JsonReportVideo {
+    youtubeId: string;
+    title: string;
+    artist: string;
+    author: string;
+    notes: string;
+    watched: boolean;
+    unavailable: boolean;
+}
+
+export interface JsonReport {
+    format: typeof JSON_REPORT_FORMAT;
+    version: number;
+    createdAt: string;
+    playlist: { name: string };
+    videos: JsonReportVideo[];
+}
+
 /** The header line that marks a report with artists. */
 export const FORMAT_LINE = 'Format: number: title | artist';
 
@@ -42,6 +64,27 @@ export const buildPlaylistReport = (videos: readonly ReportVideo[]): string => {
     });
     return [`Total videos: ${videos.length}`, FORMAT_LINE, ...lines].join(EOL);
 };
+
+/** Builds a JSON report for videos already in playlist order. Unlike the text one, it can restore them. */
+export const buildJsonReport = (
+    playlistName: string,
+    videos: readonly JsonReportVideo[],
+    date: Date = new Date(),
+): JsonReport => ({
+    format: JSON_REPORT_FORMAT,
+    version: JSON_REPORT_VERSION,
+    createdAt: date.toISOString(),
+    playlist: { name: playlistName },
+    videos: videos.map(({ youtubeId, title, artist, author, notes, watched, unavailable }) => ({
+        youtubeId,
+        title,
+        artist,
+        author,
+        notes,
+        watched,
+        unavailable,
+    })),
+});
 
 /**
  * Lower-case, hyphen-separated file name part from a playlist name. Letters
@@ -62,8 +105,12 @@ export const slugify = (name: string | null | undefined): string =>
         .replace(/-+$/, '') || 'playlist';
 
 /** `city-pop-report-2023-06-06__00-52-33.txt`, in local time. */
-export const reportFileName = (playlistName: string, date: Date = new Date()): string => {
+export const reportFileName = (
+    playlistName: string,
+    date: Date = new Date(),
+    extension: 'txt' | 'json' = 'txt',
+): string => {
     const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
     const time = `${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}`;
-    return `${slugify(playlistName)}-report-${day}__${time}.txt`;
+    return `${slugify(playlistName)}-report-${day}__${time}.${extension}`;
 };

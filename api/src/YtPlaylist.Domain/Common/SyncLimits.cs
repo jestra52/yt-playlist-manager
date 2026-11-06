@@ -12,4 +12,10 @@ public static class SyncLimits
     public const int MaxUrlLength = 2048;
     public const int MaxSourceLength = 32;
     public const int MaxDeviceNameLength = 100;
+    public const int MaxReportLength = 4_000_000;
+    public const int MaxReasonLength = 32;
+
+    /// <summary>Besides a playlist's first report, which is always kept.</summary>
+    public const int KeptReportsPerPlaylist = 10;
+    public const int DeletedPlaylistReportDays = 30;
 }

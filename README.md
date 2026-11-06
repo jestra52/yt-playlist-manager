@@ -30,7 +30,7 @@ Keep your own playlists of videos (music, talks, recipes, anything you want to w
 
 ![Compare dialog with a report that has artists: 12 items in the report, 10 still here, 2 missing, listed by number, title and artist](docs/screenshots/compare-report.png)
 
-**Missing items** wait for their YouTube link; paste it and the video gets its title, channel and thumbnail:
+**Missing items** wait for their YouTube link; paste it and the video gets its title, channel and thumbnail. Any other video's link can be changed with **Change link**, keeping its notes, watched mark and place:
 
 ![Missing filter showing a video deleted on YouTube and a placeholder from a report, each with a box to paste a YouTube link](docs/screenshots/missing-items.png)
 
@@ -339,7 +339,31 @@ Without `YOUTUBE_API_KEY`, YouTube only returns the latest videos, so the dialog
 
 ## Reports and Compare
 
-**Report** in the playlist header downloads the playlist as a `.txt` file (`<playlist>-report-YYYY-MM-DD__HH-mm-ss.txt`), with Windows line endings so it opens cleanly in Notepad:
+**Report** in the playlist header downloads the playlist as `<playlist>-report-YYYY-MM-DD__HH-mm-ss`, in one of two formats.
+
+**JSON (can be restored)** keeps everything needed to bring a video back:
+
+```json
+{
+  "format": "yuzu-tapes-report",
+  "version": 1,
+  "createdAt": "2026-11-06T09:30:00.000Z",
+  "playlist": { "name": "City Pop" },
+  "videos": [
+    {
+      "youtubeId": "dQw4w9WgXcQ",
+      "title": "Plastic Love",
+      "artist": "Mariya Takeuchi",
+      "author": "Some Channel",
+      "notes": "",
+      "watched": false,
+      "unavailable": false
+    }
+  ]
+}
+```
+
+**Text (easy to read)** has Windows line endings, so it opens cleanly in Notepad:
 
 ```
 Total videos: 3
@@ -351,10 +375,13 @@ Format: number: title | artist
 
 The artist follows the last ` | ` and is empty when unknown. Reports saved before artists existed have no `Format:` line and only `number: title`.
 
-**Compare** loads a report (a file, or pasted text) and finds which of its videos the playlist no longer has, so you can add them back in their old place as Missing items. It reads both formats and says which one it found:
+**Compare** loads a report (a file, or pasted text) and finds which of its videos the playlist no longer has, so you can add them back in their old place. It reads every format and says which one it found:
 
-* **With artists:** matches by title, using the artist to tell apart two videos with the same title; restored items keep the report's artist.
-* **Older reports:** match by title (ignoring case, spacing, punctuation and full-width characters), and also when the report's title is the video's "artist - title"; restored items get a guessed artist.
+* **JSON:** matches by YouTube ID; restored videos come back with their link, channel, notes and watched mark. A broken file, or one from a newer version of the app, is refused and changes nothing.
+* **Text with artists:** matches by title, using the artist to tell apart two videos with the same title; restored items keep the report's artist and wait for their link as Missing items.
+* **Older text reports:** match by title (ignoring case, spacing, punctuation and full-width characters), and also when the report's title is the video's "artist - title"; restored items get a guessed artist.
+
+**Backups** are made by themselves when a playlist with videos is added, and whenever you download a report. In a sync chain they're kept on the server, where any device can find them; without a chain, or while offline, they stay on the device. **Compare** lists a playlist's backups, to compare with one or download it. Each playlist keeps its first backup and its last 10, and the backups of a deleted playlist are removed after 30 days. Sync doesn't change them, so a bad edit can't reach a backup.
 
 ## Notes and limits
 

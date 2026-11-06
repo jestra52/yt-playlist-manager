@@ -90,6 +90,15 @@ public sealed class ChangeSetValidatorTests
             () => ChangeSetValidator.Validate(new ChangeSet { Videos = [Video() with { ArtistSource = source }] }));
 
     [Fact]
+    public void ChecksTheReplacedYouTubeId()
+    {
+        ChangeSetValidator.Validate(new ChangeSet { Videos = [Video() with { ReplacedYouTubeId = "" }] });
+        ChangeSetValidator.Validate(new ChangeSet { Videos = [Video() with { ReplacedYouTubeId = "aaaaaaaaaaa" }] });
+        Assert.Throws<DomainValidationException>(
+            () => ChangeSetValidator.Validate(new ChangeSet { Videos = [Video() with { ReplacedYouTubeId = "nope" }] }));
+    }
+
+    [Fact]
     public void LimitsTheArtistLength() =>
         Assert.Throws<DomainValidationException>(
             () => ChangeSetValidator.Validate(new ChangeSet { Videos = [Video() with { Artist = new string('a', 201) }] }));

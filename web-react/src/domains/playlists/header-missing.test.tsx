@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Database } from '@ytpm/core/db/database';
 import { getDatabase, setDatabase } from '@ytpm/core/db/index';
-import { insertVideosAfter } from '@ytpm/core/videos/videos.repository';
+import { insertVideosAfter, updateVideo } from '@ytpm/core/videos/videos.repository';
+import { watchUrl } from '@ytpm/core/videos/youtube';
 import initSqlJs, { type SqlJsStatic } from 'sql.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../../App';
@@ -10,7 +11,7 @@ import { selectSelectedPlaylist } from './playlists.selectors';
 import { createPlaylist, deletePlaylist, describePlaylist, loadLibrary, renamePlaylist } from './playlists.thunks';
 import { selectAllVideos, selectPlaying } from '../videos/videos.selectors';
 import { played } from '../videos/videos.slice';
-import { addEntries, completeVideo } from '../videos/videos.thunks';
+import { addEntries, changeVideoLink, completeVideo } from '../videos/videos.thunks';
 const realFetch = globalThis.fetch;
 let SQL: SqlJsStatic;
 let store: AppStore;
@@ -25,6 +26,8 @@ beforeAll(async () => {
     SQL = await initSqlJs();
     globalThis.fetch = (async (input: RequestInfo | URL) => {
         const video = String(input).match(/oembed\?id=([^&]+)/)?.[1];
+        if (video === 'ggggggggggg') return new Response('{}', { status: 404 });
+        if (video === 'fffffffffff') return new Response('{}', { status: 503 });
         return video
             ? new Response(JSON.stringify({ title: `Anri - Song ${video}`, author: 'Label' }), { status: 200 })
             : new Response('{}', { status: 503 });
@@ -96,6 +99,85 @@ describe('playlist header', () => {
         fireEvent.change(name, { target: { value: 'Renamed' } });
         fireEvent.blur(name);
         expect(selectSelectedPlaylist(store.getState())?.name).toBe('Renamed');
+    });
+});
+
+describe('changing a link', () => {
+    const saved = (notes = 'Keep this') => {
+        const { id } = store.dispatch(createPlaylist({ name: 'City Pop' }))!;
+        store.dispatch(
+            addEntries(id, [
+                { youtubeId: 'aaaaaaaaaaa', title: 'Old - First' },
+                { youtubeId: 'ccccccccccc', title: 'Second' },
+            ]),
+        );
+        const video = selectAllVideos(store.getState()).find((v) => v.youtubeId === 'aaaaaaaaaaa')!;
+        updateVideo(getDatabase(), video.id, { notes, watched: true });
+        store.dispatch(loadLibrary());
+        return video;
+    };
+    const current = (id: string) => store.getState().videos.entities[id];
+
+    it('takes the new details, and keeps the notes, watched mark and place', async () => {
+        const video = saved();
+        expect(await store.dispatch(changeVideoLink(video.id, 'https://youtu.be/bbbbbbbbbbb?si=abc'))).toBe(true);
+        expect(current(video.id)).toMatchObject({
+            youtubeId: 'bbbbbbbbbbb',
+            title: 'Anri - Song bbbbbbbbbbb',
+            artist: 'Anri',
+            notes: 'Keep this',
+            watched: true,
+            position: video.position,
+        });
+    });
+
+    it('remembers the first ID through several changes, until it goes back to it', async () => {
+        const video = saved();
+        await store.dispatch(changeVideoLink(video.id, 'bbbbbbbbbbb'));
+        await store.dispatch(changeVideoLink(video.id, 'ddddddddddd'));
+        expect(current(video.id)).toMatchObject({ youtubeId: 'ddddddddddd', replacedYoutubeId: 'aaaaaaaaaaa' });
+
+        await store.dispatch(changeVideoLink(video.id, 'aaaaaaaaaaa'));
+        expect(current(video.id)).toMatchObject({ youtubeId: 'aaaaaaaaaaa', replacedYoutubeId: '' });
+    });
+
+    it('keeps an artist set by hand', async () => {
+        const video = saved();
+        updateVideo(getDatabase(), video.id, { artist: 'Mine', artistSource: 'user' });
+        store.dispatch(loadLibrary());
+        await store.dispatch(changeVideoLink(video.id, 'bbbbbbbbbbb'));
+        expect(current(video.id)).toMatchObject({ youtubeId: 'bbbbbbbbbbb', artist: 'Mine' });
+    });
+
+    it.each([
+        ['nope', 'Paste a YouTube video link, like https://youtu.be/...'],
+        ['ccccccccccc', 'That video is already in this playlist: "Second"'],
+        ['ggggggggggg', "That video isn't available on YouTube"],
+        ['fffffffffff', "Couldn't get that video's details from YouTube. Try again."],
+    ])('changes nothing for %s', async (link, message) => {
+        const video = saved();
+        expect(await store.dispatch(changeVideoLink(video.id, link))).toBe(false);
+        expect(store.getState().ui.notices.at(-1)?.message).toBe(message);
+        expect(current(video.id)).toMatchObject({ youtubeId: 'aaaaaaaaaaa', title: 'Old - First' });
+    });
+
+    it('edits the link in the row, and can be cancelled', async () => {
+        const video = saved();
+        render(<App store={store} />);
+        const change = () => fireEvent.click(screen.getAllByRole('button', { name: 'Change link' })[0]!);
+
+        change();
+        expect(screen.getByLabelText('YouTube link for Old - First')).toHaveValue(watchUrl('aaaaaaaaaaa'));
+        fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+        expect(screen.queryByLabelText('YouTube link for Old - First')).not.toBeInTheDocument();
+
+        change();
+        fireEvent.change(screen.getByLabelText('YouTube link for Old - First'), {
+            target: { value: 'https://youtu.be/bbbbbbbbbbb' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        await waitFor(() => expect(current(video.id)?.youtubeId).toBe('bbbbbbbbbbb'));
+        await waitFor(() => expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument());
     });
 });
 

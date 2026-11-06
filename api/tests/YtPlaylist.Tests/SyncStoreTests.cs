@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using YtPlaylist.Application.Chains;
+using YtPlaylist.Domain.Common;
 using YtPlaylist.Infrastructure.Persistence;
 using YtPlaylist.Models.Chains;
 using YtPlaylist.Models.Entities;
@@ -34,6 +35,95 @@ public abstract class SyncStoreTests
 
     private static SyncChainEvent Event(string chainId, string kind, long at = 1) =>
         new() { ChainId = chainId, Kind = kind, At = at, DeviceName = "Test" };
+
+    private static Report NewReport(string chainId, string playlistId, long createdAt, string content = "{}") =>
+        new() { Id = NewId("b"), ChainId = chainId, PlaylistId = playlistId, CreatedAt = createdAt, Content = content };
+
+    [Fact]
+    public async Task KeepsAPlaylistsFirstReportAndTheNewestOnes()
+    {
+        await using var db = this.CreateContext();
+        if (db is null)
+        {
+            return;
+        }
+        var store = new EfReportStore(db);
+        var (chain, _) = await NewChainAsync(db);
+        var first = NewReport(chain, "p1", 1);
+        await store.SaveAsync(first, 0, CancellationToken.None);
+        for (var at = 2; at <= 15; at++)
+        {
+            await store.SaveAsync(NewReport(chain, "p1", at), 0, CancellationToken.None);
+        }
+        await store.SaveAsync(NewReport(chain, "p2", 1), 0, CancellationToken.None);
+
+        var kept = await store.ListAsync(chain, "p1", CancellationToken.None);
+        Assert.Equal(SyncLimits.KeptReportsPerPlaylist + 1, kept.Count);
+        Assert.Equal(15, kept[0].CreatedAt);
+        Assert.Equal(6, kept[^2].CreatedAt);
+        Assert.Equal(first.Id, kept[^1].Id);
+        Assert.Equal(kept.Count + 1, (await store.ListAsync(chain, null, CancellationToken.None)).Count);
+    }
+
+    [Fact]
+    public async Task NeverChangesASavedReport()
+    {
+        await using var db = this.CreateContext();
+        if (db is null)
+        {
+            return;
+        }
+        var store = new EfReportStore(db);
+        var (chain, _) = await NewChainAsync(db);
+        var report = NewReport(chain, "p1", 1, "first");
+        Assert.True(await store.SaveAsync(report, 0, CancellationToken.None));
+
+        var again = NewReport(chain, "p1", 2, "second");
+        again.Id = report.Id;
+        Assert.False(await store.SaveAsync(again, 0, CancellationToken.None));
+        Assert.Equal("first", (await store.FindAsync(chain, report.Id, CancellationToken.None))!.Content);
+    }
+
+    [Fact]
+    public async Task RemovesReportsOfPlaylistsDeletedLongAgo()
+    {
+        await using var db = this.CreateContext();
+        if (db is null)
+        {
+            return;
+        }
+        var sync = new EfSyncStore(db);
+        var store = new EfReportStore(db);
+        var (chain, _) = await NewChainAsync(db);
+        var old = new PlaylistChange { Id = NewId("p"), Name = "Old", CreatedAt = 1, UpdatedAt = 100, Deleted = true };
+        var recent = new PlaylistChange { Id = NewId("p"), Name = "Recent", CreatedAt = 1, UpdatedAt = 900, Deleted = true };
+        await sync.ApplyAsync(chain, new ChangeSet { Playlists = [old, recent] }, null, CancellationToken.None);
+        await store.SaveAsync(NewReport(chain, old.Id, 1), 0, CancellationToken.None);
+        var kept = NewReport(chain, recent.Id, 1);
+        await store.SaveAsync(kept, 0, CancellationToken.None);
+
+        await store.SaveAsync(NewReport(chain, "p1", 1), 500, CancellationToken.None);
+
+        Assert.Empty(await store.ListAsync(chain, old.Id, CancellationToken.None));
+        Assert.Equal(kept.Id, Assert.Single(await store.ListAsync(chain, recent.Id, CancellationToken.None)).Id);
+    }
+
+    [Fact]
+    public async Task DeletingAChainDeletesItsReports()
+    {
+        await using var db = this.CreateContext();
+        if (db is null)
+        {
+            return;
+        }
+        var store = new EfReportStore(db);
+        var (chain, _) = await NewChainAsync(db);
+        await store.SaveAsync(NewReport(chain, "p1", 1), 0, CancellationToken.None);
+
+        await new EfChainStore(db).DeleteChainAsync(chain, CancellationToken.None);
+
+        Assert.Empty(await store.ListAsync(chain, null, CancellationToken.None));
+    }
 
     [Fact]
     public async Task AppliesLastWriteWinsAndPagesInOrder()
@@ -148,6 +238,7 @@ public abstract class SyncStoreTests
             YouTubeId = "aaaaaaaaaaa",
             Title = "Deleted video",
             Unavailable = true,
+            ReplacedYouTubeId = "bbbbbbbbbbb",
             CreatedAt = 1,
             UpdatedAt = 1,
         };
@@ -155,7 +246,7 @@ public abstract class SyncStoreTests
         var fromOlderApp = new ChangeSet
         {
             Playlists = [playlist with { Name = "Renamed", Source = null, SourceId = null, UpdatedAt = 2 }],
-            Videos = [video with { Watched = true, Unavailable = null, UpdatedAt = 2 }],
+            Videos = [video with { Watched = true, Unavailable = null, ReplacedYouTubeId = null, UpdatedAt = 2 }],
         };
         await store.ApplyAsync(chain, fromOlderApp, null, CancellationToken.None);
 
@@ -165,6 +256,7 @@ public abstract class SyncStoreTests
         var storedVideo = Assert.Single(page.Changes.Videos);
         Assert.True(storedVideo.Watched);
         Assert.True(storedVideo.Unavailable);
+        Assert.Equal("bbbbbbbbbbb", storedVideo.ReplacedYouTubeId);
     }
 
     [Fact]

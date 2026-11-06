@@ -11,6 +11,7 @@ const fields = {
     author: videos.author,
     artist: videos.artist,
     artistSource: videos.artistSource,
+    replacedYoutubeId: videos.replacedYoutubeId,
     thumbnailUrl: videos.thumbnailUrl,
     notes: videos.notes,
     watched: videos.watched,
@@ -28,6 +29,7 @@ interface StoredVideo {
     author: string;
     artist: string;
     artistSource: string;
+    replacedYoutubeId: string;
     thumbnailUrl: string;
     notes: string;
     watched: boolean;
@@ -50,6 +52,8 @@ export interface VideoEntry {
     artist?: string;
     artistSource?: string;
     thumbnailUrl?: string;
+    notes?: string;
+    watched?: boolean;
     unavailable?: boolean;
 }
 
@@ -66,6 +70,7 @@ export type VideoPatch = Partial<
         | 'author'
         | 'artist'
         | 'artistSource'
+        | 'replacedYoutubeId'
         | 'thumbnailUrl'
         | 'notes'
         | 'watched'
@@ -126,6 +131,8 @@ const insertVideo = (
         artist = '',
         artistSource = '',
         thumbnailUrl,
+        notes = '',
+        watched = false,
         unavailable = false,
     }: VideoEntry,
     position: number,
@@ -142,8 +149,8 @@ const insertVideo = (
             artist: artist.slice(0, 200),
             artistSource: artist ? artistSource : '',
             thumbnailUrl: thumbnailUrl || (youtubeId ? thumbnailFor(youtubeId) : ''),
-            notes: '',
-            watched: false,
+            notes: notes.slice(0, 5000),
+            watched,
             unavailable: Boolean(unavailable && youtubeId),
             position,
             createdAt: t,
@@ -196,7 +203,7 @@ export const addVideos = (
 
 /**
  * Inserts `{ title, youtubeId, afterId }` entries (optionally with `author`,
- * `artist`, `artistSource`, `thumbnailUrl` and `unavailable`) into a playlist.
+ * `artist`, `artistSource`, `thumbnailUrl`, `notes`, `watched` and `unavailable`) into a playlist.
  * Entries that share an `afterId` go right after that video (at the start when
  * it is null, at the end when the video is gone), in their given order. An
  * empty `youtubeId` makes a placeholder. Returns the inserted videos.
@@ -243,6 +250,8 @@ export const insertVideosAfter = (db: Database, playlistId: string, entries: rea
                             artist: entry.artist ?? '',
                             artistSource: entry.artistSource ?? '',
                             thumbnailUrl: entry.thumbnailUrl,
+                            notes: entry.notes,
+                            watched: entry.watched,
                             unavailable: entry.unavailable ?? false,
                         },
                         position,
@@ -261,6 +270,7 @@ const EDITABLE = [
     'author',
     'artist',
     'artistSource',
+    'replacedYoutubeId',
     'thumbnailUrl',
     'notes',
     'watched',
@@ -270,6 +280,15 @@ const EDITABLE = [
 ] as const;
 
 const FLAGS = new Set<string>(['watched', 'unavailable']);
+
+/** Keeps the first ID a row had, through any number of changes, until it's back on that ID. */
+export const replacedIdPatch = (
+    video: Pick<Video, 'youtubeId' | 'replacedYoutubeId'>,
+    youtubeId: string,
+): { replacedYoutubeId: string } => {
+    const replaced = video.replacedYoutubeId || video.youtubeId;
+    return { replacedYoutubeId: replaced === youtubeId ? '' : replaced };
+};
 
 /** Updates the given fields and marks the row for sync. */
 export const updateVideo = (db: Database, id: string, patch: VideoPatch): Video | null => {

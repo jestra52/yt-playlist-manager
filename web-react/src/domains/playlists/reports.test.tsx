@@ -48,6 +48,14 @@ beforeEach(() => {
     );
 });
 
+const compare = (report: string) => {
+    render(<App store={store} />);
+    fireEvent.click(screen.getByRole('button', { name: /Compare with an old report/ }));
+    const dialog = within(screen.getByRole('dialog'));
+    fireEvent.change(dialog.getByLabelText('Report text'), { target: { value: report } });
+    return dialog;
+};
+
 describe('reports', () => {
     it('saves a report with the videos in order', async () => {
         const created: Blob[] = [];
@@ -57,13 +65,76 @@ describe('reports', () => {
         });
         vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }));
 
-        store.dispatch(downloadReport(playlistId));
+        store.dispatch(downloadReport(playlistId, 'txt'));
 
         const text = await created[0]!.text();
         expect(text).toContain('Total videos: 2');
         expect(text).toContain('1: One | Tomoko Aran');
         expect(store.getState().ui.notices.at(-1)?.message).toMatch(/^Saved city-pop-report-.*\.txt$/);
         vi.unstubAllGlobals();
+    });
+
+    it('saves a JSON report by default, from the menu too', async () => {
+        const created: Blob[] = [];
+        const createObjectURL = vi.fn((blob: Blob) => {
+            created.push(blob);
+            return 'blob:report';
+        });
+        vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }));
+
+        render(<App store={store} />);
+        fireEvent.click(screen.getByRole('button', { name: 'JSON (can be restored)' }));
+
+        expect(JSON.parse(await created[0]!.text())).toMatchObject({
+            format: 'yuzu-tapes-report',
+            version: 1,
+            playlist: { name: 'City Pop' },
+            videos: [
+                { youtubeId: 'aaaaaaaaaaa', title: 'One', artist: 'Tomoko Aran', watched: false },
+                { title: 'Two' },
+            ],
+        });
+        expect(store.getState().ui.notices.at(-1)?.message).toMatch(/^Saved city-pop-report-.*\.json$/);
+        vi.unstubAllGlobals();
+    });
+
+    it('restores a video from a JSON report with its link, notes and watched mark', () => {
+        const dialog = compare(
+            JSON.stringify({
+                format: 'yuzu-tapes-report',
+                version: 1,
+                videos: [
+                    { youtubeId: 'aaaaaaaaaaa', title: 'One' },
+                    {
+                        youtubeId: 'ccccccccccc',
+                        title: 'Lost song',
+                        artist: 'Anri',
+                        author: 'Label',
+                        notes: 'Keep this',
+                        watched: true,
+                    },
+                    { youtubeId: 'bbbbbbbbbbb', title: 'Two' },
+                ],
+            }),
+        );
+        expect(dialog.getByText('JSON report, with links and notes')).toBeInTheDocument();
+        fireEvent.click(dialog.getByRole('button', { name: 'Add 1 missing item' }));
+
+        expect(titles()).toEqual(['One', 'Lost song', 'Two']);
+        expect(selectAllVideos(store.getState()).find((v) => v.title === 'Lost song')).toMatchObject({
+            youtubeId: 'ccccccccccc',
+            missing: false,
+            artist: 'Anri',
+            author: 'Label',
+            notes: 'Keep this',
+            watched: true,
+        });
+    });
+
+    it('refuses a report from a newer version', () => {
+        const dialog = compare(JSON.stringify({ format: 'yuzu-tapes-report', version: 2, videos: [] }));
+        expect(dialog.getByRole('alert')).toHaveTextContent('This report is from a newer version of the app.');
+        expect(dialog.getByRole('button', { name: 'Add missing items' })).toBeDisabled();
     });
 
     it('puts a missing entry back in its old place and opens the Missing filter', () => {

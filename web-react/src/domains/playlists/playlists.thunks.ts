@@ -8,7 +8,7 @@ import {
     type Playlist,
     type PlaylistPatch,
 } from '@ytpm/core/playlists/playlists.repository';
-import { buildPlaylistReport, reportFileName } from '@ytpm/core/playlists/report';
+import { buildJsonReport, buildPlaylistReport, reportFileName } from '@ytpm/core/playlists/report';
 import type { MissingEntry } from '@ytpm/core/playlists/report-compare';
 import type { YouTubeDiff } from '@ytpm/core/playlists/youtube-sync';
 import { fetchVideoMetadata } from '@ytpm/core/videos/metadata.client';
@@ -27,8 +27,9 @@ import {
     videoInPlaylist,
 } from '@ytpm/core/videos/youtube';
 import type { AppThunk } from '../../app/store';
-import { downloadTextFile } from '../../shared/download';
+import { downloadFile, downloadTextFile } from '../../shared/download';
 import { selectApiUrl } from '../sync/sync.selectors';
+import { saveBackup } from './backups.thunks';
 import { notify, setImporting } from '../ui/ui.slice';
 import { selectAllVideos } from '../videos/videos.selectors';
 import { filterSet, loaded as videosLoaded, playlistDropped } from '../videos/videos.slice';
@@ -81,6 +82,7 @@ export const createFromVideo =
             const playlist = dispatch(createPlaylist({ name: title || 'New playlist' }));
             if (playlist) {
                 dispatch(addEntries(playlist.id, [meta && !meta.unavailable ? { youtubeId, ...meta } : youtubeId]));
+                dispatch(saveBackup(playlist, 'added'));
             }
             return playlist;
         } finally {
@@ -104,6 +106,7 @@ export const importFromYouTube =
             const playlist = dispatch(createPlaylist({ name, description, source: 'youtube', sourceId: listId }));
             if (!playlist) return null;
             const { added: videos } = dispatch(addEntries(playlist.id, source.videos));
+            dispatch(saveBackup(playlist, 'added'));
             const gone = videos.filter((v) => v.unavailable).length;
             const parts = [`Imported "${playlist.name}" with ${plural(videos.length - gone, 'video')}`];
             if (gone) parts.push(`${plural(gone, 'deleted or private video')} added as Missing`);
@@ -184,13 +187,20 @@ export const deletePlaylist =
     };
 
 export const downloadReport =
-    (id: string): AppThunk =>
+    (id: string, format: 'json' | 'txt' = 'json'): AppThunk =>
     (dispatch, getState) => {
         const playlist = selectPlaylistById(getState(), id);
         if (!playlist) return;
-        const fileName = reportFileName(playlist.name);
+        const date = new Date();
+        const fileName = reportFileName(playlist.name, date, format);
         const videos = selectAllVideos(getState()).filter((v) => v.playlistId === id);
-        downloadTextFile(fileName, buildPlaylistReport(videos));
+        if (format === 'txt') {
+            downloadTextFile(fileName, buildPlaylistReport(videos));
+        } else {
+            const report = JSON.stringify(buildJsonReport(playlist.name, videos, date), null, 2);
+            downloadFile(fileName, new Blob([report], { type: 'application/json' }));
+        }
+        dispatch(saveBackup(playlist, 'download'));
         dispatch(notify(`Saved ${fileName}`));
     };
 

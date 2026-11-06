@@ -125,6 +125,10 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
             {
                 row.Unavailable = unavailable;
             }
+            if (change.ReplacedYouTubeId is { } replacedYouTubeId)
+            {
+                row.ReplacedYouTubeId = replacedYouTubeId;
+            }
             row.Position = change.Position;
             row.UpdatedAt = change.UpdatedAt;
             row.Deleted = change.Deleted;
@@ -204,6 +208,7 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
         Notes = v.Notes,
         Watched = v.Watched,
         Unavailable = v.Unavailable,
+        ReplacedYouTubeId = v.ReplacedYouTubeId,
         Position = v.Position,
         CreatedAt = v.CreatedAt,
         UpdatedAt = v.UpdatedAt,

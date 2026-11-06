@@ -65,6 +65,9 @@ builder.Services.AddRateLimiter(limiter =>
     limiter.AddPolicy(SyncEndpoints.RateLimit, http => RateLimitPartition.GetFixedWindowLimiter(
         DeviceAuth.RateLimitKey(http),
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    limiter.AddPolicy(ReportEndpoints.RateLimit, http => RateLimitPartition.GetFixedWindowLimiter(
+        DeviceAuth.RateLimitKey(http),
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     limiter.AddPolicy(ChainEndpoints.SecretsRateLimit, http => RateLimitPartition.GetFixedWindowLimiter(
         http.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
@@ -116,6 +119,7 @@ await app.Services.MigrateDatabaseAsync();
 app.MapHealthEndpoints();
 app.MapChainEndpoints();
 app.MapSyncEndpoints();
+app.MapReportEndpoints();
 app.MapYouTubeEndpoints();
 app.MapFallback((HttpContext http) => ApiResults.Error(StatusCodes.Status404NotFound, $"not found: {http.Request.Path}"));
 
