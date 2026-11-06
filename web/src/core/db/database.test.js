@@ -122,7 +122,7 @@ describe('values are never part of the SQL text', () => {
         expect(sync.getSettings(db)).toMatchObject({ apiUrl: attack, chainId: attack, credential: attack });
         expect(
             rows(sqlDb, "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").map((t) => t.name),
-        ).toEqual(['meta', 'playlists', 'videos']);
+        ).toEqual(['meta', 'playlists', 'reports', 'videos']);
     });
 
     it('treats an ID made of SQL as an ID that matches nothing', () => {

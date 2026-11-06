@@ -29,6 +29,7 @@ import {
 import type { AppThunk } from '../../app/store';
 import { downloadFile, downloadTextFile } from '../../shared/download';
 import { selectApiUrl } from '../sync/sync.selectors';
+import { saveBackup } from './backups.thunks';
 import { notify, setImporting } from '../ui/ui.slice';
 import { selectAllVideos } from '../videos/videos.selectors';
 import { filterSet, loaded as videosLoaded, playlistDropped } from '../videos/videos.slice';
@@ -81,6 +82,7 @@ export const createFromVideo =
             const playlist = dispatch(createPlaylist({ name: title || 'New playlist' }));
             if (playlist) {
                 dispatch(addEntries(playlist.id, [meta && !meta.unavailable ? { youtubeId, ...meta } : youtubeId]));
+                dispatch(saveBackup(playlist, 'added'));
             }
             return playlist;
         } finally {
@@ -104,6 +106,7 @@ export const importFromYouTube =
             const playlist = dispatch(createPlaylist({ name, description, source: 'youtube', sourceId: listId }));
             if (!playlist) return null;
             const { added: videos } = dispatch(addEntries(playlist.id, source.videos));
+            dispatch(saveBackup(playlist, 'added'));
             const gone = videos.filter((v) => v.unavailable).length;
             const parts = [`Imported "${playlist.name}" with ${plural(videos.length - gone, 'video')}`];
             if (gone) parts.push(`${plural(gone, 'deleted or private video')} added as Missing`);
@@ -197,6 +200,7 @@ export const downloadReport =
             const report = JSON.stringify(buildJsonReport(playlist.name, videos, date), null, 2);
             downloadFile(fileName, new Blob([report], { type: 'application/json' }));
         }
+        dispatch(saveBackup(playlist, 'download'));
         dispatch(notify(`Saved ${fileName}`));
     };
 

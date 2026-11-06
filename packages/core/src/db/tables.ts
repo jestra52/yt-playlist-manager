@@ -67,8 +67,27 @@ export const videos = sqliteTable(
     (t) => [index('idx_videos_playlist').on(t.playlistId, t.position), index('idx_videos_dirty').on(t.dirty)],
 );
 
+/**
+ * Playlist backups waiting to reach the server, or kept here on a device without
+ * a sync chain. They aren't synced rows: once uploaded, they leave this table.
+ */
+export const reports = sqliteTable(
+    'reports',
+    {
+        id: text('id').primaryKey(),
+        playlistId: text('playlist_id').notNull(),
+        playlistName: text('playlist_name').notNull().default(''),
+        reason: text('reason').notNull(),
+        videoCount: integer('video_count').notNull().default(0),
+        content: text('content').notNull(),
+        createdAt: integer('created_at').notNull(),
+    },
+    (t) => [index('idx_reports_playlist').on(t.playlistId, t.createdAt)],
+);
+
 export type MetaRow = typeof meta.$inferSelect;
 export type PlaylistRow = typeof playlists.$inferSelect;
 export type NewPlaylistRow = typeof playlists.$inferInsert;
 export type VideoRow = typeof videos.$inferSelect;
 export type NewVideoRow = typeof videos.$inferInsert;
+export type ReportRow = typeof reports.$inferSelect;

@@ -4,6 +4,7 @@
  * code's secret is only sent when creating or joining a chain.
 
  */
+import type { ReportRow } from '../db/tables';
 import type { LocalChanges, RemoteChanges } from './sync.repository';
 
 export interface SyncConnection {
@@ -115,6 +116,11 @@ const json = (method: string, body?: unknown, credential?: string): RequestInit 
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
 });
+
+/** Saves a playlist backup in this device's chain. Sending the same one again changes nothing. */
+export const postReport = ({ apiUrl, credential }: SyncConnection, report: ReportRow): Promise<null> => {
+    return request(endpoint(apiUrl, '/reports'), json('POST', report, credential));
+};
 
 /** Pushes local changes and pulls server changes newer than `since`, in this device's chain. */
 export const postSync = (
