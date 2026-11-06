@@ -12,7 +12,7 @@ public sealed class Playlist
     public string Description { get; set; } = "";
     public double Position { get; set; }
 
-    /// <summary>Where the playlist was imported from: "" (made in the app) or "youtube" (later "spotify").</summary>
+    /// <summary>Where the playlist was imported from: "" (made in the app) or "youtube".</summary>
     public string Source { get; set; } = "";
 
     /// <summary>The playlist's ID at its <see cref="Source"/>, e.g. a YouTube playlist ID.</summary>

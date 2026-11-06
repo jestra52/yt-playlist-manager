@@ -40,7 +40,7 @@ Keep your own playlists of videos (music, talks, recipes, anything you want to w
 
 <img src="docs/screenshots/phone.png" alt="The playlist on a phone in the dark theme, with buttons for YouTube, compare, report and delete in the header" width="300" align="right" />
 
-**On a phone** the sidebar folds away behind the menu button, and the header buttons shrink to icons: YouTube, compare, download report, delete.
+**On a phone** the sidebar folds away behind the menu button, as it does in any window under 1024px, and the header buttons shrink to icons: YouTube, compare, download report, delete.
 
 The screenshots use sample data and placeholder thumbnails.
 
@@ -358,6 +358,7 @@ The artist follows the last ` | ` and is empty when unknown. Reports saved befor
 
 ## Notes and limits
 
+* **YouTube only.** Spotify and other music services aren't supported, because their API rules and limits don't fit an app like this. To bring in a playlist from one, use a transfer service to copy it to YouTube, then import that.
 * **One library per sync chain.** Several people can use the same deployment, each with their own chain; one chain can't read or change another's playlists. Anyone with a chain's code can join it, so keep the code private.
 * **Local data lives in this browser.** Clearing site data removes it; with sync on, it comes back from the cloud on the next sync. The sync dialog can also export the database as a `.sqlite` file.
 * **Video titles** come from YouTube's public oEmbed endpoint through `/api/oembed` (falling back to noembed.com). No YouTube API key or Google sign-in is needed, and the app can't read or change your playlists on youtube.com.

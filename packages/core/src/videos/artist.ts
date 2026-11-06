@@ -1,7 +1,7 @@
 /**
  * Where a video's artist came from, weakest first. A value from a source can
  * replace one from the same or a weaker source, so a hand edit is never
- * overwritten. A lookup service with real artist data (e.g. Spotify) slots in
+ * overwritten. A lookup service with real artist data slots in
  * as a new source between `guess` and `user`.
  */
 export const ARTIST_SOURCES = ['', 'guess', 'user'] as const;

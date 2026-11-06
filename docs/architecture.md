@@ -162,7 +162,7 @@ flowchart LR
 4. Removes every device except the caller, or adds the device that recovered, and cancels every pairing code, so a request approved before can't add a device after.
 5. Replaces the recovery codes and writes the audit entry.
 
-A sync checks its device again after taking the same lock, so a device removed by the hook can't write afterwards, even if its request was authenticated just before. #53 will extend the hook: it will delete the connected accounts' tokens in the transaction, and revoke their grants at Google and Spotify after it's committed.
+A sync checks its device again after taking the same lock, so a device removed by the hook can't write afterwards, even if its request was authenticated just before. #53 will extend the hook: it will delete the connected accounts' tokens in the transaction, and revoke their grants at Google after it's committed.
 
 **Adding a device with a pairing code.** A device in the chain creates a short code; the new device enters it (or scans its QR code); the first device approves; only then does the new device get a credential. `ChainService.Pairing.cs` has the use cases, and `sync_pairings` one row per open code:
 

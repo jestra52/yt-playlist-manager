@@ -76,7 +76,7 @@ public static partial class ChangeSetValidator
     }
 
     /// <summary>
-    /// Any short lowercase word (or empty), so devices that know newer sources (e.g. Spotify)
+    /// Any short lowercase word (or empty), so devices that know newer sources
     /// can still sync with this API.
     /// </summary>
     private static void RequireSource(string kind, string id, string field, string? value)
