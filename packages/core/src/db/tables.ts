@@ -23,7 +23,7 @@ export const playlists = sqliteTable(
         id: text('id').primaryKey(),
         name: text('name').notNull(),
         description: text('description').notNull().default(''),
-        // Where it was imported from: '' (made here) or 'youtube' (later 'spotify'),
+        // Where it was imported from: '' (made here) or 'youtube',
         // and its ID there, so it can be synced with it again.
         source: text('source').notNull().default(''),
         sourceId: text('source_id').notNull().default(''),
