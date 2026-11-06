@@ -10,11 +10,12 @@ interface VideoActionsProps {
     index: number;
     total: number;
     onEditNotes: () => void;
+    onEditLink: () => void;
 }
 
 const BUTTON = 'btn btn-ghost btn-square btn-sm';
 
-export const VideoActions = ({ video, index, total, onEditNotes }: VideoActionsProps) => {
+export const VideoActions = ({ video, index, total, onEditNotes, onEditLink }: VideoActionsProps) => {
     const dispatch = useAppDispatch();
 
     return (
@@ -42,6 +43,17 @@ export const VideoActions = ({ video, index, total, onEditNotes }: VideoActionsP
             <button type="button" className={BUTTON} title="Notes" aria-label="Edit notes" onClick={onEditNotes}>
                 <Icon name="note" size={17} />
             </button>
+            {!video.missing && (
+                <button
+                    type="button"
+                    className={BUTTON}
+                    title="Change link"
+                    aria-label="Change link"
+                    onClick={onEditLink}
+                >
+                    <Icon name="link" size={17} />
+                </button>
+            )}
             <MoveMenu video={video} />
             <button
                 type="button"
