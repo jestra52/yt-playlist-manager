@@ -381,6 +381,8 @@ The artist follows the last ` | ` and is empty when unknown. Reports saved befor
 * **Text with artists:** matches by title, using the artist to tell apart two videos with the same title; restored items keep the report's artist and wait for their link as Missing items.
 * **Older text reports:** match by title (ignoring case, spacing, punctuation and full-width characters), and also when the report's title is the video's "artist - title"; restored items get a guessed artist.
 
+**Backups** are made by themselves when a playlist with videos is added, and whenever you download a report. In a sync chain they're kept on the server, where any device can find them; without a chain, or while offline, they stay on the device. **Compare** lists a playlist's backups, to compare with one or download it. Each playlist keeps its first backup and its last 10, and the backups of a deleted playlist are removed after 30 days. Sync doesn't change them, so a bad edit can't reach a backup.
+
 ## Notes and limits
 
 * **YouTube only.** Spotify and other music services aren't supported, because their API rules and limits don't fit an app like this. To bring in a playlist from one, use a transfer service to copy it to YouTube, then import that.
