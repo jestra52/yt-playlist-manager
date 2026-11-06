@@ -6,7 +6,7 @@ import initSqlJs, { type SqlJsStatic } from 'sql.js';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createStore, type AppStore } from '../../app/store';
 import { selectSelectedPlaylist } from '../playlists/playlists.selectors';
-import { createPlaylist, importFromYouTube, selectPlaylist } from '../playlists/playlists.thunks';
+import { createPlaylist, selectPlaylist } from '../playlists/playlists.thunks';
 import { selectAllVideos, selectPlaying } from '../videos/videos.selectors';
 import { played } from '../videos/videos.slice';
 import { addEntries } from '../videos/videos.thunks';
@@ -142,7 +142,7 @@ afterAll(() => {
 
 // A sync still waiting from this test must not land in the next one.
 afterEach(() => {
-    store.dispatch(saveSyncSettings({ apiUrl: '/api', autoSync: false }));
+    store.dispatch(saveSyncSettings({ autoSync: false }));
 });
 
 beforeEach(() => {
@@ -372,14 +372,8 @@ describe('two-way sync', () => {
         globalThis.fetch = fetchNow;
         expect(sync()).toMatchObject({ status: 'error', error: "Can't reach the sync server" });
 
-        store.dispatch(saveSyncSettings({ apiUrl: '/api', autoSync: false }));
+        store.dispatch(saveSyncSettings({ autoSync: false }));
         expect(sync()).toMatchObject({ status: 'idle', error: null });
-    });
-
-    it('sends API calls to the address in the settings', async () => {
-        store.dispatch(saveSyncSettings({ apiUrl: 'https://api.example.test/', autoSync: true }));
-        await store.dispatch(importFromYouTube('PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf'));
-        expect(calls.at(-1)?.path).toContain('https://api.example.test/playlist?');
     });
 });
 
@@ -438,7 +432,7 @@ describe('auto-sync', () => {
     it('does nothing without a chain, or with auto-sync turned off', async () => {
         store.dispatch(syncRequested(0));
         await inChain();
-        store.dispatch(saveSyncSettings({ apiUrl: '/api', autoSync: false }));
+        store.dispatch(saveSyncSettings({ autoSync: false }));
         const before = syncCalls().length;
         store.dispatch(syncRequested(0));
         await new Promise((resolve) => {

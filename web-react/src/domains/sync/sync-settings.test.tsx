@@ -23,7 +23,6 @@ let SQL: SqlJsStatic;
 let db: Database;
 let store: AppStore;
 let pairingAnswer: object;
-let healthy: boolean;
 
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status });
 
@@ -39,7 +38,6 @@ const answer = (path: string): Response => {
     if (path.includes('/chain/events')) return json(200, []);
     if (path.endsWith('/chain')) return json(200, { ...access, devices: [], recoveryCodesLeft: 10 });
     if (path.endsWith('/sync')) return json(200, { cursor: 1, hasMore: false, changes: {} });
-    if (path.endsWith('/health')) return json(200, { syncConfigured: healthy });
     return json(404, { error: 'not found' });
 };
 
@@ -68,12 +66,11 @@ afterAll(() => {
 });
 
 afterEach(() => {
-    store.dispatch(saveSyncSettings({ apiUrl: '/api', autoSync: false }));
+    store.dispatch(saveSyncSettings({ autoSync: false }));
 });
 
 beforeEach(() => {
     pairingAnswer = { status: 'requested' };
-    healthy = true;
     db = new Database(new SQL.Database());
     setDatabase(db);
     store = createStore({ ui: { sidebarOpen: true } });
@@ -221,26 +218,25 @@ describe('a library from the old sync token', () => {
     });
 });
 
-describe('connection', () => {
-    const expand = (dialog: ReturnType<typeof within>) => {
-        fireEvent.click(dialog.getByRole('button', { name: 'Connection' }));
+describe('settings', () => {
+    it('asks for no API address', () => {
+        const dialog = open();
+        expect(dialog.queryByLabelText(/API address/)).not.toBeInTheDocument();
+    });
+
+    const reopenWith = (apiUrl: string) => {
+        setChainAccess(db, access);
+        db.write(db.orm.insert(meta).values({ key: 'sync.apiUrl', value: apiUrl }));
+        store.dispatch(loadSync());
+        return selectSyncSettings(store.getState());
     };
 
-    it('tests the address, and saves it', async () => {
-        healthy = false;
-        const dialog = open();
-        expand(dialog);
-        fireEvent.click(dialog.getByRole('button', { name: 'Test connection' }));
-        expect(await dialog.findByText(/no database or SYNC_PEPPER/)).toBeInTheDocument();
+    it('keeps the chain of a device on /api', () => {
+        expect(reopenWith('/api')).toMatchObject({ apiUrl: '/api', credential: access.deviceCredential });
+    });
 
-        type(dialog.getByLabelText(/API address/), 'https://api.example.test');
-        fireEvent.click(dialog.getByRole('switch', { name: /Sync automatically/ }));
-        fireEvent.click(dialog.getByRole('button', { name: 'Save' }));
-        expect(selectSyncSettings(store.getState())).toMatchObject({
-            apiUrl: 'https://api.example.test',
-            autoSync: false,
-        });
-        expect(dialog.getByText('Saved.')).toBeInTheDocument();
+    it('goes back to /api and leaves a chain on another address', () => {
+        expect(reopenWith('https://other.example/api')).toMatchObject({ apiUrl: '/api', credential: '' });
     });
 
     it('downloads the database', () => {

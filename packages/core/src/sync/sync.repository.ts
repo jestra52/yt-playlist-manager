@@ -102,7 +102,7 @@ const startOver = (db: Database): void => {
 
 export const saveSettings = (
     db: Database,
-    { apiUrl, autoSync }: Pick<SyncSettings, 'apiUrl' | 'autoSync'>,
+    { apiUrl = '', autoSync }: Pick<SyncSettings, 'autoSync'> & Partial<Pick<SyncSettings, 'apiUrl'>>,
 ): SyncSettings => {
     const previous = getSettings(db);
     const nextApiUrl = apiUrl.trim() || '/api';
