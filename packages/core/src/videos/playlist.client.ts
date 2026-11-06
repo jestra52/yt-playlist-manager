@@ -42,7 +42,7 @@ export const fetchYouTubePlaylist = async (
     const timer = setTimeout(() => ctrl.abort(), 30000);
     let res: Response;
     try {
-        res = await fetch(url, { signal: ctrl.signal });
+        res = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
     } catch {
         throw new PlaylistImportError(
             typeof navigator !== 'undefined' && navigator.onLine === false

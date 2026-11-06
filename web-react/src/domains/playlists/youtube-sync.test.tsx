@@ -132,6 +132,26 @@ describe('sync dialog', () => {
         expect(selectPlaying(store.getState())).toBeNull();
     });
 
+    it('reads YouTube fresh each time, so a video just added shows up', async () => {
+        const fetched = vi.spyOn(globalThis, 'fetch');
+        await compared();
+        expect(fetched).toHaveBeenCalledWith(
+            expect.stringContaining('/playlist?'),
+            expect.objectContaining({ cache: 'no-store' }),
+        );
+        fetched.mockRestore();
+    });
+
+    it('leaves nothing to open in an empty section', async () => {
+        reply = () => json(200, youtube({ videos: [] }));
+        await compared();
+        const section = screen.getByText('Deleted or private on YouTube');
+        expect(section.closest('details')).toBeNull();
+        expect(
+            screen.queryByText('Kept, and marked as Missing so you can paste another link.'),
+        ).not.toBeInTheDocument();
+    });
+
     it('closes with the X button', async () => {
         open();
         fireEvent.click(screen.getByRole('button', { name: 'Close' }));
