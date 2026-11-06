@@ -50,6 +50,8 @@ export interface VideoEntry {
     artist?: string;
     artistSource?: string;
     thumbnailUrl?: string;
+    notes?: string;
+    watched?: boolean;
     unavailable?: boolean;
 }
 
@@ -126,6 +128,8 @@ const insertVideo = (
         artist = '',
         artistSource = '',
         thumbnailUrl,
+        notes = '',
+        watched = false,
         unavailable = false,
     }: VideoEntry,
     position: number,
@@ -142,8 +146,8 @@ const insertVideo = (
             artist: artist.slice(0, 200),
             artistSource: artist ? artistSource : '',
             thumbnailUrl: thumbnailUrl || (youtubeId ? thumbnailFor(youtubeId) : ''),
-            notes: '',
-            watched: false,
+            notes: notes.slice(0, 5000),
+            watched,
             unavailable: Boolean(unavailable && youtubeId),
             position,
             createdAt: t,
@@ -196,7 +200,7 @@ export const addVideos = (
 
 /**
  * Inserts `{ title, youtubeId, afterId }` entries (optionally with `author`,
- * `artist`, `artistSource`, `thumbnailUrl` and `unavailable`) into a playlist.
+ * `artist`, `artistSource`, `thumbnailUrl`, `notes`, `watched` and `unavailable`) into a playlist.
  * Entries that share an `afterId` go right after that video (at the start when
  * it is null, at the end when the video is gone), in their given order. An
  * empty `youtubeId` makes a placeholder. Returns the inserted videos.
@@ -243,6 +247,8 @@ export const insertVideosAfter = (db: Database, playlistId: string, entries: rea
                             artist: entry.artist ?? '',
                             artistSource: entry.artistSource ?? '',
                             thumbnailUrl: entry.thumbnailUrl,
+                            notes: entry.notes,
+                            watched: entry.watched,
                             unavailable: entry.unavailable ?? false,
                         },
                         position,
