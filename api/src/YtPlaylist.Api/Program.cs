@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.HttpOverrides;
 using YtPlaylist.Api;
@@ -50,9 +51,20 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 builder.Services.AddRateLimiter(limiter =>
 {
     limiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    limiter.OnRejected = (context, cancellationToken) => new ValueTask(
-        ApiResults.Error(StatusCodes.Status429TooManyRequests, "too many attempts; wait a minute and try again")
-            .ExecuteAsync(context.HttpContext));
+    limiter.OnRejected = (context, cancellationToken) =>
+    {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var wait))
+        {
+            context.HttpContext.Response.Headers.RetryAfter =
+                Math.Ceiling(wait.TotalSeconds).ToString(CultureInfo.InvariantCulture);
+        }
+        return new ValueTask(
+            ApiResults.Error(StatusCodes.Status429TooManyRequests, "too many attempts; wait a minute and try again")
+                .ExecuteAsync(context.HttpContext));
+    };
+    limiter.AddPolicy(SyncEndpoints.RateLimit, http => RateLimitPartition.GetFixedWindowLimiter(
+        DeviceAuth.RateLimitKey(http),
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     limiter.AddPolicy(ChainEndpoints.SecretsRateLimit, http => RateLimitPartition.GetFixedWindowLimiter(
         http.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));

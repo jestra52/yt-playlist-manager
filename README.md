@@ -163,7 +163,7 @@ Tailwind v4 and daisyUI are loaded from plain CSS (`styles/tailwind.css`), becau
 * Newer fields are optional on both sides, so devices and servers of different versions keep working together: when a device's app is older and doesn't send a field (e.g. a video's `artist`, a playlist's `source`), the server keeps the stored value, and the web app keeps its local value when an older server doesn't send it.
 * When the database closes a connection (Neon does when it pauses after being idle), the API retries the request on a new connection.
 
-Sync runs after edits (2.5 s debounce), every minute while the tab is visible, when the network comes back, and from the sync button.
+Sync runs after edits (2.5 s debounce), on opening the app, when the tab or the network comes back, and from the sync button. There is no timer, so a device left open picks up other devices' changes when you come back to it.
 
 ## Run it locally
 
@@ -365,7 +365,7 @@ The artist follows the last ` | ` and is empty when unknown. Reports saved befor
 * **The embedded player** loads in each viewer's browser straight from `youtube-nocookie.com`; it doesn't go through the API or use `YOUTUBE_API_KEY`. The key is only used to read playlists (imports and syncing from YouTube).
 * **Artists are guesses** unless you edit them: YouTube has no artist field, and fan uploads are named freely. A guess never replaces an artist you typed.
 * **Render's free plan sleeps** after about 15 minutes without requests, and waking up can take close to a minute. Netlify gives up on a proxied request after 26 seconds, so the first sync after a quiet period may fail; the app retries on its own and the next attempt goes through. A paid Render plan stays awake.
-* **Hosting the API elsewhere** works: point `API_ORIGIN` at it. To call it directly instead of through Netlify, set the API address in the sync dialog and `ALLOWED_ORIGIN` on the API, and add that origin to `connect-src` in `web/public/_headers`.
+* **Hosting the API elsewhere** works: point `API_ORIGIN` at it.
 
 ## License
 

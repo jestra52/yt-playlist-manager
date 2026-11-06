@@ -6,7 +6,7 @@ import initSqlJs, { type SqlJsStatic } from 'sql.js';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createStore, type AppStore } from '../../app/store';
 import { selectSelectedPlaylist } from '../playlists/playlists.selectors';
-import { createPlaylist, importFromYouTube, selectPlaylist } from '../playlists/playlists.thunks';
+import { createPlaylist, selectPlaylist } from '../playlists/playlists.thunks';
 import { selectAllVideos, selectPlaying } from '../videos/videos.selectors';
 import { played } from '../videos/videos.slice';
 import { addEntries } from '../videos/videos.thunks';
@@ -27,7 +27,8 @@ import {
     selectRecoveryNotice,
     selectSyncSettings,
 } from './sync.selectors';
-import { codeChecked, syncRequested } from './sync.slice';
+import { startAutoSync } from './auto-sync';
+import { codeChecked, syncFinished, syncRequested } from './sync.slice';
 import { checkedCodes, loadChain, loadSync, saveSyncSettings, syncNow } from './sync.thunks';
 
 const SECRET = 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8';
@@ -59,6 +60,7 @@ let SQL: SqlJsStatic;
 let store: AppStore;
 let calls: Call[];
 let rejectSync: boolean;
+let limitedSyncs: number;
 let recoveryCodesLeft: number;
 let pairingLockedUntil: number | null;
 let pairingInfo: object;
@@ -100,6 +102,13 @@ const answer = (path: string, method: string | undefined, body: Call['body']): R
     }
     if (path.endsWith('/sync')) {
         if (rejectSync) return reply(401, { error: "this device isn't in a sync chain" });
+        if (limitedSyncs > 0) {
+            limitedSyncs -= 1;
+            return new Response(JSON.stringify({ error: 'too many attempts' }), {
+                status: 429,
+                headers: { 'Retry-After': '1' },
+            });
+        }
         const changes = incoming;
         incoming = {};
         return reply(200, { cursor: 7, hasMore: false, applied: 0, changes });
@@ -133,12 +142,13 @@ afterAll(() => {
 
 // A sync still waiting from this test must not land in the next one.
 afterEach(() => {
-    store.dispatch(saveSyncSettings({ apiUrl: '/api', autoSync: false }));
+    store.dispatch(saveSyncSettings({ autoSync: false }));
 });
 
 beforeEach(() => {
     calls = [];
     rejectSync = false;
+    limitedSyncs = 0;
     recoveryCodesLeft = 10;
     pairingLockedUntil = null;
     pairingInfo = { status: 'waiting', requesterName: '', expiresAt: Date.now() + 600_000 };
@@ -362,14 +372,8 @@ describe('two-way sync', () => {
         globalThis.fetch = fetchNow;
         expect(sync()).toMatchObject({ status: 'error', error: "Can't reach the sync server" });
 
-        store.dispatch(saveSyncSettings({ apiUrl: '/api', autoSync: false }));
+        store.dispatch(saveSyncSettings({ autoSync: false }));
         expect(sync()).toMatchObject({ status: 'idle', error: null });
-    });
-
-    it('sends API calls to the address in the settings', async () => {
-        store.dispatch(saveSyncSettings({ apiUrl: 'https://api.example.test/', autoSync: true }));
-        await store.dispatch(importFromYouTube('PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf'));
-        expect(calls.at(-1)?.path).toContain('https://api.example.test/playlist?');
     });
 });
 
@@ -388,10 +392,47 @@ describe('auto-sync', () => {
         expect(syncCalls()).toHaveLength(before + 1);
     }, 8000);
 
+    it('syncs on return, unless it synced moments ago, and never on a timer', async () => {
+        await inChain();
+        const timers = vi.spyOn(globalThis, 'setInterval');
+        const stop = store.dispatch(startAutoSync());
+        expect(timers).not.toHaveBeenCalled();
+        timers.mockRestore();
+        await new Promise((resolve) => {
+            setTimeout(resolve, 500);
+        });
+
+        const before = syncCalls().length;
+        store.dispatch(syncFinished({ lastSyncedAt: Date.now(), pending: 0 }));
+        document.dispatchEvent(new Event('visibilitychange'));
+        await new Promise((resolve) => {
+            setTimeout(resolve, 700);
+        });
+        expect(syncCalls()).toHaveLength(before);
+
+        store.dispatch(syncFinished({ lastSyncedAt: Date.now() - 60_000, pending: 0 }));
+        document.dispatchEvent(new Event('visibilitychange'));
+        await vi.waitFor(() => expect(syncCalls()).toHaveLength(before + 1), { timeout: 2000 });
+        stop();
+    }, 8000);
+
+    it('waits and retries by itself when the server says too many requests', async () => {
+        await inChain();
+        const before = syncCalls().length;
+        limitedSyncs = 1;
+        store.dispatch(syncRequested(0));
+        await vi.waitFor(() => expect(sync().waitMs).toBe(1000));
+        expect(sync().status).toBe('error');
+
+        await vi.waitFor(() => expect(syncCalls()).toHaveLength(before + 2), { timeout: 8000 });
+        await vi.waitFor(() => expect(sync().status).toBe('idle'));
+        expect(sync().waitMs).toBe(0);
+    }, 12000);
+
     it('does nothing without a chain, or with auto-sync turned off', async () => {
         store.dispatch(syncRequested(0));
         await inChain();
-        store.dispatch(saveSyncSettings({ apiUrl: '/api', autoSync: false }));
+        store.dispatch(saveSyncSettings({ autoSync: false }));
         const before = syncCalls().length;
         store.dispatch(syncRequested(0));
         await new Promise((resolve) => {

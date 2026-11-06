@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
 import { Icon } from '../../../../shared/components/Icon';
 import { timeAgo } from '../../../../shared/time';
@@ -7,16 +8,26 @@ import { selectConfigured, selectSync } from '../../sync.selectors';
 import { syncNow } from '../../sync.thunks';
 import styles from './SyncStatus.module.scss';
 
+const SYNC_NOW_PAUSE_MS = 5000;
+
 export const SyncStatus = () => {
-    const { status, offline, pending, lastSyncedAt, error } = useAppSelector(selectSync);
+    const { status, offline, waitMs, pending, lastSyncedAt, error } = useAppSelector(selectSync);
     const configured = useAppSelector(selectConfigured);
     const dispatch = useAppDispatch();
     const now = useNow(30_000);
     const syncing = status === 'syncing';
+    const [paused, setPaused] = useState(false);
+
+    useEffect(() => {
+        if (!paused) return undefined;
+        const timer = setTimeout(() => setPaused(false), SYNC_NOW_PAUSE_MS);
+        return () => clearTimeout(timer);
+    }, [paused]);
 
     const label = () => {
         if (!configured) return 'Only on this device';
         if (syncing) return 'Syncing…';
+        if (status === 'error' && waitMs > 0) return 'Waiting to sync';
         if (status === 'error') return offline ? 'Offline. Changes are saved here.' : 'Sync failed';
         if (pending > 0) return `${pending} change${pending === 1 ? '' : 's'} to sync`;
         return `Synced ${timeAgo(lastSyncedAt, now)}`;
@@ -24,7 +35,8 @@ export const SyncStatus = () => {
 
     const tone = () => {
         if (!configured) return styles.idle;
-        if (status === 'error') return 'status-error';
+        if (status === 'error' && waitMs === 0) return 'status-error';
+        if (status === 'error') return 'status-warning';
         return pending > 0 ? 'status-warning' : 'status-success';
     };
 
@@ -49,8 +61,11 @@ export const SyncStatus = () => {
                     type="button"
                     title="Sync now"
                     aria-label="Sync now"
-                    disabled={syncing}
-                    onClick={() => dispatch(syncNow())}
+                    disabled={syncing || paused}
+                    onClick={() => {
+                        setPaused(true);
+                        dispatch(syncNow());
+                    }}
                 >
                     {syncing ? <span className="loading loading-spinner loading-xs" /> : <Icon name="sync" size={16} />}
                 </button>
