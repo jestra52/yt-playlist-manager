@@ -115,6 +115,11 @@ describe('sidebar status', () => {
         );
 
         act(() => {
+            store.dispatch(syncFailed({ error: 'Too many attempts', offline: false, waitMs: 60_000 }));
+        });
+        expect(screen.getByText('Waiting to sync')).toBeInTheDocument();
+
+        act(() => {
             store.dispatch(syncFailed({ error: "You're offline", offline: true }));
         });
         expect(screen.getByText('Offline. Changes are saved here.')).toBeInTheDocument();

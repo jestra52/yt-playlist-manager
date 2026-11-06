@@ -25,6 +25,8 @@ export interface SyncState {
     status: 'idle' | 'syncing' | 'error';
     error: string | null;
     offline: boolean;
+    /** How long the server asked to wait, after a 429. */
+    waitMs: number;
     pending: number;
     lastSyncedAt: number | null;
     chain: Chain | null;
@@ -44,6 +46,7 @@ const initialState: SyncState = {
     status: 'idle',
     error: null,
     offline: false,
+    waitMs: 0,
     pending: 0,
     lastSyncedAt: null,
     chain: null,
@@ -125,6 +128,7 @@ export const syncSlice = createSlice({
         syncStarted: (state) => {
             state.status = 'syncing';
             state.error = null;
+            state.waitMs = 0;
         },
         syncFinished: (state, { payload }: PayloadAction<{ lastSyncedAt: number; pending: number }>) => {
             state.status = 'idle';
@@ -132,10 +136,11 @@ export const syncSlice = createSlice({
             state.lastSyncedAt = payload.lastSyncedAt;
             state.pending = payload.pending;
         },
-        syncFailed: (state, { payload }: PayloadAction<{ error: string; offline: boolean }>) => {
+        syncFailed: (state, { payload }: PayloadAction<{ error: string; offline: boolean; waitMs?: number }>) => {
             state.status = 'error';
             state.error = payload.error;
             state.offline = payload.offline;
+            state.waitMs = payload.waitMs ?? 0;
         },
         syncStopped: (state) => {
             state.status = 'idle';
