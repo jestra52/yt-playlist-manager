@@ -122,6 +122,20 @@ export const postReport = ({ apiUrl, credential }: SyncConnection, report: Repor
     return request(endpoint(apiUrl, '/reports'), json('POST', report, credential));
 };
 
+/** A playlist's backups in this device's chain, newest first, without their content. */
+export const listReports = (
+    { apiUrl, credential }: SyncConnection,
+    playlistId: string,
+): Promise<Omit<ReportRow, 'content'>[]> => {
+    const query = `?playlistId=${encodeURIComponent(playlistId)}`;
+    return request(endpoint(apiUrl, `/reports${query}`), json('GET', undefined, credential));
+};
+
+/** One backup's JSON report. */
+export const getReport = ({ apiUrl, credential }: SyncConnection, id: string): Promise<unknown> => {
+    return request(endpoint(apiUrl, `/reports/${encodeURIComponent(id)}`), json('GET', undefined, credential));
+};
+
 /** Pushes local changes and pulls server changes newer than `since`, in this device's chain. */
 export const postSync = (
     { apiUrl, credential }: SyncConnection,
