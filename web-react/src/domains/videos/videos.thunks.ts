@@ -29,8 +29,8 @@ import { extractYouTubeIds, parseYouTubeId, thumbnailFor } from '@ytpm/core/vide
 import type { AppThunk } from '../../app/store';
 import { selectApiUrl } from '../sync/sync.selectors';
 import { notify, setImporting } from '../ui/ui.slice';
-import { selectAllVideos, selectPlaying } from './videos.selectors';
-import { changed, played, playerClosed, removed, replaced, upserted } from './videos.slice';
+import { selectAllVideos, selectNextVideo, selectPlaying } from './videos.selectors';
+import { changed, played, removed, replaced, upserted } from './videos.slice';
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -122,13 +122,6 @@ export const addVideosFromText =
         return added.length > 0;
     };
 
-export const setWatched =
-    (id: string, watched: boolean): AppThunk =>
-    (dispatch) => {
-        const video = updateVideo(getDatabase(), id, { watched });
-        if (video) dispatch(changed(video));
-    };
-
 export const saveNotes =
     (id: string, notes: string): AppThunk =>
     (dispatch) => {
@@ -189,20 +182,12 @@ export const restoreVideo =
         if (video) dispatch(changed(video));
     };
 
-/** Marks the playing video watched and starts the next unwatched one. */
-export const finishAndPlayNext = (): AppThunk => (dispatch, getState) => {
-    const current = selectPlaying(getState());
-    if (!current) return;
-    dispatch(setWatched(current.id, true));
-    const queue = selectAllVideos(getState()).filter((v) => v.playlistId === current.playlistId);
-    const playable = (v: Video) => !v.watched && !v.missing;
-    const next = queue.find((v) => v.position > current.position && playable(v)) ?? queue.find(playable);
-    if (next) {
-        dispatch(played(next.id));
-    } else {
-        dispatch(playerClosed());
-        dispatch(notify("You've watched everything in this playlist"));
-    }
+/** Plays the next video, or keeps the last one playing and says so. */
+export const playNext = (): AppThunk => (dispatch, getState) => {
+    if (!selectPlaying(getState())) return;
+    const next = selectNextVideo(getState());
+    if (next) dispatch(played(next.id));
+    else dispatch(notify('This is the last video in the playlist'));
 };
 
 /** The YouTube ID in `link`, or null with a notice when it's no link or already in the playlist. */
@@ -255,10 +240,10 @@ export const completeVideo =
     };
 
 /**
- * Points a video at the YouTube video at `link`, keeping its notes, watched mark,
- * place and any artist set by hand. Nothing changes unless YouTube has the new
- * video's details, so a video never shows another one's title. Resolves to true
- * when the video has that link.
+ * Points a video at the YouTube video at `link`, keeping its notes, place and
+ * any artist set by hand. Nothing changes unless YouTube has the new video's
+ * details, so a video never shows another one's title. Resolves to true when
+ * the video has that link.
  */
 export const changeVideoLink =
     (id: string, link: string): AppThunk<Promise<boolean>> =>
@@ -294,8 +279,8 @@ export const changeVideoLink =
  * Puts back entries missing since an old report near their old place. Entries
  * with a YouTube link become videos; the rest become placeholders that wait for
  * a link. An entry's artist comes from a report with artists; for older reports
- * it's guessed from the title. A JSON report also brings back the channel, notes,
- * watched mark and deleted mark. Returns the inserted videos.
+ * it's guessed from the title. A JSON report also brings back the channel, notes
+ * and deleted mark. Returns the inserted videos.
  */
 export const addFromReport =
     (playlistId: string, missing: readonly MissingEntry[]): AppThunk<Video[]> =>
@@ -306,8 +291,8 @@ export const addFromReport =
             const artist = entry.artist
                 ? { artist: cleanArtist(entry.artist), artistSource: 'user' }
                 : guessedArtistPatch({ title, author: '', artist: '', artistSource: '' });
-            const { author, notes, watched, unavailable, afterId } = entry;
-            return { youtubeId: entry.youtubeId ?? '', title, author, notes, watched, unavailable, afterId, ...artist };
+            const { author, notes, unavailable, afterId } = entry;
+            return { youtubeId: entry.youtubeId ?? '', title, author, notes, unavailable, afterId, ...artist };
         });
         const added = insertVideosAfter(getDatabase(), playlistId, entries);
         if (added.length) dispatch(upserted(added));

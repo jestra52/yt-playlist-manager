@@ -1,0 +1,37 @@
+$compact: 767px;
+
+.number {
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    margin-top: 0.15rem;
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    letter-spacing: -0.025em;
+    white-space: nowrap;
+
+    @media (max-width: $compact) {
+        font-size: 1.4rem;
+    }
+}
+
+// Three and four digits still fit the same square.
+.long {
+    font-size: 1.3rem;
+
+    @media (max-width: $compact) {
+        font-size: 1.05rem;
+    }
+}
+
+.longer {
+    font-size: 1rem;
+
+    @media (max-width: $compact) {
+        font-size: 0.8rem;
+    }
+}

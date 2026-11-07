@@ -158,8 +158,7 @@ export const SyncYouTubeDialog = ({ playlist, ...dialog }: { playlist: Playlist 
                                     <p className="mt-1 mb-0">
                                         It can add videos, mark videos deleted on YouTube as Missing, and, if you
                                         choose, remove videos that are no longer in the YouTube playlist, along with
-                                        their notes and watched marks. Compare first: nothing changes until you review
-                                        and apply.
+                                        their notes. Compare first: nothing changes until you review and apply.
                                     </p>
                                 </div>
                             </div>
@@ -242,8 +241,8 @@ export const SyncYouTubeDialog = ({ playlist, ...dialog }: { playlist: Playlist 
                             </div>
                             {confirmingRemoval && (
                                 <p className="text-error mt-3 mb-0 text-sm" role="alert">
-                                    This removes {plural(removing, 'video')} from this playlist, with their notes and
-                                    watched marks. {saveReport ? 'The report saved first still lists them.' : ''}
+                                    This removes {plural(removing, 'video')} from this playlist, with their notes.{' '}
+                                    {saveReport ? 'The report saved first still lists them.' : ''}
                                 </p>
                             )}
                         </>

@@ -1,13 +1,13 @@
 import { useAppSelector } from '../../../../app/store';
 import { Icon } from '../../../../shared/components/Icon';
 import { useDialog } from '../../../ui/components/dialog/useDialog';
-import { selectProgressByPlaylist } from '../../../videos/videos.selectors';
+import { selectVideoCounts } from '../../../videos/videos.selectors';
 import { CompareReportDialog } from './CompareReportDialog';
 import { ReportMenu } from './ReportMenu';
 
 export const ReportButtons = ({ playlistId }: { playlistId: string }) => {
     const dialog = useDialog();
-    const total = useAppSelector(selectProgressByPlaylist)[playlistId]?.total ?? 0;
+    const total = useAppSelector(selectVideoCounts)[playlistId] ?? 0;
 
     return (
         <>

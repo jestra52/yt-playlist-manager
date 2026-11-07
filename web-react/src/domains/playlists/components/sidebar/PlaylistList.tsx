@@ -1,6 +1,6 @@
 import { useAppDispatch, useAppSelector } from '../../../../app/store';
 import { toggleSidebar } from '../../../ui/ui.slice';
-import { selectProgressByPlaylist } from '../../../videos/videos.selectors';
+import { selectVideoCounts } from '../../../videos/videos.selectors';
 import { selectPlaylists, selectSelectedPlaylistId } from '../../playlists.selectors';
 import { selectPlaylist } from '../../playlists.thunks';
 import styles from './PlaylistList.module.scss';
@@ -8,13 +8,13 @@ import styles from './PlaylistList.module.scss';
 export const PlaylistList = () => {
     const playlists = useAppSelector(selectPlaylists);
     const selectedId = useAppSelector(selectSelectedPlaylistId);
-    const progress = useAppSelector(selectProgressByPlaylist);
+    const counts = useAppSelector(selectVideoCounts);
     const dispatch = useAppDispatch();
 
     return (
         <ul className={`menu w-full gap-0.5 p-0 ${styles.list}`}>
             {playlists.map((playlist) => {
-                const { left, total } = progress[playlist.id] ?? { left: 0, total: 0 };
+                const total = counts[playlist.id] ?? 0;
                 const active = playlist.id === selectedId;
                 return (
                     <li key={playlist.id}>
@@ -30,9 +30,8 @@ export const PlaylistList = () => {
                             <span className={styles.name} title={playlist.name}>
                                 {playlist.name}
                             </span>
-                            <span className={styles.count} title={`${left} left to watch`}>
-                                {left}
-                                <span className={styles.of}>/{total}</span>
+                            <span className={styles.count} title={total === 1 ? '1 video' : `${total} videos`}>
+                                {total}
                             </span>
                         </button>
                     </li>

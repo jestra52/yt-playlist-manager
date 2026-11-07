@@ -6,8 +6,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../../App';
 import { OpenFailed } from '../ui/components/feedback/OpenFailed';
 import { createStore, type AppStore } from '../../app/store';
-import { selectProgressByPlaylist, selectVideoById, selectVideoIdsFor } from '../videos/videos.selectors';
-import { addEntries, addVideosFromText, setWatched } from '../videos/videos.thunks';
+import { selectVideoById, selectVideoCounts, selectVideoIdsFor } from '../videos/videos.selectors';
+import { addEntries, addVideosFromText } from '../videos/videos.thunks';
 import { selectPlaylists, selectSelectedPlaylist } from './playlists.selectors';
 import { createFromInput, createPlaylist, loadLibrary, selectPlaylist } from './playlists.thunks';
 
@@ -96,7 +96,7 @@ describe('switching playlists', () => {
         act(() => {
             store.dispatch(selectPlaylist(first.id));
         });
-        expect(await screen.findAllByRole('button', { name: /^Mark ".*" as watched$/ })).toHaveLength(30);
+        expect(await screen.findAllByRole('button', { name: /^Play Song / })).toHaveLength(30);
 
         act(() => {
             store.dispatch(selectPlaylist(second.id));
@@ -107,21 +107,20 @@ describe('switching playlists', () => {
 });
 
 describe('playlist and video slices', () => {
-    it('add videos, mark one watched, and keep it all in the database', async () => {
+    it('add videos and keep them in the database', async () => {
         const { id } = store.dispatch(createPlaylist({ name: '  City Pop  ' }))!;
         expect(selectSelectedPlaylist(store.getState())?.name).toBe('City Pop');
 
         const text = 'https://youtu.be/dQw4w9WgXcQ 9bZkp7q19f0 https://youtu.be/dQw4w9WgXcQ nope';
         expect(await store.dispatch(addVideosFromText(id, text))).toBe(true);
         expect(lastNotice()?.message).toBe('Added 2 videos. 1 link skipped');
-        const [first] = selectVideoIdsFor(store.getState(), id);
-        store.dispatch(setWatched(first!, true));
-        expect(selectProgressByPlaylist(store.getState())[id]).toEqual({ left: 1, total: 2 });
+        expect(selectVideoIdsFor(store.getState(), id)).toHaveLength(2);
+        expect(selectVideoCounts(store.getState())[id]).toBe(2);
 
         const reloaded = createStore();
         reloaded.dispatch(loadLibrary());
         expect(selectPlaylists(reloaded.getState()).map((p) => p.name)).toEqual(['City Pop']);
-        expect(selectProgressByPlaylist(reloaded.getState())[id]).toEqual({ left: 1, total: 2 });
+        expect(selectVideoCounts(reloaded.getState())[id]).toBe(2);
     });
 
     it('fetches the title and channel from YouTube and guesses the artist', async () => {
@@ -191,7 +190,7 @@ describe('links', () => {
 });
 
 describe('playlist page', () => {
-    it('creates a playlist from the sidebar, adds a video and marks it watched', async () => {
+    it('creates a playlist from the sidebar, adds a video and counts it', async () => {
         render(<App store={store} />);
         expect(screen.getByRole('heading', { name: 'Start your first playlist' })).toBeInTheDocument();
 
@@ -214,11 +213,10 @@ describe('playlist page', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Add' }));
         expect(await screen.findByText('Added 1 video')).toBeInTheDocument();
 
-        fireEvent.click(await screen.findByRole('button', { name: 'Mark "Kenji Mori - Song dQw4w9WgXcQ" as watched' }));
-        expect(screen.getByText('All 1 watched')).toBeInTheDocument();
+        expect(await screen.findByText('1 video')).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Show playlists' }));
         const sidebar = screen.getByRole('navigation', { name: 'Playlists' });
-        expect(within(sidebar).getByRole('button', { name: /Road trip/ })).toHaveTextContent('0/1');
+        expect(within(sidebar).getByRole('button', { name: /Road trip/ })).toHaveTextContent(/^Road trip1$/);
     });
 
     it('offers the video or the whole playlist for a watch link', async () => {

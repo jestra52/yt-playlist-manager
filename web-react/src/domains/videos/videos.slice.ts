@@ -1,7 +1,7 @@
 import { createEntityAdapter, createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { Video } from '@ytpm/core/videos/videos.repository';
 
-export type VideoFilter = 'all' | 'unwatched' | 'watched' | 'missing';
+export type VideoFilter = 'all' | 'missing';
 
 export const videosAdapter = createEntityAdapter<Video>({
     sortComparer: (a, b) => a.position - b.position,
