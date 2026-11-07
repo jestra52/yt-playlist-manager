@@ -1,23 +1,18 @@
 import { embedUrl } from '@ytpm/core/videos/youtube';
-import { useAppDispatch, useAppSelector } from '../../../../app/store';
-import { Icon } from '../../../../shared/components/Icon';
-import { selectNextVideo, selectPlaying, selectPreviousVideo, selectShuffleOn } from '../../videos.selectors';
-import { playerClosed } from '../../videos.slice';
-import { playNext, playPrevious, toggleShuffle } from '../../videos.thunks';
+import { useAppSelector } from '../../../../app/store';
+import { selectPlaying } from '../../videos.selectors';
+import { PlayerControls } from './PlayerControls';
 import styles from './PlayerPanel.module.scss';
 
 export const PlayerPanel = () => {
     const video = useAppSelector(selectPlaying);
-    const hasNext = useAppSelector(selectNextVideo) !== null;
-    const hasPrevious = useAppSelector(selectPreviousVideo) !== null;
-    const shuffleOn = useAppSelector(selectShuffleOn);
-    const dispatch = useAppDispatch();
     if (!video) return null;
     const title = video.title || video.youtubeId;
+    const artist = video.artist || video.author;
 
     return (
         <section className={styles.panel} aria-label="Now playing">
-            <div className="card bg-neutral text-neutral-content overflow-hidden shadow-md">
+            <div className="card bg-neutral text-neutral-content w-full overflow-hidden shadow-md 2xl:max-w-xl">
                 <div className={styles.frame}>
                     <iframe
                         key={video.youtubeId}
@@ -27,43 +22,12 @@ export const PlayerPanel = () => {
                         referrerPolicy="strict-origin-when-cross-origin"
                     />
                 </div>
-                <div className="flex items-center gap-3 py-2.5 pr-2.5 pl-4">
-                    <p className="m-0 min-w-0 flex-1 truncate font-semibold">{title}</p>
-                    <button
-                        className={`btn btn-sm max-md:btn-square ${shuffleOn ? 'btn-secondary' : 'btn-ghost text-neutral-content'}`}
-                        type="button"
-                        aria-label="Shuffle"
-                        aria-pressed={shuffleOn}
-                        onClick={() => dispatch(toggleShuffle())}
-                    >
-                        <Icon name="shuffle" size={15} /> <span className="max-md:hidden">Shuffle</span>
-                    </button>
-                    <button
-                        className="btn btn-ghost btn-sm text-neutral-content max-md:btn-square"
-                        type="button"
-                        aria-label="Previous"
-                        disabled={!hasPrevious}
-                        onClick={() => dispatch(playPrevious())}
-                    >
-                        <Icon name="previous" size={15} /> <span className="max-md:hidden">Previous</span>
-                    </button>
-                    <button
-                        className="btn btn-primary btn-sm max-md:btn-square"
-                        type="button"
-                        aria-label="Next"
-                        disabled={!hasNext}
-                        onClick={() => dispatch(playNext())}
-                    >
-                        <Icon name="next" size={15} /> <span className="max-md:hidden">Next</span>
-                    </button>
-                    <button
-                        className="btn btn-ghost btn-sm btn-square text-neutral-content"
-                        type="button"
-                        aria-label="Close player"
-                        onClick={() => dispatch(playerClosed())}
-                    >
-                        <Icon name="close" />
-                    </button>
+                <div className="flex flex-col gap-2 px-4 pt-3 pb-3">
+                    <div className="min-w-0">
+                        <p className={styles.title}>{title}</p>
+                        {artist && <p className="text-neutral-content/70 m-0 truncate text-sm">{artist}</p>}
+                    </div>
+                    <PlayerControls />
                 </div>
             </div>
         </section>
