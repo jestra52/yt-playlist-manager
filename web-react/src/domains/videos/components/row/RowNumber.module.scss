@@ -1,11 +1,15 @@
 $compact: 767px;
 
-.number {
-    display: grid;
-    place-items: center;
-    width: 3rem;
-    height: 3rem;
+.mark {
     margin-top: 0.15rem;
+
+    &:hover {
+        background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+        border-color: transparent;
+    }
+}
+
+.number {
     font-family: var(--font-display);
     font-size: 1.75rem;
     font-weight: 700;
@@ -14,12 +18,16 @@ $compact: 767px;
     letter-spacing: -0.025em;
     white-space: nowrap;
 
+    .mark:hover & {
+        color: var(--color-primary);
+    }
+
     @media (max-width: $compact) {
         font-size: 1.4rem;
     }
 }
 
-// Three and four digits still fit the same square.
+// Three and four digits still fit the square button.
 .long {
     font-size: 1.3rem;
 
