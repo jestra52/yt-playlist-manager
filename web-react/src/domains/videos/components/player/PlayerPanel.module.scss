@@ -1,6 +1,18 @@
+// The page color fills the card's rounded corners, so the list doesn't show through them.
+.panel {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    margin-bottom: 1.5rem;
+    background: var(--color-base-200);
+}
+
+// YouTube requires at least 200×200.
 .frame {
     aspect-ratio: 16 / 9;
-    max-height: 56vh;
+    min-width: 200px;
+    min-height: 200px;
+    max-height: 40dvh;
     background: #000;
 
     iframe {

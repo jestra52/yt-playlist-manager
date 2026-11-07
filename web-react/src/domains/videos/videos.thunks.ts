@@ -32,7 +32,7 @@ import { notify, setImporting } from '../ui/ui.slice';
 import {
     selectAllVideos,
     selectNextVideo,
-    selectPlaying,
+    selectPreviousVideo,
     selectVideoById,
     selectVideoIdsFor,
 } from './videos.selectors';
@@ -209,12 +209,14 @@ export const restoreVideo =
         if (video) dispatch(changed(video));
     };
 
-/** Plays the next video, or keeps the last one playing and says so. */
 export const playNext = (): AppThunk => (dispatch, getState) => {
-    if (!selectPlaying(getState())) return;
     const next = selectNextVideo(getState());
     if (next) dispatch(played(next.id));
-    else dispatch(notify('This is the last video in the playlist'));
+};
+
+export const playPrevious = (): AppThunk => (dispatch, getState) => {
+    const previous = selectPreviousVideo(getState());
+    if (previous) dispatch(played(previous.id));
 };
 
 /** The YouTube ID in `link`, or null with a notice when it's no link or already in the playlist. */

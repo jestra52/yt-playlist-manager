@@ -2,6 +2,7 @@
     padding-inline: 0.75rem;
     content-visibility: auto;
     contain-intrinsic-size: auto 96px;
+    scroll-margin-bottom: 6rem;
 
     // Painting stays inside the row otherwise, which would cut off the move menu.
     &:has(details[open]) {

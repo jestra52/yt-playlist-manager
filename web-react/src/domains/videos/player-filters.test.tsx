@@ -7,9 +7,15 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../../App';
 import { createStore, type AppStore } from '../../app/store';
 import { createPlaylist } from '../playlists/playlists.thunks';
-import { selectNextVideo, selectPlaying, selectVideoById, selectVisibleVideos } from './videos.selectors';
+import {
+    selectNextVideo,
+    selectPlaying,
+    selectPreviousVideo,
+    selectVideoById,
+    selectVisibleVideos,
+} from './videos.selectors';
 import { filterSet, loaded, played, querySet } from './videos.slice';
-import { addEntries, playNext, removeVideo, saveNotes } from './videos.thunks';
+import { addEntries, playNext, playPrevious, removeVideo, saveNotes } from './videos.thunks';
 
 const realFetch = globalThis.fetch;
 let SQL: SqlJsStatic;
@@ -84,12 +90,32 @@ describe('player', () => {
         expect(selectPlaying(store.getState())?.title).toBe('Two');
     });
 
-    it('stays on the last video and says so, without wrapping around', () => {
+    it('plays the previous video, skipping Missing videos', () => {
+        addMissing('Lost', 'One');
+        store.dispatch(played(idOf('Two')));
+        store.dispatch(playPrevious());
+        expect(selectPlaying(store.getState())?.title).toBe('One');
+    });
+
+    it('stays on the last video, without wrapping around', () => {
         store.dispatch(played(idOf('Three')));
         expect(selectNextVideo(store.getState())).toBeNull();
         store.dispatch(playNext());
         expect(selectPlaying(store.getState())?.title).toBe('Three');
-        expect(store.getState().ui.notices.at(-1)?.message).toBe('This is the last video in the playlist');
+    });
+
+    it('stays on the first video, without wrapping around', () => {
+        store.dispatch(played(idOf('One')));
+        expect(selectPreviousVideo(store.getState())).toBeNull();
+        store.dispatch(playPrevious());
+        expect(selectPlaying(store.getState())?.title).toBe('One');
+    });
+
+    it("stays in the playing video's playlist", () => {
+        const other = store.dispatch(createPlaylist({ name: 'Other' }))!.id;
+        store.dispatch(addEntries(other, [entry('ddddddddddd', 'Elsewhere')]));
+        store.dispatch(played(idOf('Three')));
+        expect(selectNextVideo(store.getState())).toBeNull();
     });
 
     it('stops at the end when only Missing videos follow', () => {
@@ -128,11 +154,20 @@ describe('playlist page', () => {
         expect(screen.queryByRole('region', { name: 'Now playing' })).not.toBeInTheDocument();
     });
 
-    it('moves on with the Next button', () => {
+    it('moves with Previous and Next, which are disabled at the ends', () => {
         render(<App store={store} />);
         fireEvent.click(screen.getByRole('button', { name: 'Play One' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-        expect(within(screen.getByRole('region', { name: 'Now playing' })).getByTitle('Two')).toBeInTheDocument();
+        const player = within(screen.getByRole('region', { name: 'Now playing' }));
+        expect(player.getByRole('button', { name: 'Previous' })).toBeDisabled();
+
+        fireEvent.click(player.getByRole('button', { name: 'Next' }));
+        expect(player.getByTitle('Two')).toBeInTheDocument();
+        fireEvent.click(player.getByRole('button', { name: 'Next' }));
+        expect(player.getByTitle('Three')).toBeInTheDocument();
+        expect(player.getByRole('button', { name: 'Next' })).toBeDisabled();
+
+        fireEvent.click(player.getByRole('button', { name: 'Previous' }));
+        expect(player.getByTitle('Two')).toBeInTheDocument();
     });
 
     it('shows the tabs only when the playlist has Missing videos', () => {

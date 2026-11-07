@@ -67,12 +67,16 @@ export const selectVideoCounts = createSelector([selectors.selectAll], (videos) 
     return counts;
 });
 
-/** The video after the playing one in its playlist's order, skipping Missing ones. */
-export const selectNextVideo = createSelector([selectors.selectAll, selectPlaying], (videos, playing) => {
-    if (!playing) return null;
-    const queue = videos.filter((v) => v.playlistId === playing.playlistId);
-    const after = queue.slice(queue.findIndex((v) => v.id === playing.id) + 1);
-    return after.find((v) => !v.missing) ?? null;
-});
+/** What Previous and Next move through: the playing video's playlist, without Missing videos. */
+const selectPlayQueue = createSelector([selectors.selectAll, selectPlaying], (videos, playing) =>
+    videos.filter((v) => v.playlistId === playing?.playlistId && (!v.missing || v.id === playing.id)),
+);
+
+const selectPlayingPlace = createSelector([selectPlayQueue, selectPlayingId], (queue, playingId) =>
+    queue.findIndex((v) => v.id === playingId),
+);
+
+export const selectNextVideo = (state: RootState) => selectPlayQueue(state)[selectPlayingPlace(state) + 1] ?? null;
+export const selectPreviousVideo = (state: RootState) => selectPlayQueue(state)[selectPlayingPlace(state) - 1] ?? null;
 
 export const selectKnownArtists = createSelector([selectors.selectAll], (videos) => knownArtists(videos));

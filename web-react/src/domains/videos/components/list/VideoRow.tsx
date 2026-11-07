@@ -26,7 +26,7 @@ export const VideoRow = memo(({ id, index, total }: { id: string; index: number;
 
     useEffect(() => {
         if (!moved) return;
-        rowRef.current?.scrollIntoView({ block: 'center' });
+        rowRef.current?.scrollIntoView({ block: 'end' });
         const timer = setTimeout(() => setMoved(false), MOVED_HIGHLIGHT_MS);
         return () => clearTimeout(timer);
     }, [moved]);
