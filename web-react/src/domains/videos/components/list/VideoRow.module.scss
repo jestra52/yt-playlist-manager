@@ -2,6 +2,7 @@
     padding-inline: 0.75rem;
     content-visibility: auto;
     contain-intrinsic-size: auto 96px;
+    scroll-margin-bottom: 6rem;
 
     // Painting stays inside the row otherwise, which would cut off the move menu.
     &:has(details[open]) {
@@ -10,6 +11,16 @@
 
     &[data-playing] {
         box-shadow: inset 3px 0 0 var(--color-primary);
+    }
+
+    &[data-moved] {
+        animation: moved 1.6s ease-out;
+    }
+}
+
+@keyframes moved {
+    from {
+        background: color-mix(in srgb, var(--color-primary) 25%, transparent);
     }
 }
 
@@ -28,9 +39,4 @@
     @media (max-width: 767px) {
         font-size: 1rem;
     }
-}
-
-.watched .title,
-.watched img {
-    opacity: 0.55;
 }

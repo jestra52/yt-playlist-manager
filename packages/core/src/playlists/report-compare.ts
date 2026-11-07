@@ -5,7 +5,8 @@ import { JSON_REPORT_FORMAT, JSON_REPORT_VERSION } from './report';
  * Report formats (see report.js). Reports without a `Format:` line are legacy
  * ones: the whole text after `number:` is the title, even when it contains
  * ` | `. With it, the artist follows the last ` | `. JSON reports also keep each
- * video's link, channel, notes and watched mark.
+ * video's link, channel and notes. Old ones also have a `watched` field, which
+ * is ignored.
  */
 export const FORMATS = {
     legacy: 'legacy',
@@ -23,7 +24,6 @@ export interface ReportEntry {
     /** Only in JSON reports. */
     author?: string;
     notes?: string;
-    watched?: boolean;
     unavailable?: boolean;
 }
 
@@ -77,7 +77,6 @@ const jsonEntry = (video: unknown, index: number): ReportEntry | null => {
         youtubeId,
         author: text(video.author),
         notes: text(video.notes),
-        watched: video.watched === true,
         unavailable: video.unavailable === true,
     };
 };

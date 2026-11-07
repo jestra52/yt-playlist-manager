@@ -34,7 +34,6 @@ export interface JsonReportVideo {
     artist: string;
     author: string;
     notes: string;
-    watched: boolean;
     unavailable: boolean;
 }
 
@@ -75,13 +74,12 @@ export const buildJsonReport = (
     version: JSON_REPORT_VERSION,
     createdAt: date.toISOString(),
     playlist: { name: playlistName },
-    videos: videos.map(({ youtubeId, title, artist, author, notes, watched, unavailable }) => ({
+    videos: videos.map(({ youtubeId, title, artist, author, notes, unavailable }) => ({
         youtubeId,
         title,
         artist,
         author,
         notes,
-        watched,
         unavailable,
     })),
 });

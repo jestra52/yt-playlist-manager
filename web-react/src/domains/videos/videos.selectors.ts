@@ -22,12 +22,7 @@ export const selectVideoIdsFor = createSelector(
     { memoizeOptions: { resultEqualityCheck: sameIds } },
 );
 
-const matchesFilter = (video: Video, filter: VideoFilter): boolean => {
-    if (filter === 'watched') return video.watched;
-    if (filter === 'unwatched') return !video.watched;
-    if (filter === 'missing') return video.missing;
-    return true;
-};
+const matchesFilter = (video: Video, filter: VideoFilter): boolean => filter !== 'missing' || video.missing;
 
 const matchesQuery = (video: Video, query: string): boolean =>
     !query ||
@@ -66,19 +61,36 @@ export const selectMissingCount = createSelector(
     (videos, playlistId) => videos.filter((v) => v.playlistId === playlistId && v.missing).length,
 );
 
-export interface Progress {
-    left: number;
-    total: number;
-}
-
-export const selectProgressByPlaylist = createSelector([selectors.selectAll], (videos) => {
-    const progress: Record<string, Progress> = {};
-    for (const video of videos) {
-        const p = (progress[video.playlistId] ??= { left: 0, total: 0 });
-        p.total++;
-        if (!video.watched) p.left++;
-    }
-    return progress;
+export const selectVideoCounts = createSelector([selectors.selectAll], (videos) => {
+    const counts: Record<string, number> = {};
+    for (const video of videos) counts[video.playlistId] = (counts[video.playlistId] ?? 0) + 1;
+    return counts;
 });
+
+const selectShuffle = (state: RootState) => state.videos.shuffle;
+
+export const selectShuffleOn = (state: RootState) => {
+    const shuffle = selectShuffle(state);
+    return shuffle !== null && shuffle.playlistId === selectPlaying(state)?.playlistId;
+};
+
+/** The playing video's playlist without Missing videos, in its own order. */
+export const selectPlaylistQueue = createSelector([selectors.selectAll, selectPlaying], (videos, playing) =>
+    videos.filter((v) => v.playlistId === playing?.playlistId && (!v.missing || v.id === playing.id)),
+);
+
+/** What Previous and Next move through: the playlist's order, or the shuffled one. */
+const selectPlayQueue = createSelector([selectPlaylistQueue, selectShuffle], (queue, shuffle) => {
+    if (!shuffle || shuffle.playlistId !== queue[0]?.playlistId) return queue;
+    const byId = new Map(queue.map((v) => [v.id, v]));
+    return shuffle.ids.flatMap((id) => byId.get(id) ?? []);
+});
+
+const selectPlayingPlace = createSelector([selectPlayQueue, selectPlayingId], (queue, playingId) =>
+    queue.findIndex((v) => v.id === playingId),
+);
+
+export const selectNextVideo = (state: RootState) => selectPlayQueue(state)[selectPlayingPlace(state) + 1] ?? null;
+export const selectPreviousVideo = (state: RootState) => selectPlayQueue(state)[selectPlayingPlace(state) - 1] ?? null;
 
 export const selectKnownArtists = createSelector([selectors.selectAll], (videos) => knownArtists(videos));

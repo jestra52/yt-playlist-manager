@@ -18,7 +18,6 @@ const video = {
     artist: 'Modjo',
     author: '',
     notes: '',
-    watched: false,
     unavailable: false,
 };
 

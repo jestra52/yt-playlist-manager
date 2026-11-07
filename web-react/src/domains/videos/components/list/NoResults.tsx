@@ -4,8 +4,6 @@ import { filterSet, querySet, type VideoFilter } from '../../videos.slice';
 
 const MESSAGES: Record<VideoFilter, string> = {
     all: 'Nothing here.',
-    unwatched: "You've watched everything here.",
-    watched: 'Nothing watched yet.',
     missing: 'Every item has its YouTube link.',
 };
 

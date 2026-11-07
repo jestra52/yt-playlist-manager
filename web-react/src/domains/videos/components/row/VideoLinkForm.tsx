@@ -40,11 +40,9 @@ export const VideoLinkForm = ({ video, title, onClose }: VideoLinkFormProps) => 
                 }
             }}
         >
-            <label className="sr-only" htmlFor={`link-${video.id}`}>
-                YouTube link for {title}
-            </label>
             <input
                 id={`link-${video.id}`}
+                aria-label={`YouTube link for ${title}`}
                 className={`input input-sm min-w-0 flex-1 ${onClose ? 'basis-40' : 'join-item'}`}
                 value={link}
                 onChange={(e) => setLink(e.target.value)}

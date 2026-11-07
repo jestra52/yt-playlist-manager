@@ -1,26 +1,20 @@
 import type { Playlist } from '@ytpm/core/playlists/playlists.repository';
 import { useAppSelector } from '../../../../app/store';
 import { ShowPlaylistsButton } from '../../../ui/components/layout/ShowPlaylistsButton';
-import { ProgressStrip } from '../../../videos/components/progress/ProgressStrip';
-import { selectProgressByPlaylist } from '../../../videos/videos.selectors';
+import { selectVideoCounts } from '../../../videos/videos.selectors';
 import { ReportButtons } from '../reports/ReportButtons';
 import { YouTubeButton } from '../youtube/YouTubeButton';
 import { DeletePlaylistButton } from './DeletePlaylistButton';
 import { PlaylistDescriptionField } from './PlaylistDescriptionField';
 import { PlaylistNameField } from './PlaylistNameField';
 
-const Tally = ({ left, total }: { left: number; total: number }) => {
+const videoCount = (total: number) => {
     if (!total) return 'No videos yet';
-    if (!left) return `All ${total} watched`;
-    return (
-        <>
-            <strong className="font-display text-base-content text-lg">{left}</strong> left of {total}
-        </>
-    );
+    return total === 1 ? '1 video' : `${total} videos`;
 };
 
 export const PlaylistHeader = ({ playlist }: { playlist: Playlist }) => {
-    const { left, total } = useAppSelector(selectProgressByPlaylist)[playlist.id] ?? { left: 0, total: 0 };
+    const total = useAppSelector(selectVideoCounts)[playlist.id] ?? 0;
 
     return (
         <header className="pb-5">
@@ -36,12 +30,7 @@ export const PlaylistHeader = ({ playlist }: { playlist: Playlist }) => {
                 </div>
             </div>
             <PlaylistDescriptionField key={playlist.description} playlist={playlist} />
-            <div className="mt-4 flex items-center gap-4">
-                <ProgressStrip playlistId={playlist.id} />
-                <p className="text-base-content/65 m-0 flex-none text-sm tabular-nums">
-                    <Tally left={left} total={total} />
-                </p>
-            </div>
+            <p className="text-base-content/65 mt-4 mb-0 text-sm tabular-nums">{videoCount(total)}</p>
         </header>
     );
 };

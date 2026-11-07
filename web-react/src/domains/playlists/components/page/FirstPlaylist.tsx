@@ -22,7 +22,7 @@ export const FirstPlaylist = () => {
             <ShowPlaylistsButton className="mb-4" />
             <h1 className={styles.title}>Start your first playlist</h1>
             <p className="text-base-content/65 m-0">
-                Save YouTube videos to watch later, in the order you want, with notes. Everything stays in this browser.
+                Keep YouTube videos in the order you want, with notes. Everything stays in this browser.
             </p>
             <form
                 className="join mt-6 mb-2 w-full"

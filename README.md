@@ -1,6 +1,6 @@
 # Yuzu Tapes Playlist Manager 🍋
 
-Keep your own playlists of videos (music, talks, recipes, anything you want to watch), put them in order, mark what you've watched, keep notes, and play them in place. YouTube is the first source. Each video shows its artist, guessed from YouTube and editable, and a playlist imported from YouTube can be synced with it again later. Everything is stored in a **SQLite database inside your browser**, so the app works offline. An **ASP.NET Core API** with **Entity Framework Core** syncs that database with **PostgreSQL** (Neon) so your phone and laptop stay in step. The web app is hosted on **Netlify**; the API runs as a Docker container on **Render**, and Netlify forwards `/api` to it.
+Keep your own playlists of videos (music, talks, recipes, anything you want to keep), put them in order, keep notes, and play them in place. YouTube is the first source. Each video shows its artist, guessed from YouTube and editable, and a playlist imported from YouTube can be synced with it again later. Everything is stored in a **SQLite database inside your browser**, so the app works offline. An **ASP.NET Core API** with **Entity Framework Core** syncs that database with **PostgreSQL** (Neon) so your phone and laptop stay in step. The web app is hosted on **Netlify**; the API runs as a Docker container on **Render**, and Netlify forwards `/api` to it.
 
 ## Contents
 
@@ -30,7 +30,11 @@ Keep your own playlists of videos (music, talks, recipes, anything you want to w
 
 ![Compare dialog with a report that has artists: 12 items in the report, 10 still here, 2 missing, listed by number, title and artist](docs/screenshots/compare-report.png)
 
-**Missing items** wait for their YouTube link; paste it and the video gets its title, channel and thumbnail. Any other video's link can be changed with **Change link**, keeping its notes, watched mark and place:
+**Playing.** Click a thumbnail to play a video in place. The video stays in view while the list scrolls, and **Previous** and **Next** move through the playlist, skipping Missing items. **Shuffle** changes what they pick, in a shuffled order that doesn't repeat, and resets when you switch playlists. It never changes the playlist. Nothing moves on by itself.
+
+**Moving a video.** Click the number on a row to type the position it should go to, or send it to the **Top** or **Bottom**. The number is always the video's place in the whole playlist, even with a filter or search on.
+
+**Missing items** wait for their YouTube link; paste it and the video gets its title, channel and thumbnail. Any other video's link can be changed with **Change link**, keeping its notes and place:
 
 ![Missing filter showing a video deleted on YouTube and a placeholder from a report, each with a box to paste a YouTube link](docs/screenshots/missing-items.png)
 
@@ -333,7 +337,7 @@ An imported playlist remembers which YouTube playlist it came from. The **YouTub
 2. The comparison lists what's **new on YouTube** (added in YouTube's order), what was **deleted or made private** there (kept and marked as Missing, with the title it had here), what's **back on YouTube**, and what was **removed from the YouTube playlist**.
 ![Sync from YouTube after comparing: 2 new videos, 1 deleted on YouTube and 1 removed from the YouTube playlist, with options to import deleted videos, remove the removed one, and save a report first](docs/screenshots/youtube-sync.png)
 
-3. Nothing changes until you **Apply**. Removed videos stay unless you tick **Remove … from this playlist too**, and then **Apply** asks once more before removing them, since their notes and watched marks go with them. **Save a report before applying** (on by default) downloads the playlist's report first.
+3. Nothing changes until you **Apply**. Removed videos stay unless you tick **Remove … from this playlist too**, and then **Apply** asks once more before removing them, since their notes go with them. **Save a report before applying** (on by default) downloads the playlist's report first.
 
 Without `YOUTUBE_API_KEY`, YouTube only returns the latest videos, so the dialog can still add new ones but can't tell which were removed.
 
@@ -356,7 +360,6 @@ Without `YOUTUBE_API_KEY`, YouTube only returns the latest videos, so the dialog
       "artist": "Mariya Takeuchi",
       "author": "Some Channel",
       "notes": "",
-      "watched": false,
       "unavailable": false
     }
   ]
@@ -377,7 +380,7 @@ The artist follows the last ` | ` and is empty when unknown. Reports saved befor
 
 **Compare** loads a report (a file, or pasted text) and finds which of its videos the playlist no longer has, so you can add them back in their old place. It reads every format and says which one it found:
 
-* **JSON:** matches by YouTube ID; restored videos come back with their link, channel, notes and watched mark. A broken file, or one from a newer version of the app, is refused and changes nothing.
+* **JSON:** matches by YouTube ID; restored videos come back with their link, channel and notes. Older reports also have a `watched` field, which is ignored. A broken file, or one from a newer version of the app, is refused and changes nothing.
 * **Text with artists:** matches by title, using the artist to tell apart two videos with the same title; restored items keep the report's artist and wait for their link as Missing items.
 * **Older text reports:** match by title (ignoring case, spacing, punctuation and full-width characters), and also when the report's title is the video's "artist - title"; restored items get a guessed artist.
 

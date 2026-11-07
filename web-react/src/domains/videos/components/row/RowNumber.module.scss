@@ -3,15 +3,8 @@ $compact: 767px;
 .mark {
     margin-top: 0.15rem;
 
-    // daisyUI styles aria-pressed buttons as active; the check mark is enough.
-    &[aria-pressed='true'] {
-        background: transparent;
-        border-color: transparent;
-        box-shadow: none;
-    }
-
     &:hover {
-        background: color-mix(in srgb, var(--color-success) 12%, transparent);
+        background: color-mix(in srgb, var(--color-primary) 12%, transparent);
         border-color: transparent;
     }
 }
@@ -26,7 +19,7 @@ $compact: 767px;
     white-space: nowrap;
 
     .mark:hover & {
-        color: var(--color-success);
+        color: var(--color-primary);
     }
 
     @media (max-width: $compact) {
@@ -49,14 +42,4 @@ $compact: 767px;
     @media (max-width: $compact) {
         font-size: 0.8rem;
     }
-}
-
-.check {
-    display: grid;
-    place-items: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    color: var(--color-success-content);
-    background: var(--color-success);
-    border-radius: 50%;
 }

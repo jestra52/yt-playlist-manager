@@ -29,8 +29,17 @@ import { extractYouTubeIds, parseYouTubeId, thumbnailFor } from '@ytpm/core/vide
 import type { AppThunk } from '../../app/store';
 import { selectApiUrl } from '../sync/sync.selectors';
 import { notify, setImporting } from '../ui/ui.slice';
-import { selectAllVideos, selectPlaying } from './videos.selectors';
-import { changed, played, playerClosed, removed, replaced, upserted } from './videos.slice';
+import {
+    selectAllVideos,
+    selectNextVideo,
+    selectPlayingId,
+    selectPlaylistQueue,
+    selectPreviousVideo,
+    selectShuffleOn,
+    selectVideoById,
+    selectVideoIdsFor,
+} from './videos.selectors';
+import { changed, played, removed, replaced, shuffleSet, upserted } from './videos.slice';
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -122,13 +131,6 @@ export const addVideosFromText =
         return added.length > 0;
     };
 
-export const setWatched =
-    (id: string, watched: boolean): AppThunk =>
-    (dispatch) => {
-        const video = updateVideo(getDatabase(), id, { watched });
-        if (video) dispatch(changed(video));
-    };
-
 export const saveNotes =
     (id: string, notes: string): AppThunk =>
     (dispatch) => {
@@ -155,6 +157,27 @@ export const reorder =
     (dispatch) => {
         const video = reorderVideo(getDatabase(), id, toIndex);
         if (video) dispatch(changed(video));
+    };
+
+/**
+ * Moves a video to `position`, what a person typed: its place in the whole
+ * playlist, from 1, where a number past the end means the end. Anything else is
+ * refused with a notice. Returns false when refused.
+ */
+export const moveToPosition =
+    (id: string, position: string): AppThunk<boolean> =>
+    (dispatch, getState) => {
+        const video = selectVideoById(getState(), id);
+        if (!video) return false;
+        const ids = selectVideoIdsFor(getState(), video.playlistId);
+        const typed = position.trim();
+        if (!/^\d+$/.test(typed) || Number(typed) < 1) {
+            dispatch(notify(`Enter a position from 1 to ${ids.length}`, { tone: 'error' }));
+            return false;
+        }
+        const toIndex = Math.min(Number(typed), ids.length) - 1;
+        if (toIndex !== ids.indexOf(id)) dispatch(reorder(id, toIndex));
+        return true;
     };
 
 export const moveToPlaylist =
@@ -189,20 +212,37 @@ export const restoreVideo =
         if (video) dispatch(changed(video));
     };
 
-/** Marks the playing video watched and starts the next unwatched one. */
-export const finishAndPlayNext = (): AppThunk => (dispatch, getState) => {
-    const current = selectPlaying(getState());
-    if (!current) return;
-    dispatch(setWatched(current.id, true));
-    const queue = selectAllVideos(getState()).filter((v) => v.playlistId === current.playlistId);
-    const playable = (v: Video) => !v.watched && !v.missing;
-    const next = queue.find((v) => v.position > current.position && playable(v)) ?? queue.find(playable);
-    if (next) {
-        dispatch(played(next.id));
-    } else {
-        dispatch(playerClosed());
-        dispatch(notify("You've watched everything in this playlist"));
+export const playNext = (): AppThunk => (dispatch, getState) => {
+    const next = selectNextVideo(getState());
+    if (next) dispatch(played(next.id));
+};
+
+export const playPrevious = (): AppThunk => (dispatch, getState) => {
+    const previous = selectPreviousVideo(getState());
+    if (previous) dispatch(played(previous.id));
+};
+
+const shuffled = <T>(items: readonly T[]): T[] => {
+    const result = [...items];
+    for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j]!, result[i]!];
     }
+    return result;
+};
+
+/** Turning it on shuffles once, from the playing video, so Previous goes back and nothing repeats. */
+export const toggleShuffle = (): AppThunk => (dispatch, getState) => {
+    const state = getState();
+    const playingId = selectPlayingId(state);
+    const queue = selectPlaylistQueue(state);
+    if (!playingId || !queue[0]) return;
+    if (selectShuffleOn(state)) {
+        dispatch(shuffleSet(null));
+        return;
+    }
+    const others = queue.map((v) => v.id).filter((id) => id !== playingId);
+    dispatch(shuffleSet({ playlistId: queue[0].playlistId, ids: [playingId, ...shuffled(others)] }));
 };
 
 /** The YouTube ID in `link`, or null with a notice when it's no link or already in the playlist. */
@@ -255,10 +295,10 @@ export const completeVideo =
     };
 
 /**
- * Points a video at the YouTube video at `link`, keeping its notes, watched mark,
- * place and any artist set by hand. Nothing changes unless YouTube has the new
- * video's details, so a video never shows another one's title. Resolves to true
- * when the video has that link.
+ * Points a video at the YouTube video at `link`, keeping its notes, place and
+ * any artist set by hand. Nothing changes unless YouTube has the new video's
+ * details, so a video never shows another one's title. Resolves to true when
+ * the video has that link.
  */
 export const changeVideoLink =
     (id: string, link: string): AppThunk<Promise<boolean>> =>
@@ -294,8 +334,8 @@ export const changeVideoLink =
  * Puts back entries missing since an old report near their old place. Entries
  * with a YouTube link become videos; the rest become placeholders that wait for
  * a link. An entry's artist comes from a report with artists; for older reports
- * it's guessed from the title. A JSON report also brings back the channel, notes,
- * watched mark and deleted mark. Returns the inserted videos.
+ * it's guessed from the title. A JSON report also brings back the channel, notes
+ * and deleted mark. Returns the inserted videos.
  */
 export const addFromReport =
     (playlistId: string, missing: readonly MissingEntry[]): AppThunk<Video[]> =>
@@ -306,8 +346,8 @@ export const addFromReport =
             const artist = entry.artist
                 ? { artist: cleanArtist(entry.artist), artistSource: 'user' }
                 : guessedArtistPatch({ title, author: '', artist: '', artistSource: '' });
-            const { author, notes, watched, unavailable, afterId } = entry;
-            return { youtubeId: entry.youtubeId ?? '', title, author, notes, watched, unavailable, afterId, ...artist };
+            const { author, notes, unavailable, afterId } = entry;
+            return { youtubeId: entry.youtubeId ?? '', title, author, notes, unavailable, afterId, ...artist };
         });
         const added = insertVideosAfter(getDatabase(), playlistId, entries);
         if (added.length) dispatch(upserted(added));
