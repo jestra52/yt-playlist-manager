@@ -32,11 +32,14 @@ import { notify, setImporting } from '../ui/ui.slice';
 import {
     selectAllVideos,
     selectNextVideo,
+    selectPlayingId,
+    selectPlaylistQueue,
     selectPreviousVideo,
+    selectShuffleOn,
     selectVideoById,
     selectVideoIdsFor,
 } from './videos.selectors';
-import { changed, played, removed, replaced, upserted } from './videos.slice';
+import { changed, played, removed, replaced, shuffleSet, upserted } from './videos.slice';
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -217,6 +220,29 @@ export const playNext = (): AppThunk => (dispatch, getState) => {
 export const playPrevious = (): AppThunk => (dispatch, getState) => {
     const previous = selectPreviousVideo(getState());
     if (previous) dispatch(played(previous.id));
+};
+
+const shuffled = <T>(items: readonly T[]): T[] => {
+    const result = [...items];
+    for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j]!, result[i]!];
+    }
+    return result;
+};
+
+/** Turning it on shuffles once, from the playing video, so Previous goes back and nothing repeats. */
+export const toggleShuffle = (): AppThunk => (dispatch, getState) => {
+    const state = getState();
+    const playingId = selectPlayingId(state);
+    const queue = selectPlaylistQueue(state);
+    if (!playingId || !queue[0]) return;
+    if (selectShuffleOn(state)) {
+        dispatch(shuffleSet(null));
+        return;
+    }
+    const others = queue.map((v) => v.id).filter((id) => id !== playingId);
+    dispatch(shuffleSet({ playlistId: queue[0].playlistId, ids: [playingId, ...shuffled(others)] }));
 };
 
 /** The YouTube ID in `link`, or null with a notice when it's no link or already in the playlist. */
