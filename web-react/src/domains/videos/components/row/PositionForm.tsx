@@ -20,7 +20,10 @@ export const PositionForm = ({ video, title, index, total, onMoved, onClose }: P
         if (dispatch(moveToPosition(video.id, to))) onMoved();
     };
 
-    useEffect(() => inputRef.current?.select(), []);
+    useEffect(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+    }, []);
 
     return (
         <form
