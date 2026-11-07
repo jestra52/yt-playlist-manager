@@ -5,10 +5,20 @@
     z-index: 20;
     margin-bottom: 1.5rem;
     background: var(--color-base-200);
+
+    // The right column of PlaylistPage, level with the page's top padding.
+    @media (min-width: 96rem) {
+        grid-row: 1;
+        grid-column: 2;
+        top: 2.5rem;
+        margin-bottom: 0;
+    }
 }
 
 // YouTube requires at least 200×200.
+// A set width keeps it full width when the height limit applies.
 .frame {
+    width: 100%;
     aspect-ratio: 16 / 9;
     min-width: 200px;
     min-height: 200px;
