@@ -30,6 +30,8 @@ Keep your own playlists of videos (music, talks, recipes, anything you want to k
 
 ![Compare dialog with a report that has artists: 12 items in the report, 10 still here, 2 missing, listed by number, title and artist](docs/screenshots/compare-report.png)
 
+**Moving a video.** Click the number on a row to type the position it should go to, or send it to the **Top** or **Bottom**. The number is always the video's place in the whole playlist, even with a filter or search on.
+
 **Missing items** wait for their YouTube link; paste it and the video gets its title, channel and thumbnail. Any other video's link can be changed with **Change link**, keeping its notes and place:
 
 ![Missing filter showing a video deleted on YouTube and a placeholder from a report, each with a box to paste a YouTube link](docs/screenshots/missing-items.png)

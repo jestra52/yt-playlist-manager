@@ -29,7 +29,13 @@ import { extractYouTubeIds, parseYouTubeId, thumbnailFor } from '@ytpm/core/vide
 import type { AppThunk } from '../../app/store';
 import { selectApiUrl } from '../sync/sync.selectors';
 import { notify, setImporting } from '../ui/ui.slice';
-import { selectAllVideos, selectNextVideo, selectPlaying } from './videos.selectors';
+import {
+    selectAllVideos,
+    selectNextVideo,
+    selectPlaying,
+    selectVideoById,
+    selectVideoIdsFor,
+} from './videos.selectors';
 import { changed, played, removed, replaced, upserted } from './videos.slice';
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -148,6 +154,27 @@ export const reorder =
     (dispatch) => {
         const video = reorderVideo(getDatabase(), id, toIndex);
         if (video) dispatch(changed(video));
+    };
+
+/**
+ * Moves a video to `position`, what a person typed: its place in the whole
+ * playlist, from 1, where a number past the end means the end. Anything else is
+ * refused with a notice. Returns false when refused.
+ */
+export const moveToPosition =
+    (id: string, position: string): AppThunk<boolean> =>
+    (dispatch, getState) => {
+        const video = selectVideoById(getState(), id);
+        if (!video) return false;
+        const ids = selectVideoIdsFor(getState(), video.playlistId);
+        const typed = position.trim();
+        if (!/^\d+$/.test(typed) || Number(typed) < 1) {
+            dispatch(notify(`Enter a position from 1 to ${ids.length}`, { tone: 'error' }));
+            return false;
+        }
+        const toIndex = Math.min(Number(typed), ids.length) - 1;
+        if (toIndex !== ids.indexOf(id)) dispatch(reorder(id, toIndex));
+        return true;
     };
 
 export const moveToPlaylist =

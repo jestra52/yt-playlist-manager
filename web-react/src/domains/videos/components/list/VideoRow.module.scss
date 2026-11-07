@@ -11,6 +11,16 @@
     &[data-playing] {
         box-shadow: inset 3px 0 0 var(--color-primary);
     }
+
+    &[data-moved] {
+        animation: moved 1.6s ease-out;
+    }
+}
+
+@keyframes moved {
+    from {
+        background: color-mix(in srgb, var(--color-primary) 25%, transparent);
+    }
 }
 
 .title {
