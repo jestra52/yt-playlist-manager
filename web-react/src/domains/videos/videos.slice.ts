@@ -1,7 +1,13 @@
 import { createEntityAdapter, createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { Video } from '@ytpm/core/videos/videos.repository';
+import { added as playlistAdded, selected as playlistSelected } from '../playlists/playlists.slice';
 
 export type VideoFilter = 'all' | 'missing';
+
+export interface Shuffle {
+    playlistId: string;
+    ids: string[];
+}
 
 export const videosAdapter = createEntityAdapter<Video>({
     sortComparer: (a, b) => a.position - b.position,
@@ -11,6 +17,7 @@ const initialState = videosAdapter.getInitialState({
     filter: 'all' as VideoFilter,
     query: '',
     playingId: null as string | null,
+    shuffle: null as Shuffle | null,
 });
 
 const setVideos = (state: typeof initialState, { payload }: PayloadAction<Video[]>) => {
@@ -50,6 +57,18 @@ export const videosSlice = createSlice({
         playerClosed: (state) => {
             state.playingId = null;
         },
+        shuffleSet: (state, { payload }: PayloadAction<Shuffle | null>) => {
+            state.shuffle = payload;
+        },
+    },
+    extraReducers: (builder) => {
+        builder
+            .addCase(playlistSelected, (state, { payload }) => {
+                if (state.shuffle?.playlistId !== payload) state.shuffle = null;
+            })
+            .addCase(playlistAdded, (state) => {
+                state.shuffle = null;
+            });
     },
 });
 
@@ -64,4 +83,5 @@ export const {
     querySet,
     played,
     playerClosed,
+    shuffleSet,
 } = videosSlice.actions;

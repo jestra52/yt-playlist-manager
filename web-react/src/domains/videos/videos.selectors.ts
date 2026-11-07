@@ -67,10 +67,24 @@ export const selectVideoCounts = createSelector([selectors.selectAll], (videos) 
     return counts;
 });
 
-/** What Previous and Next move through: the playing video's playlist, without Missing videos. */
-const selectPlayQueue = createSelector([selectors.selectAll, selectPlaying], (videos, playing) =>
+const selectShuffle = (state: RootState) => state.videos.shuffle;
+
+export const selectShuffleOn = (state: RootState) => {
+    const shuffle = selectShuffle(state);
+    return shuffle !== null && shuffle.playlistId === selectPlaying(state)?.playlistId;
+};
+
+/** The playing video's playlist without Missing videos, in its own order. */
+export const selectPlaylistQueue = createSelector([selectors.selectAll, selectPlaying], (videos, playing) =>
     videos.filter((v) => v.playlistId === playing?.playlistId && (!v.missing || v.id === playing.id)),
 );
+
+/** What Previous and Next move through: the playlist's order, or the shuffled one. */
+const selectPlayQueue = createSelector([selectPlaylistQueue, selectShuffle], (queue, shuffle) => {
+    if (!shuffle || shuffle.playlistId !== queue[0]?.playlistId) return queue;
+    const byId = new Map(queue.map((v) => [v.id, v]));
+    return shuffle.ids.flatMap((id) => byId.get(id) ?? []);
+});
 
 const selectPlayingPlace = createSelector([selectPlayQueue, selectPlayingId], (queue, playingId) =>
     queue.findIndex((v) => v.id === playingId),
