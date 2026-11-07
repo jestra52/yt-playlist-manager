@@ -20,9 +20,7 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
                 onChange={(event) => dispatch(toggleSidebar(event.currentTarget.checked))}
             />
             <div className="drawer-content min-w-0">
-                <main className="px-4 pt-5 pb-24 sm:px-8 md:pt-10 lg:px-14">
-                    <div className="max-w-4xl">{children}</div>
-                </main>
+                <main className="px-4 pt-5 pb-24 sm:px-8 md:pt-10 lg:px-14">{children}</main>
             </div>
             <div className="drawer-side z-30">
                 <label htmlFor={TOGGLE_ID} aria-label="Close playlists" className="drawer-overlay" />

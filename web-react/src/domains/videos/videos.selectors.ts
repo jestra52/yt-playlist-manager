@@ -67,12 +67,30 @@ export const selectVideoCounts = createSelector([selectors.selectAll], (videos) 
     return counts;
 });
 
-/** The video after the playing one in its playlist's order, skipping Missing ones. */
-export const selectNextVideo = createSelector([selectors.selectAll, selectPlaying], (videos, playing) => {
-    if (!playing) return null;
-    const queue = videos.filter((v) => v.playlistId === playing.playlistId);
-    const after = queue.slice(queue.findIndex((v) => v.id === playing.id) + 1);
-    return after.find((v) => !v.missing) ?? null;
+const selectShuffle = (state: RootState) => state.videos.shuffle;
+
+export const selectShuffleOn = (state: RootState) => {
+    const shuffle = selectShuffle(state);
+    return shuffle !== null && shuffle.playlistId === selectPlaying(state)?.playlistId;
+};
+
+/** The playing video's playlist without Missing videos, in its own order. */
+export const selectPlaylistQueue = createSelector([selectors.selectAll, selectPlaying], (videos, playing) =>
+    videos.filter((v) => v.playlistId === playing?.playlistId && (!v.missing || v.id === playing.id)),
+);
+
+/** What Previous and Next move through: the playlist's order, or the shuffled one. */
+const selectPlayQueue = createSelector([selectPlaylistQueue, selectShuffle], (queue, shuffle) => {
+    if (!shuffle || shuffle.playlistId !== queue[0]?.playlistId) return queue;
+    const byId = new Map(queue.map((v) => [v.id, v]));
+    return shuffle.ids.flatMap((id) => byId.get(id) ?? []);
 });
+
+const selectPlayingPlace = createSelector([selectPlayQueue, selectPlayingId], (queue, playingId) =>
+    queue.findIndex((v) => v.id === playingId),
+);
+
+export const selectNextVideo = (state: RootState) => selectPlayQueue(state)[selectPlayingPlace(state) + 1] ?? null;
+export const selectPreviousVideo = (state: RootState) => selectPlayQueue(state)[selectPlayingPlace(state) - 1] ?? null;
 
 export const selectKnownArtists = createSelector([selectors.selectAll], (videos) => knownArtists(videos));

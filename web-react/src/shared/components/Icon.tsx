@@ -14,6 +14,8 @@ const paths = {
     search: 'M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM20 20l-4.8-4.8',
     move: 'M4 12h12M12 6l6 6-6 6M20 5v14',
     next: 'M6 5.5v13l9-6.5zM16.5 5h2v14h-2z',
+    previous: 'M18 5.5v13l-9-6.5zM7.5 5h-2v14h2z',
+    shuffle: 'M4 7h3.5l9 10H20M4 17h3.5l2.5-2.8M13.5 9.8 16.5 7H20M17.5 4.5 20 7l-2.5 2.5M17.5 14.5 20 17l-2.5 2.5',
     download: 'M12 4v11M7 10.5l5 5 5-5M5 19.5h14',
     upload: 'M12 15.5v-11M7 9.5l5-5 5 5M5 19.5h14',
     link: 'M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2',
@@ -25,7 +27,7 @@ const paths = {
 
 export type IconName = keyof typeof paths;
 
-const filled = new Set<IconName>(['play', 'next']);
+const filled = new Set<IconName>(['play', 'next', 'previous']);
 
 type IconProps = { name: IconName; size?: number };
 

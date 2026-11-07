@@ -1,6 +1,34 @@
+// The page color fills the card's rounded corners, so the list doesn't show through them.
+.panel {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    margin-bottom: 1.5rem;
+    background: var(--color-base-200);
+
+    // The right column of PlaylistPage, centered in the window's height once the page scrolls.
+    @media (min-width: 96rem) {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: safe center;
+        grid-row: 1;
+        grid-column: 2;
+        height: 100dvh;
+        margin-bottom: 0;
+        padding-block: 1.5rem;
+        background: none;
+    }
+}
+
+// YouTube requires at least 200×200.
+// A set width keeps it full width when the height limit applies.
 .frame {
+    width: 100%;
     aspect-ratio: 16 / 9;
-    max-height: 56vh;
+    min-width: 200px;
+    min-height: 200px;
+    max-height: 40dvh;
     background: #000;
 
     iframe {
@@ -9,4 +37,15 @@
         height: 100%;
         border: 0;
     }
+}
+
+.title {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
+    font-weight: 600;
+    line-height: 1.3;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
 }

@@ -1,0 +1,22 @@
+$wide: 96rem;
+
+.page {
+    max-width: 56rem;
+}
+
+// On wide screens a playing video gets its own column on the right (see PlayerPanel).
+@media (min-width: $wide) {
+    .playing {
+        display: grid;
+        grid-template-columns: minmax(36rem, 56rem) minmax(22rem, 36rem);
+        column-gap: 2rem;
+        align-items: start;
+        max-width: none;
+    }
+
+    .content {
+        grid-row: 1;
+        grid-column: 1;
+        min-width: 0;
+    }
+}
