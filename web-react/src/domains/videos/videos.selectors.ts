@@ -22,12 +22,7 @@ export const selectVideoIdsFor = createSelector(
     { memoizeOptions: { resultEqualityCheck: sameIds } },
 );
 
-const matchesFilter = (video: Video, filter: VideoFilter): boolean => {
-    if (filter === 'watched') return video.watched;
-    if (filter === 'unwatched') return !video.watched;
-    if (filter === 'missing') return video.missing;
-    return true;
-};
+const matchesFilter = (video: Video, filter: VideoFilter): boolean => filter !== 'missing' || video.missing;
 
 const matchesQuery = (video: Video, query: string): boolean =>
     !query ||
@@ -66,19 +61,18 @@ export const selectMissingCount = createSelector(
     (videos, playlistId) => videos.filter((v) => v.playlistId === playlistId && v.missing).length,
 );
 
-export interface Progress {
-    left: number;
-    total: number;
-}
+export const selectVideoCounts = createSelector([selectors.selectAll], (videos) => {
+    const counts: Record<string, number> = {};
+    for (const video of videos) counts[video.playlistId] = (counts[video.playlistId] ?? 0) + 1;
+    return counts;
+});
 
-export const selectProgressByPlaylist = createSelector([selectors.selectAll], (videos) => {
-    const progress: Record<string, Progress> = {};
-    for (const video of videos) {
-        const p = (progress[video.playlistId] ??= { left: 0, total: 0 });
-        p.total++;
-        if (!video.watched) p.left++;
-    }
-    return progress;
+/** The video after the playing one in its playlist's order, skipping Missing ones. */
+export const selectNextVideo = createSelector([selectors.selectAll, selectPlaying], (videos, playing) => {
+    if (!playing) return null;
+    const queue = videos.filter((v) => v.playlistId === playing.playlistId);
+    const after = queue.slice(queue.findIndex((v) => v.id === playing.id) + 1);
+    return after.find((v) => !v.missing) ?? null;
 });
 
 export const selectKnownArtists = createSelector([selectors.selectAll], (videos) => knownArtists(videos));

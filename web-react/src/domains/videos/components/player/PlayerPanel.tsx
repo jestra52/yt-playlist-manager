@@ -3,7 +3,7 @@ import { useAppDispatch, useAppSelector } from '../../../../app/store';
 import { Icon } from '../../../../shared/components/Icon';
 import { selectPlaying } from '../../videos.selectors';
 import { playerClosed } from '../../videos.slice';
-import { finishAndPlayNext } from '../../videos.thunks';
+import { playNext } from '../../videos.thunks';
 import styles from './PlayerPanel.module.scss';
 
 export const PlayerPanel = () => {
@@ -28,8 +28,8 @@ export const PlayerPanel = () => {
             </div>
             <div className="flex items-center gap-3 py-2.5 pr-2.5 pl-4">
                 <p className="m-0 min-w-0 flex-1 truncate font-semibold">{title}</p>
-                <button className="btn btn-primary btn-sm" type="button" onClick={() => dispatch(finishAndPlayNext())}>
-                    <Icon name="next" size={15} /> Watched, play next
+                <button className="btn btn-primary btn-sm" type="button" onClick={() => dispatch(playNext())}>
+                    <Icon name="next" size={15} /> Next
                 </button>
                 <button
                     className="btn btn-ghost btn-sm btn-square text-neutral-content"

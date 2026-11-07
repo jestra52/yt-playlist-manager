@@ -1,6 +1,5 @@
 const paths = {
     play: 'M8 5.5v13l10.5-6.5z',
-    check: 'M5 12.5l4.5 4.5L19 7.5',
     up: 'M12 19V5M6 11l6-6 6 6',
     down: 'M12 5v14M6 13l6 6 6-6',
     trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 12.5h10L18 7M9 7V4.5h6V7',

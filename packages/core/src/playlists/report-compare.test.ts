@@ -243,7 +243,6 @@ describe('JSON reports', () => {
         artist: 'Modjo',
         author: 'ModjoOfficial',
         notes: 'Summer',
-        watched: true,
         unavailable: false,
     };
 
@@ -256,6 +255,11 @@ describe('JSON reports', () => {
                 { ...video, number: 2, youtubeId: null, title: 'Lost' },
             ],
         });
+    });
+
+    it('ignores the watched field of old reports', () => {
+        const { entries } = parseReport(report([{ ...video, watched: true }]));
+        expect(entries).toEqual([{ ...video, number: 1 }]);
     });
 
     it('matches by YouTube ID, even when the title changed', () => {

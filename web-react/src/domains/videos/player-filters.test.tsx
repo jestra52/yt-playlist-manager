@@ -1,14 +1,15 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { Database } from '@ytpm/core/db/database';
-import { setDatabase } from '@ytpm/core/db/index';
+import { getDatabase, setDatabase } from '@ytpm/core/db/index';
+import { getVideo, insertVideosAfter, listVideos, updateVideo } from '@ytpm/core/videos/videos.repository';
 import initSqlJs, { type SqlJsStatic } from 'sql.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../../App';
 import { createStore, type AppStore } from '../../app/store';
 import { createPlaylist } from '../playlists/playlists.thunks';
-import { selectPlaying, selectVideoById, selectVisibleVideos } from './videos.selectors';
-import { filterSet, played, querySet } from './videos.slice';
-import { addEntries, finishAndPlayNext, removeVideo, saveNotes, setWatched } from './videos.thunks';
+import { selectNextVideo, selectPlaying, selectVideoById, selectVisibleVideos } from './videos.selectors';
+import { filterSet, loaded, played, querySet } from './videos.slice';
+import { addEntries, playNext, removeVideo, saveNotes } from './videos.thunks';
 
 const realFetch = globalThis.fetch;
 let SQL: SqlJsStatic;
@@ -22,6 +23,10 @@ const visible = () =>
     );
 const idOf = (title: string) =>
     store.getState().videos.ids.find((id) => store.getState().videos.entities[id]?.title === title)!;
+const addMissing = (title: string, afterTitle: string) => {
+    insertVideosAfter(getDatabase(), playlistId, [{ title, youtubeId: '', afterId: idOf(afterTitle) }]);
+    store.dispatch(loaded(listVideos(getDatabase())));
+};
 
 beforeAll(async () => {
     SQL = await initSqlJs();
@@ -46,12 +51,12 @@ beforeEach(() => {
 });
 
 describe('filters and search', () => {
-    it('filters by watched and keeps each video in its real place', () => {
-        store.dispatch(setWatched(idOf('Two'), true));
-        store.dispatch(filterSet('watched'));
-        expect(visible()).toEqual(['2:Two']);
-        store.dispatch(filterSet('unwatched'));
-        expect(visible()).toEqual(['1:One', '3:Three']);
+    it('filters by Missing and keeps each video in its real place', () => {
+        addMissing('Lost', 'Two');
+        store.dispatch(filterSet('missing'));
+        expect(visible()).toEqual(['3:Lost']);
+        store.dispatch(filterSet('all'));
+        expect(visible()).toEqual(['1:One', '2:Two', '3:Lost', '4:Three']);
     });
 
     it('searches titles, artists, channels and notes', () => {
@@ -66,21 +71,41 @@ describe('filters and search', () => {
 });
 
 describe('player', () => {
-    it('plays the next unwatched video, skipping watched ones, and wraps around', () => {
-        store.dispatch(setWatched(idOf('Two'), true));
+    it('plays the next video in the playlist order', () => {
         store.dispatch(played(idOf('One')));
-        store.dispatch(finishAndPlayNext());
-        expect(selectPlaying(store.getState())?.title).toBe('Three');
-        expect(selectVideoById(store.getState(), idOf('One'))?.watched).toBe(true);
+        store.dispatch(playNext());
+        expect(selectPlaying(store.getState())?.title).toBe('Two');
     });
 
-    it('closes when everything is watched', () => {
-        store.dispatch(setWatched(idOf('One'), true));
-        store.dispatch(setWatched(idOf('Two'), true));
+    it('skips Missing videos', () => {
+        addMissing('Lost', 'One');
+        store.dispatch(played(idOf('One')));
+        store.dispatch(playNext());
+        expect(selectPlaying(store.getState())?.title).toBe('Two');
+    });
+
+    it('stays on the last video and says so, without wrapping around', () => {
         store.dispatch(played(idOf('Three')));
-        store.dispatch(finishAndPlayNext());
-        expect(selectPlaying(store.getState())).toBeNull();
-        expect(store.getState().ui.notices.at(-1)?.message).toBe("You've watched everything in this playlist");
+        expect(selectNextVideo(store.getState())).toBeNull();
+        store.dispatch(playNext());
+        expect(selectPlaying(store.getState())?.title).toBe('Three');
+        expect(store.getState().ui.notices.at(-1)?.message).toBe('This is the last video in the playlist');
+    });
+
+    it('stops at the end when only Missing videos follow', () => {
+        addMissing('Lost', 'Three');
+        store.dispatch(played(idOf('Three')));
+        store.dispatch(playNext());
+        expect(selectPlaying(store.getState())?.title).toBe('Three');
+    });
+
+    it('leaves a stored watched mark alone', () => {
+        updateVideo(getDatabase(), idOf('One'), { watched: true });
+        store.dispatch(played(idOf('One')));
+        store.dispatch(playNext());
+        store.dispatch(saveNotes(idOf('One'), 'Still here'));
+        expect(getVideo(getDatabase(), idOf('One'))).toMatchObject({ watched: true, notes: 'Still here' });
+        expect(getVideo(getDatabase(), idOf('Two'))?.watched).toBe(false);
     });
 
     it('stops when the playing video is removed', () => {
@@ -103,13 +128,26 @@ describe('playlist page', () => {
         expect(screen.queryByRole('region', { name: 'Now playing' })).not.toBeInTheDocument();
     });
 
-    it('filters with the tabs and offers a way back when nothing matches', () => {
+    it('moves on with the Next button', () => {
         render(<App store={store} />);
-        fireEvent.click(screen.getByRole('tab', { name: 'Watched' }));
-        expect(screen.getByText('Nothing watched yet.')).toBeInTheDocument();
-        fireEvent.click(screen.getByRole('button', { name: 'Show all videos' }));
-        expect(screen.getByRole('button', { name: 'Play One' })).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Play One' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+        expect(within(screen.getByRole('region', { name: 'Now playing' })).getByTitle('Two')).toBeInTheDocument();
+    });
 
+    it('shows the tabs only when the playlist has Missing videos', () => {
+        render(<App store={store} />);
+        expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+
+        act(() => addMissing('Lost', 'One'));
+        fireEvent.click(screen.getByRole('tab', { name: 'Missing (1)' }));
+        expect(screen.queryByRole('button', { name: 'Play One' })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('tab', { name: 'All' }));
+        expect(screen.getByRole('button', { name: 'Play One' })).toBeInTheDocument();
+    });
+
+    it('offers a way back when nothing matches', () => {
+        render(<App store={store} />);
         fireEvent.change(screen.getByLabelText('Search this playlist'), { target: { value: 'nope' } });
         expect(screen.getByText('Nothing matches "nope".')).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Clear search' }));

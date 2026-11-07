@@ -4,11 +4,11 @@ import { useAppSelector } from '../../../../app/store';
 import { selectVideoById } from '../../videos.selectors';
 import { ArtistLine } from '../row/ArtistLine';
 import { MissingThumb } from '../row/MissingThumb';
+import { RowNumber } from '../row/RowNumber';
 import { VideoActions } from '../row/VideoActions';
 import { VideoLinkForm } from '../row/VideoLinkForm';
 import { VideoNotes } from '../row/VideoNotes';
 import { VideoThumb } from '../row/VideoThumb';
-import { WatchedMark } from '../row/WatchedMark';
 import styles from './VideoRow.module.scss';
 
 export const VideoRow = memo(({ id, index, total }: { id: string; index: number; total: number }) => {
@@ -20,11 +20,8 @@ export const VideoRow = memo(({ id, index, total }: { id: string; index: number;
     const title = video.title || (video.missing ? 'Untitled' : video.youtubeId);
 
     return (
-        <li
-            className={`list-row items-start ${styles.row} ${video.watched ? styles.watched : ''}`}
-            data-playing={playing || undefined}
-        >
-            <WatchedMark id={id} number={index + 1} title={title} watched={video.watched} />
+        <li className={`list-row items-start ${styles.row}`} data-playing={playing || undefined}>
+            <RowNumber number={index + 1} />
             {video.missing ? (
                 <MissingThumb unavailable={video.unavailable} />
             ) : (

@@ -85,20 +85,19 @@ describe('reports', () => {
         render(<App store={store} />);
         fireEvent.click(screen.getByRole('button', { name: 'JSON (can be restored)' }));
 
-        expect(JSON.parse(await created[0]!.text())).toMatchObject({
+        const report = JSON.parse(await created[0]!.text());
+        expect(report).toMatchObject({
             format: 'yuzu-tapes-report',
             version: 1,
             playlist: { name: 'City Pop' },
-            videos: [
-                { youtubeId: 'aaaaaaaaaaa', title: 'One', artist: 'Tomoko Aran', watched: false },
-                { title: 'Two' },
-            ],
+            videos: [{ youtubeId: 'aaaaaaaaaaa', title: 'One', artist: 'Tomoko Aran' }, { title: 'Two' }],
         });
+        expect(report.videos[0]).not.toHaveProperty('watched');
         expect(store.getState().ui.notices.at(-1)?.message).toMatch(/^Saved city-pop-report-.*\.json$/);
         vi.unstubAllGlobals();
     });
 
-    it('restores a video from a JSON report with its link, notes and watched mark', () => {
+    it('restores a video from a JSON report with its link and notes, ignoring an old watched mark', () => {
         const dialog = compare(
             JSON.stringify({
                 format: 'yuzu-tapes-report',
@@ -127,7 +126,7 @@ describe('reports', () => {
             artist: 'Anri',
             author: 'Label',
             notes: 'Keep this',
-            watched: true,
+            watched: false,
         });
     });
 
