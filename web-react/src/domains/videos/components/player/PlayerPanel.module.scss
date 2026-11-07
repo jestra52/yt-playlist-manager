@@ -6,7 +6,7 @@
     margin-bottom: 1.5rem;
     background: var(--color-base-200);
 
-    // The right column of PlaylistPage, centered in the space left of the window.
+    // The right column of PlaylistPage, centered in the window's height once the page scrolls.
     @media (min-width: 96rem) {
         display: flex;
         flex-direction: column;
