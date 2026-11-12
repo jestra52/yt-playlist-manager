@@ -3,10 +3,14 @@ import {
     cleanCredits,
     creditsOf,
     creditsPatch,
+    guessCredits,
+    guessedArtistPatch,
     joinArtists,
     knownCreditNames,
     MAX_CREDITS,
+    newVideoArtistPatch,
     parseCredits,
+    splitArtists,
     type ArtistCredit,
 } from './artist-credits';
 
@@ -96,5 +100,137 @@ describe('knownCreditNames', () => {
             { artist: 'Tatsuro Yamashita' },
         ];
         expect(knownCreditNames(videos)).toEqual(['Anri', 'Tatsuro Yamashita', 'Mariya Takeuchi']);
+    });
+});
+
+describe('splitArtists', () => {
+    it.each([
+        ['Anri & Tatsuro Yamashita', ['Anri', 'Tatsuro Yamashita'], []],
+        ['Anri × Tatsuro Yamashita', ['Anri', 'Tatsuro Yamashita'], []],
+        ['Anri x Tatsuro Yamashita', ['Anri', 'Tatsuro Yamashita'], []],
+        ['Anri, Junko Ohashi and Tatsuro Yamashita', ['Anri', 'Junko Ohashi', 'Tatsuro Yamashita'], []],
+        ['杏里、山下達郎', ['杏里', '山下達郎'], []],
+        ['Anri with Tatsuro Yamashita', ['Anri', 'Tatsuro Yamashita'], []],
+        ['Anri vs. Tatsuro Yamashita', ['Anri', 'Tatsuro Yamashita'], []],
+        ['Anri feat. Mariya Takeuchi', ['Anri'], ['Mariya Takeuchi']],
+        ['Anri ft. Mariya Takeuchi & Junko Ohashi', ['Anri'], ['Mariya Takeuchi', 'Junko Ohashi']],
+        ['Anri featuring Mariya Takeuchi', ['Anri'], ['Mariya Takeuchi']],
+        ['Anri (feat. Mariya Takeuchi)', ['Anri'], ['Mariya Takeuchi']],
+        ['Jay-Z', ['Jay-Z'], []],
+        ['Malcolm X', ['Malcolm X'], []],
+        ['Alexander', ['Alexander'], []],
+        ['Lefty', ['Lefty'], []],
+    ])('reads "%s"', (text, mains, featureds) => {
+        expect(splitArtists(text)).toEqual([...mains.map(main), ...featureds.map(featured)]);
+    });
+});
+
+describe('guessCredits', () => {
+    it('splits the guessed artist and adds who the title features', () => {
+        expect(guessCredits({ title: 'Anri & Tatsuro Yamashita - Windy Summer' })).toEqual([
+            main('Anri'),
+            main('Tatsuro Yamashita'),
+        ]);
+        expect(guessCredits({ title: 'Anri - Windy Summer (feat. Mariya Takeuchi) [Official Video]' })).toEqual([
+            main('Anri'),
+            featured('Mariya Takeuchi'),
+        ]);
+        expect(guessCredits({ title: 'Anri feat. Mariya Takeuchi - Windy Summer' })).toEqual([
+            main('Anri'),
+            featured('Mariya Takeuchi'),
+        ]);
+        expect(guessCredits({ title: 'Anri - Windy Summer ft. Junko Ohashi' })).toEqual([
+            main('Anri'),
+            featured('Junko Ohashi'),
+        ]);
+    });
+
+    it('keeps a Topic channel as one artist', () => {
+        expect(guessCredits({ title: 'Windy Summer (feat. C)', author: 'Earth, Wind & Fire - Topic' })).toEqual([
+            main('Earth, Wind & Fire'),
+            featured('C'),
+        ]);
+    });
+
+    it('guesses nothing without an artist', () => {
+        expect(guessCredits({ title: 'Windy Summer (feat. Mariya Takeuchi)' })).toEqual([]);
+    });
+});
+
+describe('newVideoArtistPatch', () => {
+    it('replaces or clears a guess, and keeps an artist set by hand', () => {
+        const guessed = { title: 'Old', author: '', artist: 'Old Artist', artistSource: 'guess' as const };
+        expect(newVideoArtistPatch(guessed, { title: 'Anri & Junko Ohashi - Windy Summer' })).toEqual({
+            artist: 'Anri & Junko Ohashi',
+            artists: [main('Anri'), main('Junko Ohashi')],
+            artistSource: 'guess',
+        });
+        expect(newVideoArtistPatch(guessed, { title: 'Windy Summer' })).toEqual({
+            artist: '',
+            artists: [],
+            artistSource: '',
+        });
+        expect(newVideoArtistPatch({ ...guessed, artistSource: 'user' }, { title: 'Anri - Windy Summer' })).toEqual({});
+    });
+});
+
+describe('guessedArtistPatch', () => {
+    it('returns the guess with its source', () => {
+        expect(guessedArtistPatch({ title: 'Anri - Windy Summer', author: '', artist: '', artistSource: '' })).toEqual({
+            artist: 'Anri',
+            artists: [],
+            artistSource: 'guess',
+        });
+    });
+
+    it('guesses from new metadata when given', () => {
+        const video = { title: '', author: '', artist: '', artistSource: '' };
+        expect(guessedArtistPatch(video, { title: 'Song', author: 'Anri - Topic' })).toEqual({
+            artist: 'Anri',
+            artists: [],
+            artistSource: 'guess',
+        });
+    });
+
+    it('keeps a hand edit, even an empty one, and an unchanged guess', () => {
+        expect(
+            guessedArtistPatch({ title: 'Anri - Windy Summer', author: '', artist: '', artistSource: 'user' }),
+        ).toEqual({});
+        expect(
+            guessedArtistPatch({ title: 'Anri - Windy Summer', author: '', artist: 'Anri', artistSource: 'guess' }),
+        ).toEqual({});
+    });
+});
+
+describe('splitting with the names the library knows', () => {
+    const known = ['Earth, Wind & Fire', 'Simon & Garfunkel', 'Anri'];
+
+    it('keeps a known name whole, in its spelling', () => {
+        expect(splitArtists('earth, wind & fire', known)).toEqual([main('Earth, Wind & Fire')]);
+        expect(splitArtists('Simon & Garfunkel', known)).toEqual([main('Simon & Garfunkel')]);
+    });
+
+    it('still splits the names around it', () => {
+        expect(splitArtists('Anri & Earth, Wind & Fire feat. Simon & Garfunkel, Junko Ohashi', known)).toEqual([
+            main('Anri'),
+            main('Earth, Wind & Fire'),
+            featured('Simon & Garfunkel'),
+            featured('Junko Ohashi'),
+        ]);
+    });
+
+    it('splits an unknown name as before', () => {
+        expect(splitArtists('Earth, Wind & Fire')).toEqual([main('Earth'), main('Wind'), main('Fire')]);
+    });
+
+    it('guesses with them too', () => {
+        expect(guessCredits({ title: 'Earth, Wind & Fire - September' }, known)).toEqual([main('Earth, Wind & Fire')]);
+        expect(
+            guessedArtistPatch(
+                { title: 'Earth, Wind & Fire - September', author: '', artist: '', artistSource: '' },
+                {},
+                known,
+            ),
+        ).toEqual({ artist: 'Earth, Wind & Fire', artists: [], artistSource: 'guess' });
     });
 });

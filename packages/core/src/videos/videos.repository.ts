@@ -254,6 +254,7 @@ export const insertVideosAfter = (db: Database, playlistId: string, entries: rea
                             author: entry.author ?? '',
                             artist: entry.artist ?? '',
                             artistSource: entry.artistSource ?? '',
+                            artists: entry.artists,
                             thumbnailUrl: entry.thumbnailUrl,
                             notes: entry.notes,
                             unavailable: entry.unavailable ?? false,

@@ -1,4 +1,13 @@
-import { artistKey, cleanArtist, knownArtists } from './artist';
+import {
+    artistKey,
+    canReplaceArtist,
+    cleanArtist,
+    guessArtist,
+    knownArtists,
+    topicArtist,
+    type ArtistFields,
+    type ArtistSource,
+} from './artist';
 
 /**
  * A video's artists, in order: one or more main artists, then any featured ones.
@@ -51,18 +60,24 @@ export const cleanCredits = (credits: readonly ArtistCredit[]): ArtistCredit[] =
     return kept;
 };
 
-/** The stored JSON list, or an empty one when it isn't a list of credits. */
-export const parseCredits = (json: string | null | undefined): ArtistCredit[] => {
-    try {
-        const value: unknown = JSON.parse(json || '[]');
-        if (!Array.isArray(value)) return [];
-        return value.filter(
+/** The credits in a value read from storage or a report, ignoring anything else. */
+export const toCredits = (value: unknown): ArtistCredit[] => {
+    if (!Array.isArray(value)) return [];
+    return value
+        .filter(
             (c): c is ArtistCredit =>
                 typeof c === 'object' &&
                 c !== null &&
                 typeof (c as ArtistCredit).name === 'string' &&
                 ((c as ArtistCredit).role === 'main' || (c as ArtistCredit).role === 'featured'),
-        );
+        )
+        .map(({ name, role }) => ({ name, role }));
+};
+
+/** The stored JSON list, or an empty one when it isn't a list of credits. */
+export const parseCredits = (json: string | null | undefined): ArtistCredit[] => {
+    try {
+        return toCredits(JSON.parse(json || '[]'));
     } catch {
         return [];
     }
@@ -91,4 +106,103 @@ export const knownCreditNames = (
     videos: readonly { artist?: string; artists?: readonly ArtistCredit[] }[],
 ): string[] => {
     return knownArtists(videos.flatMap((video) => creditsOf(video).map(({ name }) => ({ artist: name }))));
+};
+
+// "A (feat. C)" or "A [ft. C]": the brackets go, the credit stays.
+const BRACKETED_FEAT = /\s*[([【]\s*((?:feat\.?|ft\.?|featuring)\s+[^()[\]【】]+)[)\]】]/giu;
+const FEAT_SPLIT = /\s+(?:feat\.?|ft\.?|featuring)\s+/iu;
+// "A & B", "A × B", "A x B", "A, B", "A、B", "A and B", "A with B", "A vs. B",
+// kept in the split so the pieces of a known name can be joined back.
+const SEPARATORS = /(\s*[&＆×,、]\s*|\s+(?:x|and|with|vs\.?)\s+)/iu;
+
+type KnownNames = ReadonlyMap<string, string>;
+
+const knownByKey = (known: readonly string[]): KnownNames => new Map(known.map((name) => [artistKey(name), name]));
+
+/** The names in "A & B, C". Pieces that make up a name in `known` stay together, in its spelling. */
+const names = (part: string, known: KnownNames): string[] => {
+    const pieces = part.split(SEPARATORS);
+    const found: string[] = [];
+    for (let start = 0; start < pieces.length; start += 2) {
+        let end = start;
+        for (let last = pieces.length - 1; last > start; last -= 2) {
+            if (known.has(artistKey(pieces.slice(start, last + 1).join('')))) {
+                end = last;
+                break;
+            }
+        }
+        const name = pieces
+            .slice(start, end + 1)
+            .join('')
+            .trim();
+        found.push(known.get(artistKey(name)) ?? name);
+        start = end;
+    }
+    return found;
+};
+
+/**
+ * Reads "A & B feat. C" (and the other ways titles write it) as separate
+ * artists. A name in `known`, like "Earth, Wind & Fire", isn't split.
+ */
+export const splitArtists = (text: string | null | undefined, known: readonly string[] = []): ArtistCredit[] => {
+    const byKey = knownByKey(known);
+    const whole = byKey.get(artistKey(text));
+    if (whole) return [{ name: whole, role: 'main' }];
+    const clean = cleanArtist(text).replace(BRACKETED_FEAT, ' $1');
+    const [main = '', ...featured] = clean.split(FEAT_SPLIT);
+    return cleanCredits([
+        ...names(main, byKey).map((name) => ({ name, role: 'main' as const })),
+        ...featured.flatMap((part) => names(part, byKey)).map((name) => ({ name, role: 'featured' as const })),
+    ]);
+};
+
+// The featured artists a title names after the song: "Song (feat. C)" or "Song ft. C".
+const FEATURED_IN_TITLE = /(?:^|[\s([【])(?:feat\.?|ft\.?|featuring)\s+([^()[\]【】]+)/iu;
+const SONG_SEPARATOR = /\s+[-–—/／|]\s+/u;
+
+/**
+ * Best guess at a video's artists (see `guessArtist`): the artist part split
+ * into main and featured artists, plus anyone the title credits with "feat.".
+ * A "Artist - Topic" channel is one artist, and names in `known` aren't split.
+ */
+export const guessCredits = (
+    { title = '', author = '' }: { title?: string; author?: string } = {},
+    known: readonly string[] = [],
+): ArtistCredit[] => {
+    const guess = guessArtist({ title, author });
+    if (!guess) return [];
+    const topic = topicArtist(author);
+    const credits = topic ? [{ name: topic, role: 'main' as const }] : splitArtists(guess, known);
+    const featured = (title.match(FEATURED_IN_TITLE)?.[1] ?? '').split(SONG_SEPARATOR)[0]!;
+    const featuredNames = featured ? names(featured, knownByKey(known)) : [];
+    return cleanCredits([...credits, ...featuredNames.map((name) => ({ name, role: 'featured' as const }))]);
+};
+
+type GuessPatch = { artist?: string; artists?: ArtistCredit[]; artistSource?: ArtistSource };
+
+/**
+ * The patch that applies a guess to a video, or an empty patch when there is
+ * nothing to guess or the video's artist came from a stronger source.
+ */
+export const guessedArtistPatch = (
+    video: ArtistFields | null | undefined,
+    { title = video?.title, author = video?.author }: { title?: string; author?: string } = {},
+    known: readonly string[] = [],
+): GuessPatch => {
+    if (!canReplaceArtist(video, 'guess')) return {};
+    const credits = guessCredits({ title, author }, known);
+    if (!credits.length || joinArtists(credits) === video?.artist) return {};
+    return { ...creditsPatch(credits), artistSource: 'guess' };
+};
+
+/** Like `guessedArtistPatch`, for a row that now holds another video: an old guess doesn't carry over. */
+export const newVideoArtistPatch = (
+    video: ArtistFields | null | undefined,
+    { title, author }: { title?: string; author?: string },
+    known: readonly string[] = [],
+): GuessPatch => {
+    if (!canReplaceArtist(video, 'guess')) return {};
+    const patch = creditsPatch(guessCredits({ title, author }, known));
+    return { ...patch, artistSource: patch.artist ? 'guess' : '' };
 };

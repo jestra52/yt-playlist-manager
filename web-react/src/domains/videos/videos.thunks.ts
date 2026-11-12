@@ -2,8 +2,17 @@ import { getDatabase } from '@ytpm/core/db/index';
 import type { Playlist } from '@ytpm/core/playlists/playlists.repository';
 import type { MissingEntry } from '@ytpm/core/playlists/report-compare';
 import type { YouTubeDiff } from '@ytpm/core/playlists/youtube-sync';
-import { cleanArtist, guessedArtistPatch, matchKnownArtist, newVideoArtistPatch } from '@ytpm/core/videos/artist';
-import { creditsPatch, knownCreditNames, type ArtistCredit } from '@ytpm/core/videos/artist-credits';
+import { cleanArtist, matchKnownArtist } from '@ytpm/core/videos/artist';
+import {
+    cleanCredits,
+    creditsPatch,
+    guessedArtistPatch,
+    joinArtists,
+    knownCreditNames,
+    newVideoArtistPatch,
+    splitArtists,
+    type ArtistCredit,
+} from '@ytpm/core/videos/artist-credits';
 import { fetchVideoMetadata } from '@ytpm/core/videos/metadata.client';
 import { fetchYouTubePlaylist, PARTIAL_IMPORT_NOTE } from '@ytpm/core/videos/playlist.client';
 import {
@@ -26,6 +35,7 @@ import { selectApiUrl } from '../sync/sync.selectors';
 import { notify, setImporting } from '../ui/ui.slice';
 import {
     selectAllVideos,
+    selectKnownArtists,
     selectNextVideo,
     selectPlayingId,
     selectPlaylistQueue,
@@ -51,7 +61,10 @@ export const enrichMetadata =
                 const db = getDatabase();
                 const current = getVideo(db, video.id);
                 if (!current || current.title) continue;
-                const updated = updateVideo(db, video.id, { ...meta, ...guessedArtistPatch(current, meta) });
+                const updated = updateVideo(db, video.id, {
+                    ...meta,
+                    ...guessedArtistPatch(current, meta, selectKnownArtists(getState())),
+                });
                 if (updated) dispatch(changed(updated));
             }
         };
@@ -61,9 +74,10 @@ export const enrichMetadata =
 /** Appends videos to a playlist and fetches titles for the ones that came without one. */
 export const addEntries =
     (playlistId: string, entries: readonly (string | VideoEntry)[]): AppThunk<{ added: Video[]; skipped: string[] }> =>
-    (dispatch) => {
+    (dispatch, getState) => {
+        const known = selectKnownArtists(getState());
         const withArtists = entries.map((entry) =>
-            typeof entry === 'string' ? entry : { ...entry, ...guessedArtistPatch(entry) },
+            typeof entry === 'string' ? entry : { ...entry, ...guessedArtistPatch(entry, {}, known) },
         );
         const result = addVideos(getDatabase(), playlistId, withArtists);
         if (result.added.length) dispatch(upserted(result.added));
@@ -284,7 +298,10 @@ export const completeVideo =
         const meta = await fetchVideoMetadata(youtubeId, selectApiUrl(getState()));
         const current = getVideo(getDatabase(), id);
         if (meta && !meta.unavailable && current?.youtubeId === youtubeId) {
-            const updated = updateVideo(getDatabase(), id, { ...meta, ...guessedArtistPatch(current, meta) });
+            const updated = updateVideo(getDatabase(), id, {
+                ...meta,
+                ...guessedArtistPatch(current, meta, selectKnownArtists(getState())),
+            });
             if (updated) dispatch(changed(updated));
         }
         return true;
@@ -317,7 +334,7 @@ export const changeVideoLink =
         if (!current) return false;
         const updated = updateVideo(getDatabase(), id, {
             ...meta,
-            ...newVideoArtistPatch(current, meta),
+            ...newVideoArtistPatch(current, meta, selectKnownArtists(getState())),
             ...replacedIdPatch(current, youtubeId),
             youtubeId,
             unavailable: false,
@@ -333,15 +350,27 @@ export const changeVideoLink =
  * it's guessed from the title. A JSON report also brings back the channel, notes
  * and deleted mark. Returns the inserted videos.
  */
+/**
+ * A report entry's artists: the list a JSON report keeps, while it still
+ * matches the entry's artist text, or else that text split, keeping names
+ * the library already knows whole.
+ */
+const reportCredits = (entry: MissingEntry, known: readonly string[]): ArtistCredit[] => {
+    const listed = cleanCredits(entry.artists ?? []);
+    if (listed.length && joinArtists(listed) === cleanArtist(entry.artist)) return listed;
+    return splitArtists(entry.artist, known);
+};
+
 export const addFromReport =
     (playlistId: string, missing: readonly MissingEntry[]): AppThunk<Video[]> =>
-    (dispatch) => {
+    (dispatch, getState) => {
+        const known = selectKnownArtists(getState());
         const entries = missing.map((entry) => {
             // A link stands in for an unknown title; YouTube's title replaces it below.
             const title = entry.youtubeId && /^https?:\/\//i.test(entry.title) ? '' : entry.title;
             const artist = entry.artist
-                ? { artist: cleanArtist(entry.artist), artistSource: 'user' }
-                : guessedArtistPatch({ title, author: '', artist: '', artistSource: '' });
+                ? { ...creditsPatch(reportCredits(entry, known)), artistSource: 'user' }
+                : guessedArtistPatch({ title, author: '', artist: '', artistSource: '' }, {}, known);
             const { author, notes, unavailable, afterId } = entry;
             return { youtubeId: entry.youtubeId ?? '', title, author, notes, unavailable, afterId, ...artist };
         });
@@ -367,14 +396,15 @@ export interface YouTubeSyncCounts {
  */
 export const applyYouTubeDiff =
     (playlistId: string, diff: YouTubeDiff<Video>, { removeMissing = false } = {}): AppThunk<YouTubeSyncCounts> =>
-    (dispatch) => {
+    (dispatch, getState) => {
         const db = getDatabase();
+        const known = selectKnownArtists(getState());
         const gone = removeMissing ? diff.removed : [];
         const added = db.transaction(() => {
             const inserted = insertVideosAfter(
                 db,
                 playlistId,
-                diff.added.map((entry) => ({ ...entry, ...guessedArtistPatch(entry) })),
+                diff.added.map((entry) => ({ ...entry, ...guessedArtistPatch(entry, {}, known) })),
             );
             for (const video of diff.nowUnavailable) updateVideo(db, video.id, { unavailable: true });
             for (const video of diff.availableAgain) updateVideo(db, video.id, { unavailable: false });

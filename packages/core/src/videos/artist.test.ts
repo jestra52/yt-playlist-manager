@@ -1,13 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-    canReplaceArtist,
-    cleanArtist,
-    guessArtist,
-    guessedArtistPatch,
-    newVideoArtistPatch,
-    knownArtists,
-    matchKnownArtist,
-} from './artist';
+import { canReplaceArtist, cleanArtist, guessArtist, knownArtists, matchKnownArtist } from './artist';
 
 describe('guessArtist', () => {
     it('takes the artist from an auto-generated "Artist - Topic" channel first', () => {
@@ -62,57 +54,6 @@ describe('canReplaceArtist', () => {
 
     it("treats a source this version doesn't know as no source", () => {
         expect(canReplaceArtist({ artistSource: 'from-the-future' }, 'guess')).toBe(true);
-    });
-});
-
-describe('newVideoArtistPatch', () => {
-    it('replaces or clears a guess, and keeps an artist set by hand', () => {
-        const guessed = { title: 'Old', author: '', artist: 'Old Artist', artistSource: 'guess' as const };
-        expect(newVideoArtistPatch(guessed, { title: 'Anri - Windy Summer' })).toEqual({
-            artist: 'Anri',
-            artistSource: 'guess',
-        });
-        expect(newVideoArtistPatch(guessed, { title: 'Windy Summer' })).toEqual({ artist: '', artistSource: '' });
-        expect(newVideoArtistPatch({ ...guessed, artistSource: 'user' }, { title: 'Anri - Windy Summer' })).toEqual({});
-    });
-});
-
-describe('guessedArtistPatch', () => {
-    it('returns the guess with its source', () => {
-        expect(
-            guessedArtistPatch({
-                title: 'Anri - Windy Summer',
-                author: '',
-                artist: '',
-                artistSource: '',
-            }),
-        ).toEqual({
-            artist: 'Anri',
-            artistSource: 'guess',
-        });
-    });
-
-    it('guesses from new metadata when given', () => {
-        const video = { title: '', author: '', artist: '', artistSource: '' };
-        expect(
-            guessedArtistPatch(video, {
-                title: 'Song',
-                author: 'Anri - Topic',
-            }),
-        ).toEqual({
-            artist: 'Anri',
-            artistSource: 'guess',
-        });
-    });
-
-    it('keeps a hand edit, even an empty one', () => {
-        const video = {
-            title: 'Anri - Windy Summer',
-            author: '',
-            artist: '',
-            artistSource: 'user',
-        };
-        expect(guessedArtistPatch(video)).toEqual({});
     });
 });
 

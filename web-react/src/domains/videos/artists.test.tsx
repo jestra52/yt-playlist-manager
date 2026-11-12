@@ -10,7 +10,7 @@ import { createStore, type AppStore } from '../../app/store';
 import { createPlaylist, loadLibrary } from '../playlists/playlists.thunks';
 import { selectKnownArtists, selectVideoById, selectVisibleVideos } from './videos.selectors';
 import { changed } from './videos.slice';
-import { addEntries, saveArtists } from './videos.thunks';
+import { addEntries, addFromReport, saveArtists } from './videos.thunks';
 
 const realFetch = globalThis.fetch;
 let SQL: SqlJsStatic;
@@ -133,5 +133,85 @@ describe('several artists', () => {
         fireEvent.click(within(row).getByRole('button', { name: 'Save' }));
         expect(video('Windy Summer').artistSource).toBe('guess');
         expect(collectChanges(db).videos).toEqual([]);
+    });
+
+    it('guesses several artists from a new video title', () => {
+        store.dispatch(
+            addEntries(playlistId, [
+                { youtubeId: 'ddddddddddd', title: 'Anri × Junko Ohashi - Sunset (feat. Omega Tribe)' },
+            ]),
+        );
+        expect(video('Anri × Junko Ohashi - Sunset (feat. Omega Tribe)')).toMatchObject({
+            artist: 'Anri & Junko Ohashi feat. Omega Tribe',
+            artistSource: 'guess',
+            artists: [
+                { name: 'Anri', role: 'main' },
+                { name: 'Junko Ohashi', role: 'main' },
+                { name: 'Omega Tribe', role: 'featured' },
+            ],
+        });
+    });
+
+    it('splits the artists of a report entry it puts back', () => {
+        store.dispatch(
+            addFromReport(playlistId, [
+                {
+                    number: 4,
+                    title: 'Midnight Pretenders',
+                    youtubeId: '',
+                    artist: 'Tomoko Aran feat. Anri',
+                    afterId: null,
+                },
+            ]),
+        );
+        expect(video('Midnight Pretenders')).toMatchObject({
+            artist: 'Tomoko Aran feat. Anri',
+            artistSource: 'user',
+            artists: [
+                { name: 'Tomoko Aran', role: 'main' },
+                { name: 'Anri', role: 'featured' },
+            ],
+        });
+    });
+
+    it('puts back the exact artists a JSON report kept', () => {
+        const artists = [
+            { name: 'Simon & Garfunkel', role: 'main' as const },
+            { name: 'Anri', role: 'featured' as const },
+        ];
+        store.dispatch(
+            addFromReport(playlistId, [
+                {
+                    number: 4,
+                    title: 'Kodachrome',
+                    youtubeId: '',
+                    artist: 'Simon & Garfunkel feat. Anri',
+                    artists,
+                    afterId: null,
+                },
+            ]),
+        );
+        expect(video('Kodachrome')).toMatchObject({ artist: 'Simon & Garfunkel feat. Anri', artists });
+    });
+
+    it('keeps names the library knows whole when it splits a report or guesses', () => {
+        store.dispatch(saveArtists(idOf('Plastic Love'), [{ name: 'Earth, Wind & Fire', role: 'main' }]));
+        store.dispatch(
+            addFromReport(playlistId, [
+                { number: 4, title: 'September', youtubeId: '', artist: 'Earth, Wind & Fire & Anri', afterId: null },
+            ]),
+        );
+        expect(video('September').artists).toEqual([
+            { name: 'Earth, Wind & Fire', role: 'main' },
+            { name: 'Anri', role: 'main' },
+        ]);
+
+        store.dispatch(
+            addEntries(playlistId, [{ youtubeId: 'eeeeeeeeeee', title: 'Earth, Wind & Fire - Boogie Wonderland' }]),
+        );
+        expect(video('Earth, Wind & Fire - Boogie Wonderland')).toMatchObject({
+            artist: 'Earth, Wind & Fire',
+            artistSource: 'guess',
+        });
     });
 });
