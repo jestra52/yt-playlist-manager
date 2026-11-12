@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using YtPlaylist.Api;
 using YtPlaylist.Application.Chains;
 using YtPlaylist.Application.Reports;
 using YtPlaylist.Application.Sync;
@@ -28,11 +29,16 @@ public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFix
         string syncToken = "secret",
         FakeChainStore? chains = null,
         ListLoggerProvider? logs = null,
-        FakeClock? clock = null) =>
+        FakeClock? clock = null,
+        string? minAppVersion = null) =>
         factory.WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Testing");
             builder.UseSetting("SYNC_TOKEN", syncToken);
+            if (minAppVersion is not null)
+            {
+                builder.UseSetting("MIN_APP_VERSION", minAppVersion);
+            }
             if (store is not null)
             {
                 builder.UseSetting("SYNC_PEPPER", Pepper);
@@ -137,10 +143,55 @@ public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFix
         var body = await configured.GetFromJsonAsync<JsonElement>("/api/health");
         Assert.True(body.GetProperty("ok").GetBoolean());
         Assert.True(body.GetProperty("syncConfigured").GetBoolean());
+        Assert.Equal(ReadVersionFile(), body.GetProperty("version").GetString());
+        Assert.Equal("0.0.0", body.GetProperty("minAppVersion").GetString());
 
         using var bare = this.Client();
         body = await bare.GetFromJsonAsync<JsonElement>("/api/health");
         Assert.False(body.GetProperty("syncConfigured").GetBoolean());
+    }
+
+    [Fact]
+    public async Task RefusesSyncFromAnAppOlderThanTheMinimum()
+    {
+        using var client = this.Client(new FakeSyncStore(), minAppVersion: "0.2.0");
+        Assert.Equal("0.2.0", (await client.GetFromJsonAsync<JsonElement>("/api/health")).GetProperty("minAppVersion").GetString());
+
+        foreach (var version in new[] { null, "0.1.9", "not a version" })
+        {
+            using var request = SyncRequest("{}", null);
+            if (version is not null)
+            {
+                request.Headers.Add("X-App-Version", version);
+            }
+            using var refused = await client.SendAsync(request);
+            Assert.Equal(HttpStatusCode.UpgradeRequired, refused.StatusCode);
+            Assert.Contains("reload", (await refused.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("error").GetString());
+        }
+
+        using var current = SyncRequest("{}", null);
+        current.Headers.Add("X-App-Version", "0.2.0");
+        using var passed = await client.SendAsync(current);
+        Assert.Equal(HttpStatusCode.Unauthorized, passed.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(null, "0.0.0", false)]
+    [InlineData("0.1.0", "0.1.0", false)]
+    [InlineData("0.10.0", "0.9.0", false)]
+    [InlineData("0.9.0", "0.10.0", true)]
+    [InlineData("1.0", "0.1.0", false)]
+    public void ComparesAppVersions(string? app, string minimum, bool tooOld) =>
+        Assert.Equal(tooOld, AppVersionGate.IsTooOld(app, minimum));
+
+    private static string ReadVersionFile()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "VERSION")))
+        {
+            dir = dir.Parent;
+        }
+        return File.ReadAllText(Path.Combine(dir!.FullName, "VERSION")).Trim();
     }
 
     [Fact]

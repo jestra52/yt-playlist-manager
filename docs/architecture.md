@@ -15,71 +15,69 @@ Three views of Yuzu Tapes Playlist Manager: how the code is split into component
 
 ### Web app
 
-The web app runs entirely in the browser. Each domain has the same layers, and calls only go downwards: **components → service → repository or client → core**.
+The web app (`web-react/`) runs entirely in the browser. Each domain in `web-react/src/domains` has the same layers, and calls only go downwards: **components → thunks → repositories or clients in `packages/core` → the database**. Components read the Redux store through selectors and dispatch thunks; thunks write through `packages/core` and then dispatch what changed to the slices.
 
 ```mermaid
 flowchart TB
     subgraph playlists["playlists"]
         direction TB
-        pComp["components<br/>PlaylistSidebar · PlaylistHeader<br/>FirstPlaylist · CompareReportDialog<br/>SyncYouTubeDialog"]
-        pSvc["playlists.service<br/>list, selection, create,<br/>import, link and sync<br/>from YouTube, reports"]
-        pRepo["playlists.repository"]
-        pRules["report.js · report-compare.js<br/>youtube-sync.js"]
-        pComp --> pSvc --> pRepo
-        pSvc --> pRules
+        pComp["components<br/>PlaylistList · PlaylistPage · PlaylistHeader<br/>CompareReportDialog · BackupList<br/>SyncYouTubeDialog"]
+        pThunks["playlists.thunks · backups.thunks<br/>create, select, rename, delete,<br/>import and sync from YouTube,<br/>reports and backups"]
+        pState["playlists.slice · selectors<br/>list, selection"]
+        pComp --> pThunks
+        pComp -. reads .-> pState
+        pThunks --> pState
     end
 
     subgraph videos["videos"]
         direction TB
-        vComp["components<br/>AddVideoForm · VideoToolbar<br/>VideoQueue · VideoRow<br/>PlayerPanel · ProgressStrip"]
-        vSvc["videos.service<br/>add, reorder, watched,<br/>notes, artists, filter, player"]
-        vRepo["videos.repository"]
-        vClients["metadata.client<br/>playlist.client"]
-        vRules["youtube.js · artist.js<br/>link parsing, artist guesses"]
-        vComp --> vSvc
-        vSvc --> vRepo
-        vSvc --> vClients
-        vSvc --> vRules
+        vComp["components<br/>AddVideosForm · VideoToolbar · VideoList<br/>VideoRow · ArtistEditor · PositionForm<br/>PlayerPanel"]
+        vThunks["videos.thunks<br/>add, move, notes, artists,<br/>links, player, shuffle"]
+        vState["videos.slice · selectors<br/>videos, filter, search, sort,<br/>visible rows, play queue"]
+        vComp --> vThunks
+        vComp -. reads .-> vState
+        vThunks --> vState
     end
 
     subgraph sync["sync"]
         direction TB
-        sComp["components<br/>SyncStatus · SyncSettingsDialog<br/>ChainCodeStep · ChainDevices · ChainActivity<br/>AddDevice · QrScanner"]
-        sSvc["sync.service<br/>sync chain, pairing, recovery, reminders,<br/>two-way sync, auto-sync"]
-        sRepo["sync.repository<br/>settings, device credential,<br/>cursor, dirty rows, check-in time"]
-        sClient["sync.client · chain-code.js<br/>recovery-code.js · pairing-code.js<br/>pairing.js · qr-scan.js<br/>chain-reminders.js · chain-events.js<br/>API calls, codes, scanning, reminders"]
-        sComp --> sSvc
-        sSvc --> sRepo
-        sSvc --> sClient
+        sComp["components<br/>SyncStatus · SyncSettingsDialog<br/>StartScreen · ChainCodeStep · DevicesTab<br/>AddDevice · QrScanner"]
+        sThunks["sync.thunks · chain.thunks · pairing.thunks<br/>two-way sync, chains, pairing,<br/>recovery, reminders"]
+        sState["sync.slice · selectors<br/>settings, status, chain, pairing"]
+        autoSync["auto-sync<br/>listener middleware"]
+        sComp --> sThunks
+        sComp -. reads .-> sState
+        sThunks --> sState
+        autoSync --> sThunks
     end
 
     subgraph ui["ui"]
         direction TB
-        uComp["components<br/>Notices · ThemeSwitch<br/>Dialog · Icon"]
-        uSvc["ui.service<br/>drawer, dialog,<br/>theme, notices"]
-        uComp --> uSvc
+        uComp["components<br/>AppShell · Sidebar · AppDialog<br/>Notices · ThemeSwitch"]
+        uState["ui.slice<br/>theme, sidebar, dialogs, notices"]
+        uComp -. reads .-> uState
     end
 
-    subgraph core["core"]
-        direction LR
+    subgraph core["packages/core"]
+        direction TB
+        repos["repositories<br/>playlists · videos · backups · sync"]
+        rules["rules<br/>youtube · artist · artist-credits<br/>report · report-compare · youtube-sync<br/>chain, recovery and pairing codes"]
+        clients["clients<br/>sync.client · metadata.client<br/>playlist.client"]
         db["db<br/>SQLite wrapper, Drizzle<br/>tables, migrations"]
         storage[("sql.js + IndexedDB")]
-        events["events<br/>data-changed signal"]
-        config["config<br/>API address"]
-        db --> storage
+        repos --> db --> storage
     end
 
-    api[".NET API<br/>/api/sync · /api/oembed · /api/playlist"]
+    api[".NET API<br/>/api/sync · /api/chain · /api/oembed · /api/playlist"]
 
-    pSvc -- "imports and syncs videos" --> vSvc
-    pSvc -- "reads YouTube playlists" --> vClients
-    pRepo & vRepo & sRepo --> db
-    pSvc & vSvc -- "dataChanged()" --> events
-    events -- "schedules sync" --> sSvc
-    vClients & sClient --> api
+    pThunks & vThunks & sThunks --> repos
+    pThunks & vThunks & sThunks --> rules
+    pThunks & vThunks & sThunks --> clients
+    pState & vState -- "changed actions" --> autoSync
+    clients --> api
 ```
 
-`App.svelte` lays out the shell (playlist drawer and main column) and renders the domain components. Services also call `ui.notify()` to show messages, and `sync.service` reloads the playlists and videos services after pulling changes; those links are left out of the diagram to keep it readable.
+`App.tsx` puts the store around `AppShell`, which lays out the sidebar drawer and the playlist page. Thunks also dispatch `notify()` from the ui slice to show messages, and the sync thunks reload the playlists and videos slices after pulling changes; those links are left out of the diagram to keep it readable. `auto-sync` listens for the slices' "changed" actions, so playlists and videos don't depend on sync.
 
 ### .NET API
 
@@ -149,11 +147,12 @@ flowchart LR
 
 | Layer | Where | Responsibility |
 | --- | --- | --- |
-| Presentation | `web/src/domains/*/components`, `web/src/shared/components` | Svelte views styled with daisyUI; read service state, call service methods |
-| Application | `web/src/domains/*/*.service.svelte.js` | Reactive state (`$state`, `$derived`) and use cases such as `videos.addFromText` or `sync.syncNow` |
-| Domain rules | `packages/core/src` (TypeScript): `videos/youtube.ts`, `videos/artist.ts`, `playlists/report.ts`, `playlists/report-compare.ts`, `playlists/youtube-sync.ts` | Plain functions with no state or I/O: parsing links, guessing artists, writing and reading reports, comparing a playlist with YouTube. Shared with the React app (#23) |
-| Data access | `*.repository.js`, `*.client.js` | Drizzle ORM queries against the local database; HTTP calls to the API |
-| Core | `packages/core/src/db`, `web/src/core` | SQLite wrapper (sql.js + Drizzle), table definitions and migrations, and IndexedDB persistence behind a `Persistence` interface, in TypeScript and shared with the React app; the data-changed signal and the API address in `web/src/core` |
+| Presentation | `web-react/src/domains/*/components`, `web-react/src/shared/components` | React components styled with daisyUI classes and `*.module.scss`; read the store through selectors and dispatch thunks |
+| State | `web-react/src/domains/*/*.slice.ts`, `*.selectors.ts` | Redux Toolkit slices hold what the views show; selectors derive the rest, such as the visible rows or what plays next |
+| Application | `web-react/src/domains/*/*.thunks.ts`, `sync/auto-sync.ts` | Use cases such as `addEntries`, `saveArtists` or `syncNow`; the listener middleware that syncs after edits |
+| Domain rules | `packages/core/src` (TypeScript): `videos/youtube.ts`, `videos/artist.ts`, `playlists/report.ts`, `playlists/report-compare.ts`, `playlists/youtube-sync.ts` | Plain functions with no state or I/O: parsing links, guessing artists, writing and reading reports, comparing a playlist with YouTube. Also `videos/artist-credits.ts` |
+| Data access | `packages/core/src/*/*.repository.ts`, `*.client.ts` | Drizzle ORM queries against the local database; HTTP calls to the API |
+| Core | `packages/core/src/db` | SQLite wrapper (sql.js + Drizzle), table definitions and migrations, and IndexedDB persistence behind a `Persistence` interface |
 | API | `api/src/YtPlaylist.*` | Endpoints and auth (Api), use cases and ports (Application), entities and DTOs (Models), ID rules and limits (Domain), EF Core and YouTube clients (Infrastructure) |
 
 **The recovery hook.** Every way of replacing a chain's code goes through one step, `ChainService.RunRecoveryHookAsync`: recovering with a recovery code, **Generate a new code**, and later the cleanup of abandoned chains. It makes a new secret and new recovery codes, and `IChainStore.ResetAccessAsync` writes everything in one transaction:

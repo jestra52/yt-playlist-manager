@@ -11,7 +11,7 @@ import styles from './SyncStatus.module.scss';
 const SYNC_NOW_PAUSE_MS = 5000;
 
 export const SyncStatus = () => {
-    const { status, offline, waitMs, pending, lastSyncedAt, error } = useAppSelector(selectSync);
+    const { status, offline, waitMs, pending, lastSyncedAt, error, outdated } = useAppSelector(selectSync);
     const configured = useAppSelector(selectConfigured);
     const dispatch = useAppDispatch();
     const now = useNow(30_000);
@@ -26,6 +26,7 @@ export const SyncStatus = () => {
 
     const label = () => {
         if (!configured) return 'Only on this device';
+        if (outdated) return 'New version: reload';
         if (syncing) return 'Syncing…';
         if (status === 'error' && waitMs > 0) return 'Waiting to sync';
         if (status === 'error') return offline ? 'Offline. Changes are saved here.' : 'Sync failed';
@@ -55,7 +56,18 @@ export const SyncStatus = () => {
                 <span className="grow truncate text-left">{label()}</span>
                 <Icon name="settings" size={16} />
             </button>
-            {configured && (
+            {configured && outdated && (
+                <button
+                    className="btn btn-ghost btn-sm btn-square"
+                    type="button"
+                    title="Reload the page"
+                    aria-label="Reload the page"
+                    onClick={() => location.reload()}
+                >
+                    <Icon name="sync" size={16} />
+                </button>
+            )}
+            {configured && !outdated && (
                 <button
                     className="btn btn-ghost btn-sm btn-square"
                     type="button"

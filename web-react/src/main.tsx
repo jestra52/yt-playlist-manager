@@ -1,6 +1,7 @@
 import { openBrowserDatabase } from '@ytpm/core/db/browser';
 import type { Database } from '@ytpm/core/db/database';
 import { setDatabase } from '@ytpm/core/db/index';
+import { setAppVersion } from '@ytpm/core/sync/sync.client';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
@@ -15,6 +16,7 @@ import './styles/tailwind.css';
 
 const open = (db: Database) => {
     setDatabase(db);
+    setAppVersion(__APP_VERSION__);
     const store = createStore();
     store.dispatch(loadSync());
     store.dispatch(loadLibrary());

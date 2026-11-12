@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { App } from './App';
@@ -26,6 +27,12 @@ describe('ui slice', () => {
 });
 
 describe('App', () => {
+    it('shows the version from api/VERSION in the sidebar', () => {
+        const version = readFileSync(`${process.cwd()}/../api/VERSION`, 'utf8').trim();
+        render(<App store={createStore()} />);
+        expect(screen.getByText(`Version ${version}`)).toBeInTheDocument();
+    });
+
     it('follows a theme chosen in another tab', () => {
         localStorage.setItem('ytpm:theme', 'light');
         const store = createStore();

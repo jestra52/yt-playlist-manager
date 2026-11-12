@@ -12,6 +12,7 @@ Keep your own playlists of videos (music, talks, recipes, anything you want to k
   - [The web app (web-react)](#the-web-app-web-react) · [Local settings](#local-settings)
 - [Deploy](#deploy)
   - [1. Neon](#1-create-the-database-on-neon) · [2. Render](#2-deploy-the-api-on-render) · [3. Netlify](#3-deploy-the-web-app-on-netlify) · [4. Connect your devices](#4-connect-your-devices) · [Automatic deploys](#automatic-deploys-only-what-changed)
+- [Versions and releases](#versions-and-releases)
 - [Importing YouTube playlists](#importing-youtube-playlists)
   - [Syncing a playlist from YouTube](#syncing-a-playlist-from-youtube)
 - [Reports and Compare](#reports-and-compare)
@@ -142,7 +143,7 @@ The API follows the same idea with one project per layer: **Api** (HTTP) → **A
 
 ### Styles
 
-Tailwind v4 and daisyUI are loaded from plain CSS (`styles/tailwind.css`), because Tailwind v4 reads its own directives and isn't designed to run through Sass. Components use daisyUI classes first; what they need beyond that lives in a `*.module.scss` next to the component, which can `@use` the shared `styles/_tokens.scss`. The app has two daisyUI themes, `light` and `dark`; the switch at the bottom of the sidebar follows the system or pins one, and `theme-boot.js` applies it before the first paint.
+Tailwind v4 and daisyUI are loaded from plain CSS (`styles/tailwind.css`), because Tailwind v4 reads its own directives and isn't designed to run through Sass. Components use daisyUI classes first; what they need beyond that lives in a `*.module.scss` next to the component, which can `@use` the shared `styles/_tokens.scss`. The app has two themes, `light` and `dark`, based on **sunnycave** from daisyUI's theme generator (a light version of it for light); the switch at the bottom of the sidebar follows the system or pins one, and `theme-boot.js` applies it before the first paint.
 
 ### How sync works
 
@@ -301,13 +302,33 @@ Pushes to `master` deploy each service only when its own files change:
 
 | Push changes | Netlify (web app) | Render (API) |
 | --- | --- | --- |
-| `web-react/`, `packages/`, `package.json`, `package-lock.json` or `netlify.toml` | builds and deploys | skipped |
+| `web-react/`, `packages/`, `package.json`, `package-lock.json`, `netlify.toml` or `api/VERSION` | builds and deploys | skipped |
 | `api/` (except `api/tests/` and `*.md`) or `render.yaml` | skipped | builds and deploys |
 | both | both | both |
 | only docs, `.github/` or API tests | skipped | skipped |
 
-* **Netlify** reads the `ignore` command in `netlify.toml`: it compares the commit with the last deployed one and cancels the build when nothing under `web-react/`, `packages/`, the root `package.json` and `package-lock.json`, or `netlify.toml` changed. The first deploy, **Clear cache and deploy**, and **Trigger deploy** always build.
+* **Netlify** reads the `ignore` command in `netlify.toml`: it compares the commit with the last deployed one and cancels the build when nothing under `web-react/`, `packages/`, the root `package.json` and `package-lock.json`, `netlify.toml` or `api/VERSION` changed. `api/VERSION` holds the app's version for both sides, so a release that bumps it redeploys both. The first deploy, **Clear cache and deploy**, and **Trigger deploy** always build.
 * **Render** reads the `buildFilter` in `render.yaml` when the service is managed by the Blueprint (**Blueprints → Sync**). A service created by hand needs the same filters in **Settings → Build & Deploy → Build Filters**: included paths `api/**` and `render.yaml`, ignored paths `api/**/*.md` and `api/tests/**`. Auto-deploy also needs the service linked to the GitHub repository (**Settings → Build & Deploy → Repository**), so Render hears about pushes. **Manual Deploy** and deploy hooks ignore the filters.
+
+## Versions and releases
+
+The whole app has one [SemVer](https://semver.org) version, in `api/VERSION`. The API reads it at build time and returns it from `/api/health`, and the web app shows it at the bottom of the sidebar. Netlify and Render deploy separately, so the two can show which build each side runs.
+
+**Releasing.** Work lands in `develop` through PRs; a release is a PR from `develop` into `master`:
+
+1. In the release PR, raise `api/VERSION`: **patch** (`0.1.1`) for fixes, **minor** (`0.2.0`) for features, **major** (`1.0.0`) for breaking changes. CI's **Version bump** check fails a PR into `master` that doesn't raise it.
+2. Write the PR description as the release notes: a table of the PRs it brings, with `Closes #…` for each issue it finishes. Issues close only when the PR merges into `master`, the default branch, so a release PR closes everything fixed in `develop` since the last one.
+3. Merge it. The **Release** workflow tags `v<version>` and publishes a GitHub Release whose notes are the release PR's description. Netlify and Render deploy what changed.
+4. Fast-forward `develop` to `master` before merging anything else into `develop`: `git push origin origin/master:refs/heads/develop`. A PR from `master` back into `develop` would add a merge commit and leave `develop` behind again.
+
+**Hotfixes:** a branch from `master`, a PR into `master` that raises the **patch** version, then the same fast-forward (or, if `develop` has moved on, a PR from `master` into `develop`).
+
+**API compatibility.** Devices update at different times, and a tab left open keeps running the version it loaded, so the API stays compatible with older apps:
+
+* **Only add.** New request and response fields are optional, and the server keeps a stored value when an older app leaves a field out (as with `artist`, `artists` and `unavailable`). Never rename or remove a field or a route, and never change what an existing field means.
+* **Breaking changes get a new route.** When one can't be avoided, it goes under `/api/v2/…` while `/api/…` keeps working for older apps.
+* **Old tabs reload.** The app sends its version in an `X-App-Version` header. When a change does need a newer app, raise `MinimumAppVersion` in `api/src/YtPlaylist.Api/AppVersionGate.cs` (or set `MIN_APP_VERSION` on Render): the API then answers sync, chain and report requests from older apps with `426 Upgrade Required`, and those tabs stop syncing and ask to reload instead. `/api/health` returns both `version` and `minAppVersion`.
+* **Data formats are versioned on their own:** the local database by its migrations (`PRAGMA user_version`), the server database by EF Core migrations, and reports by their `Format:` line or JSON `version`.
 
 ## Importing YouTube playlists
 
