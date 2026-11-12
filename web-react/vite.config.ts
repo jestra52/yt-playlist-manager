@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv } from 'vite';
 
-// Like web/: the dev server forwards /api to API_URL (git-ignored web-react/.env, see .env.example),
+// The dev server forwards /api to API_URL (git-ignored web-react/.env, see .env.example),
 // or to the local API on :8787.
 // `vite preview` serves the same site-wide headers Netlify reads from public/_headers, so
 // the Content-Security-Policy is tested locally too.

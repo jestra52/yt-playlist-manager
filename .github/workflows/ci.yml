@@ -32,12 +32,13 @@ jobs:
           fi
           echo "Releases v$head (master has ${base:-no version yet})."
 
-  web:
+  web-react:
+    # The rulesets for develop and master require this check by name.
     name: Web app
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: web
+        working-directory: web-react
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -63,26 +64,6 @@ jobs:
             git status --porcelain -- src/db/migrations
             exit 1
           fi
-      - run: npm run lint
-      - run: npm run format:check
-      - run: npm test
-      - run: npm run build
-
-  web-react:
-    name: Web app (React beta)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web-react
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - run: npm ci
-        working-directory: .
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check

@@ -2,7 +2,6 @@ import js from '@eslint/js';
 import eslintReact from '@eslint-react/eslint-plugin';
 import prettier from 'eslint-config-prettier';
 import reactHooks from 'eslint-plugin-react-hooks';
-import sveltePlugin from 'eslint-plugin-svelte';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
@@ -101,28 +100,6 @@ export const typescript = [
                 { functions: true, classes: true, variables: false, typedefs: false },
             ],
             '@typescript-eslint/consistent-type-imports': ['warn', { fixStyle: 'inline-type-imports' }],
-        },
-    },
-];
-
-export const svelte = (svelteConfig) => [
-    ...sveltePlugin.configs.recommended,
-    ...sveltePlugin.configs.prettier,
-    {
-        files: ['**/*.svelte', '**/*.svelte.js', '**/*.svelte.ts'],
-        languageOptions: {
-            parserOptions: { svelteConfig, parser: tseslint.parser, extraFileExtensions: ['.svelte'] },
-        },
-        rules: {
-            'svelte/no-at-html-tags': 'error',
-            'svelte/require-each-key': 'error',
-            'svelte/valid-compile': 'error',
-            'svelte/no-unused-svelte-ignore': 'warn',
-            'svelte/prefer-class-directive': 'warn',
-            'svelte/no-useless-mustaches': 'warn',
-            // Svelte's version understands `let { … } = $props()`.
-            'prefer-const': 'off',
-            'svelte/prefer-const': 'warn',
         },
     },
 ];
