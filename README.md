@@ -65,7 +65,7 @@ The screenshots use sample data and placeholder thumbnails.
 └─────────────────────────────────┘
 ```
 
-Components and deployment diagrams: [docs/architecture.md](docs/architecture.md).
+Components, deployment and data model (ER) diagrams: [docs/architecture.md](docs/architecture.md).
 
 ## Project layout
 
