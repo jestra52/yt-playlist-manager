@@ -4,41 +4,42 @@
     themes: false;
 }
 
-/* Light theme: daisyUI's winter (5.7), cool blue on white. The themes keep the names light and dark,
-   which the saved choice, theme-boot.js and index.html use. */
+/* Light theme: a light version of "sunnycave" (the dark theme): the same hues and shape, on light
+   slate, with darker primary and status colours so text on them stays readable. The themes keep the
+   names light and dark, which the saved choice, theme-boot.js and index.html use. */
 @plugin 'daisyui/theme' {
     name: 'light';
     default: true;
     prefersdark: false;
     color-scheme: light;
-    --color-base-100: oklch(100% 0 0);
-    --color-base-200: oklch(97.466% 0.011 259.822);
-    --color-base-300: oklch(93.268% 0.016 262.751);
-    --color-base-content: oklch(41.886% 0.053 255.824);
-    --color-primary: oklch(56.86% 0.255 257.57);
-    --color-primary-content: oklch(91.372% 0.051 257.57);
-    --color-secondary: oklch(42.551% 0.161 282.339);
-    --color-secondary-content: oklch(88.51% 0.032 282.339);
-    --color-accent: oklch(59.939% 0.191 335.171);
-    --color-accent-content: oklch(11.988% 0.038 335.171);
-    --color-neutral: oklch(19.616% 0.063 257.651);
-    --color-neutral-content: oklch(83.923% 0.012 257.651);
-    --color-info: oklch(88.127% 0.085 214.515);
-    --color-info-content: oklch(17.625% 0.017 214.515);
-    --color-success: oklch(80.494% 0.077 197.823);
-    --color-success-content: oklch(16.098% 0.015 197.823);
-    --color-warning: oklch(89.172% 0.045 71.47);
-    --color-warning-content: oklch(17.834% 0.009 71.47);
-    --color-error: oklch(73.092% 0.11 20.076);
-    --color-error-content: oklch(14.618% 0.022 20.076);
-    --radius-selector: 1rem;
-    --radius-field: 0.5rem;
-    --radius-box: 1rem;
+    --color-base-100: oklch(99% 0.003 256.848);
+    --color-base-200: oklch(96% 0.009 264.665);
+    --color-base-300: oklch(91% 0.014 259.733);
+    --color-base-content: oklch(27% 0.033 256.848);
+    --color-primary: oklch(58% 0.15 232.661);
+    --color-primary-content: oklch(98% 0.012 232.661);
+    --color-secondary: oklch(52% 0.2 276.935);
+    --color-secondary-content: oklch(97% 0.015 276.935);
+    --color-accent: oklch(56% 0.18 254.624);
+    --color-accent-content: oklch(97% 0.014 254.624);
+    --color-neutral: oklch(27% 0.033 256.848);
+    --color-neutral-content: oklch(98% 0.002 247.839);
+    --color-info: oklch(60% 0.12 215.221);
+    --color-info-content: oklch(98% 0.019 200.873);
+    --color-success: oklch(58% 0.17 130.85);
+    --color-success-content: oklch(98% 0.031 120.757);
+    --color-warning: oklch(70% 0.17 70.08);
+    --color-warning-content: oklch(26% 0.06 70.08);
+    --color-error: oklch(57% 0.23 16.439);
+    --color-error-content: oklch(97% 0.015 12.422);
+    --radius-selector: 2rem;
+    --radius-field: 0.25rem;
+    --radius-box: 0.5rem;
     --size-selector: 0.25rem;
     --size-field: 0.25rem;
-    --border: 1px;
+    --border: 2px;
     --depth: 0;
-    --noise: 0;
+    --noise: 1;
 }
 
 /* Dark theme: "sunnycave" from daisyUI's theme generator, slate blue with a sky-blue primary. Used
@@ -68,9 +69,9 @@
     --color-warning-content: oklch(98% 0.022 95.277);
     --color-error: oklch(64% 0.246 16.439);
     --color-error-content: oklch(96% 0.015 12.422);
-    --radius-selector: 0.5rem;
-    --radius-field: 2rem;
-    --radius-box: 2rem;
+    --radius-selector: 2rem;
+    --radius-field: 0.25rem;
+    --radius-box: 0.5rem;
     --size-selector: 0.25rem;
     --size-field: 0.25rem;
     --border: 2px;
