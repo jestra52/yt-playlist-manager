@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using YtPlaylist.Models.Entities;
 
 namespace YtPlaylist.Models.Sync;
 
@@ -14,6 +15,8 @@ public sealed record VideoChange
     public string? Artist { get; init; }
     /// <summary>Null when the device's app is older than artists; see <see cref="Entities.Video.ArtistSource"/>.</summary>
     public string? ArtistSource { get; init; }
+    /// <summary>Null when the device's app is older than several artists; the stored list is kept then.</summary>
+    public IReadOnlyList<ArtistCredit>? Artists { get; init; }
     public string ThumbnailUrl { get; init; } = "";
     public string Notes { get; init; } = "";
     public bool Watched { get; init; }

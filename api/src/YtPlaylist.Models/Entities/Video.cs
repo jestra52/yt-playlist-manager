@@ -14,6 +14,8 @@ public sealed class Video
     public string Artist { get; set; } = "";
     /// <summary>Where <see cref="Artist"/> came from: "" (unknown), "guess", "user", or a lookup service.</summary>
     public string ArtistSource { get; set; } = "";
+    /// <summary>Several artists, in order; empty for one. <see cref="Artist"/> stays their joined display name.</summary>
+    public IReadOnlyList<ArtistCredit> Artists { get; set; } = [];
     public string ThumbnailUrl { get; set; } = "";
     public string Notes { get; set; } = "";
     public bool Watched { get; set; }

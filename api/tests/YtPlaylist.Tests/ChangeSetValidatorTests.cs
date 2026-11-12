@@ -1,5 +1,6 @@
 using YtPlaylist.Application.Sync;
 using YtPlaylist.Domain.Common;
+using YtPlaylist.Models.Entities;
 using YtPlaylist.Models.Sync;
 
 namespace YtPlaylist.Tests;
@@ -97,6 +98,28 @@ public sealed class ChangeSetValidatorTests
         Assert.Throws<DomainValidationException>(
             () => ChangeSetValidator.Validate(new ChangeSet { Videos = [Video() with { ReplacedYouTubeId = "nope" }] }));
     }
+
+    [Fact]
+    public void AcceptsSeveralArtists() =>
+        ChangeSetValidator.Validate(new ChangeSet
+        {
+            Videos = [Video() with { Artist = "Anri feat. Mariya Takeuchi", Artists = [new("Anri", "main"), new("Mariya Takeuchi", "featured")] }],
+        });
+
+    [Theory]
+    [InlineData("", "main")]
+    [InlineData("Anri", "guest")]
+    [InlineData("Anri", "")]
+    public void RejectsInvalidArtists(string name, string role) =>
+        Assert.Throws<DomainValidationException>(
+            () => ChangeSetValidator.Validate(new ChangeSet { Videos = [Video() with { Artists = [new(name, role)] }] }));
+
+    [Fact]
+    public void LimitsTheNumberOfArtists() =>
+        Assert.Throws<DomainValidationException>(() => ChangeSetValidator.Validate(new ChangeSet
+        {
+            Videos = [Video() with { Artists = [.. Enumerable.Range(0, SyncLimits.MaxArtistsPerVideo + 1).Select(i => new ArtistCredit($"A{i}", "main"))] }],
+        }));
 
     [Fact]
     public void LimitsTheArtistLength() =>

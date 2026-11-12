@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using YtPlaylist.Domain.Common;
 using YtPlaylist.Models.Entities;
@@ -7,6 +9,8 @@ namespace YtPlaylist.Infrastructure.Persistence.Configurations;
 
 public sealed class VideoConfiguration : IEntityTypeConfiguration<Video>
 {
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+
     public void Configure(EntityTypeBuilder<Video> builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
@@ -30,6 +34,17 @@ public sealed class VideoConfiguration : IEntityTypeConfiguration<Video>
         builder.Property(v => v.ArtistSource)
             .HasColumnName("artist_source")
             .HasMaxLength(SyncLimits.MaxSourceLength)
+            .IsRequired();
+        builder.Property(v => v.Artists)
+            .HasColumnName("artists")
+            .HasConversion(
+                artists => JsonSerializer.Serialize(artists, Json),
+                json => JsonSerializer.Deserialize<List<ArtistCredit>>(json, Json) ?? new List<ArtistCredit>(),
+                new ValueComparer<IReadOnlyList<ArtistCredit>>(
+                    (a, b) => a != null && b != null && a.SequenceEqual(b),
+                    artists => artists.Aggregate(0, (hash, artist) => HashCode.Combine(hash, artist)),
+                    artists => artists.ToList()))
+            .HasDefaultValue(new List<ArtistCredit>())
             .IsRequired();
         builder.Property(v => v.ThumbnailUrl)
             .HasColumnName("thumbnail_url")

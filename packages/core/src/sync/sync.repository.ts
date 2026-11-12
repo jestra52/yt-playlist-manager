@@ -1,6 +1,7 @@
 import { and, asc, count, eq, gt, sql } from 'drizzle-orm';
 import type { Database } from '../db/database';
 import { meta, playlists, videos } from '../db/tables';
+import { parseCredits, type ArtistCredit } from '../videos/artist-credits';
 import type { ChainAccess } from './sync.client';
 
 /**
@@ -41,6 +42,7 @@ export interface RemoteVideo extends SyncedRow {
     author?: string;
     artist?: string;
     artistSource?: string;
+    artists?: ArtistCredit[];
     thumbnailUrl?: string;
     notes?: string;
     watched?: boolean;
@@ -216,6 +218,7 @@ export const collectChanges = (db: Database, limit = 2000) => {
             author: videos.author,
             artist: videos.artist,
             artistSource: videos.artistSource,
+            artists: videos.artists,
             thumbnailUrl: videos.thumbnailUrl,
             notes: videos.notes,
             watched: videos.watched,
@@ -231,7 +234,10 @@ export const collectChanges = (db: Database, limit = 2000) => {
         .orderBy(asc(videos.updatedAt))
         .limit(limit - changedPlaylists.length)
         .all();
-    return { playlists: changedPlaylists, videos: changedVideos };
+    return {
+        playlists: changedPlaylists,
+        videos: changedVideos.map((v) => ({ ...v, artists: parseCredits(v.artists) })),
+    };
 };
 
 /**
@@ -303,6 +309,7 @@ export const applyRemote = (db: Database, changes: RemoteChanges): number => {
         // A server from before artists (or a newer field) leaves them out:
         // keep the local values.
         const hasArtist = v.artist !== undefined;
+        const hasArtists = v.artists !== undefined;
         const hasUnavailable = v.unavailable !== undefined;
         const hasReplacedId = v.replacedYoutubeId !== undefined;
         applied += db.write(
@@ -316,6 +323,7 @@ export const applyRemote = (db: Database, changes: RemoteChanges): number => {
                     author: v.author ?? '',
                     artist: v.artist ?? '',
                     artistSource: v.artistSource ?? '',
+                    artists: JSON.stringify(v.artists ?? []),
                     thumbnailUrl: v.thumbnailUrl ?? '',
                     notes: v.notes ?? '',
                     watched: Boolean(v.watched),
@@ -338,6 +346,7 @@ export const applyRemote = (db: Database, changes: RemoteChanges): number => {
                             artist: excluded(videos.artist),
                             artistSource: excluded(videos.artistSource),
                         }),
+                        ...(hasArtists && { artists: excluded(videos.artists) }),
                         thumbnailUrl: excluded(videos.thumbnailUrl),
                         notes: excluded(videos.notes),
                         watched: excluded(videos.watched),

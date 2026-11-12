@@ -118,6 +118,10 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
                 row.Artist = change.Artist;
                 row.ArtistSource = change.ArtistSource ?? "";
             }
+            if (change.Artists is { } artists)
+            {
+                row.Artists = artists;
+            }
             row.ThumbnailUrl = change.ThumbnailUrl;
             row.Notes = change.Notes;
             row.Watched = change.Watched;
@@ -204,6 +208,7 @@ public sealed class EfSyncStore(AppDbContext db) : ISyncStore
         Author = v.Author,
         Artist = v.Artist,
         ArtistSource = v.ArtistSource,
+        Artists = v.Artists,
         ThumbnailUrl = v.ThumbnailUrl,
         Notes = v.Notes,
         Watched = v.Watched,

@@ -211,6 +211,39 @@ public abstract class SyncStoreTests
     }
 
     [Fact]
+    public async Task StoresSeveralArtistsAndKeepsThemWhenAnOlderAppLeavesThemOut()
+    {
+        await using var db = this.CreateContext();
+        if (db is null)
+        {
+            return;
+        }
+        var store = new EfSyncStore(db);
+        var (chain, _) = await NewChainAsync(db);
+        var run = NewId("a");
+
+        ArtistCredit[] artists = [new("Anri", "main"), new("Mariya Takeuchi", "featured")];
+        var video = new VideoChange
+        {
+            Id = $"{run}-v",
+            PlaylistId = $"{run}-p",
+            YouTubeId = "dQw4w9WgXcQ",
+            Artist = "Anri feat. Mariya Takeuchi",
+            ArtistSource = "user",
+            Artists = artists,
+            CreatedAt = 1,
+            UpdatedAt = 1,
+        };
+        await store.ApplyAsync(chain, new ChangeSet { Videos = [video] }, null, CancellationToken.None);
+        var fromOlderApp = video with { Artists = null, Watched = true, UpdatedAt = 2 };
+        await store.ApplyAsync(chain, new ChangeSet { Videos = [fromOlderApp] }, null, CancellationToken.None);
+
+        var stored = Assert.Single((await store.GetChangesAsync(chain, 0, 1000, CancellationToken.None)).Changes.Videos);
+        Assert.True(stored.Watched);
+        Assert.Equal(artists, stored.Artists);
+    }
+
+    [Fact]
     public async Task StoresThePlaylistSourceAndUnavailableVideosAndKeepsThemForOlderApps()
     {
         await using var db = this.CreateContext();
