@@ -39,7 +39,7 @@
     --size-field: 0.25rem;
     --border: 2px;
     --depth: 0;
-    --noise: 1;
+    --noise: 0;
 }
 
 /* Dark theme: "sunnycave" from daisyUI's theme generator, slate blue with a sky-blue primary. Used
@@ -76,7 +76,7 @@
     --size-field: 0.25rem;
     --border: 2px;
     --depth: 0;
-    --noise: 1;
+    --noise: 0;
 }
 
 @theme {
