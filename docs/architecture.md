@@ -1,12 +1,14 @@
 # Architecture
 
-Two views of Yuzu Tapes Playlist Manager: how the code is split into components, and where each part runs once deployed. GitHub renders both diagrams from the Mermaid source below.
+Three views of Yuzu Tapes Playlist Manager: how the code is split into components, where each part runs once deployed, and the data model of both databases. GitHub renders the diagrams from the Mermaid source below.
 
 ## Contents
 
 - [Components](#components)
   - [Web app](#web-app) · [.NET API](#net-api)
 - [Deployment](#deployment)
+- [Data model](#data-model)
+  - [Server database](#server-database-postgresql) · [Local database](#local-database-sqlite-in-the-browser) · [How they map](#how-the-two-map-onto-each-other)
 - [Back to the README](../README.md)
 
 ## Components
@@ -262,3 +264,187 @@ Not shown: the browser also loads Google Fonts, and falls back to noembed.com fo
 | YouTube | oEmbed, Data API v3, playlist feed, thumbnails, embedded player | The Data API is only used when `YOUTUBE_API_KEY` is set; it reads whole playlists, including their deleted and private videos. The embedded player loads in the browser and doesn't use the key |
 
 For local development the same pieces run on one machine: `npm run dev` (Vite, which proxies `/api`), `dotnet run --project src/YtPlaylist.Api` on port 8787, and PostgreSQL from `docker compose up` in `api/`. See the README.
+
+## Data model
+
+Two databases hold the same library: the **server database** (PostgreSQL on Neon), from the EF Core model in `api/src/YtPlaylist.Infrastructure/Persistence`, and the **local database** (SQLite in each browser), from `packages/core/src/db/tables.ts`. A PR that adds a migration on either side updates its diagram here.
+
+### Server database (PostgreSQL)
+
+Every table except `sync_counter` belongs to a sync chain, and deleting a chain deletes its rows (cascade). Playlists and videos are keyed by `(chain_id, id)`, so two chains can hold rows with the same ID. `videos.playlist_id` isn't a foreign key: the server stores what devices send, and a video can arrive before its playlist.
+
+```mermaid
+erDiagram
+    sync_chains ||--o{ sync_devices : "has"
+    sync_chains ||--o{ playlists : "owns"
+    sync_chains ||--o{ videos : "owns"
+    sync_chains ||--o{ reports : "keeps"
+    sync_chains ||--o{ sync_recovery_codes : "has"
+    sync_chains ||--o{ sync_pairings : "has"
+    sync_chains ||--o{ sync_chain_events : "logs"
+    sync_devices ||--o{ sync_pairings : "creates"
+    playlists ||..o{ videos : "playlist_id, not enforced"
+
+    sync_chains {
+        varchar64 id PK "seeded row: legacy"
+        varchar43 secret_hash UK "HMAC of the chain code, null for legacy"
+        bigint created_at
+        bigint pairing_locked_until "pairing paused until"
+    }
+    sync_devices {
+        varchar64 id PK
+        varchar64 chain_id FK "indexed"
+        varchar100 name
+        varchar43 credential_hash UK "HMAC of the device credential"
+        bigint created_at
+        bigint last_seen_at
+    }
+    sync_recovery_codes {
+        varchar64 id PK
+        varchar64 chain_id FK "indexed"
+        varchar43 code_hash UK "HMAC"
+        bigint created_at
+    }
+    sync_pairings {
+        varchar64 id PK
+        varchar64 chain_id FK "indexed"
+        varchar64 created_by_device_id FK "indexed"
+        varchar43 code_hash UK "HMAC of the pairing code"
+        varchar43 request_token_hash UK "HMAC, null until the code is entered"
+        varchar100 requester_name
+        varchar16 status
+        bigint created_at
+        bigint expires_at "indexed"
+    }
+    sync_chain_events {
+        bigint id PK "identity"
+        varchar64 chain_id FK "indexed with at"
+        bigint at
+        varchar32 kind
+        varchar100 device_name
+        varchar5000 detail "no secrets"
+    }
+    playlists {
+        varchar64 chain_id PK, FK "default legacy"
+        varchar64 id PK
+        varchar200 name
+        varchar5000 description
+        varchar32 source "empty or youtube"
+        varchar64 source_id
+        float8 position
+        bigint created_at
+        bigint updated_at "last write wins"
+        bool deleted "tombstone"
+        bigint seq "indexed with chain_id"
+    }
+    videos {
+        varchar64 chain_id PK, FK "default legacy"
+        varchar64 id PK
+        varchar64 playlist_id "indexed with chain_id"
+        varchar11 youtube_id "empty for a placeholder"
+        varchar400 title
+        varchar200 author "the uploading channel"
+        varchar200 artist "joined display name"
+        varchar32 artist_source "empty, guess or user"
+        text artists "JSON list of name and role, empty for one artist"
+        varchar2048 thumbnail_url
+        varchar5000 notes
+        bool watched "kept for older apps"
+        bool unavailable "deleted on YouTube"
+        varchar11 replaced_youtube_id
+        float8 position
+        bigint created_at
+        bigint updated_at "last write wins"
+        bool deleted "tombstone"
+        bigint seq "indexed with chain_id"
+    }
+    reports {
+        varchar64 chain_id PK, FK
+        varchar64 id PK
+        varchar64 playlist_id "indexed with chain_id and created_at"
+        varchar200 playlist_name
+        varchar32 reason
+        int video_count
+        text content "the JSON report"
+        bigint created_at
+    }
+    sync_counter {
+        int id PK "single row"
+        bigint value "last seq handed out"
+    }
+```
+
+* **Secrets** are never stored, only HMAC-SHA256 hashes keyed with `SYNC_PEPPER`: `secret_hash`, `credential_hash`, `code_hash` and `request_token_hash`.
+* **Seeded rows:** the `legacy` chain, which holds the rows synced with `SYNC_TOKEN` before chains existed (it has no secret hash, so no one can join it), and the single `sync_counter` row.
+* **`seq`:** each write to a playlist or video takes the next value of `sync_counter`, under that row's lock, and devices pull what changed after their cursor through the `(chain_id, seq)` index.
+
+### Local database (SQLite in the browser)
+
+The whole file is saved as one blob in IndexedDB, and `PRAGMA user_version` counts the migrations in `packages/core/src/db/migrations`. Rows arrive from sync in any order, so the relationships aren't foreign keys here either.
+
+```mermaid
+erDiagram
+    playlists ||..o{ videos : "playlist_id"
+    playlists ||..o{ reports : "playlist_id"
+
+    meta {
+        text key PK
+        text value
+    }
+    playlists {
+        text id PK
+        text name
+        text description
+        text source "empty or youtube"
+        text source_id
+        real position
+        integer created_at
+        integer updated_at "last write wins"
+        integer deleted "tombstone"
+        integer dirty "indexed, not pushed yet"
+    }
+    videos {
+        text id PK
+        text playlist_id "indexed with position"
+        text youtube_id "empty for a placeholder"
+        text title
+        text author
+        text artist "joined display name"
+        text artist_source
+        text artists "JSON list, empty for one artist"
+        text thumbnail_url
+        text notes
+        integer watched "kept for older apps"
+        integer unavailable
+        text replaced_youtube_id
+        real position
+        integer created_at
+        integer updated_at
+        integer deleted
+        integer dirty "indexed"
+    }
+    reports {
+        text id PK
+        text playlist_id "indexed with created_at"
+        text playlist_name
+        text reason
+        integer video_count
+        text content
+        integer created_at
+    }
+```
+
+* **`meta`** keeps settings and sync bookkeeping, one key per row: `sync.apiUrl`, `sync.chainId`, `sync.deviceId`, `sync.deviceCredential`, `sync.cursor` (the last `seq` pulled), `sync.lastSyncedAt`, `sync.auto` and `sync.codeCheckedAt`, plus `sync.token` from before chains.
+* **`reports`** are backups waiting to reach the server, or kept here on a device without a chain. They aren't synced rows: once uploaded, they leave this table.
+
+### How the two map onto each other
+
+| Column | Local | Server | Synced |
+| --- | --- | --- | --- |
+| Playlist and video fields (`name`, `title`, `artist`, `artists`, `notes`, `position`…) | ✓ | ✓ | Both ways; the newer `updated_at` wins |
+| `created_at`, `updated_at`, `deleted` | ✓ | ✓ | Both ways; a deletion syncs as a tombstone |
+| `dirty` | ✓ | – | Stays on the device: set by an edit, cleared once pushed |
+| `chain_id` | – | ✓ | Set by the server from the device's credential |
+| `seq` | – | ✓ | Set by the server; the device keeps the last one as `sync.cursor` |
+| `reports` | Until uploaded | ✓ | Pushed once, then removed here |
+| `meta` | ✓ | – | Device only |
