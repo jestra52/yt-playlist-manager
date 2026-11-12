@@ -58,7 +58,7 @@ The screenshots use sample data and placeholder thumbnails.
 ┌──────────── Browser ────────────┐       ┌── Netlify ──┐       ┌────── Render ───────┐      ┌──── Neon ────┐
 │ React components (daisyUI)      │       │ web app     │       │ ASP.NET Core API    │      │ PostgreSQL   │
 │ ↓ call                          │ HTTPS │             │ HTTPS │  POST /api/sync     │ EF   │ playlists    │
-│ Domain services ($state)        │──────►│ /api/* proxy│──────►│  GET  /api/oembed   │─────►│ videos       │
+│ Redux slices + thunks           │──────►│ /api/* proxy│──────►│  GET  /api/oembed   │─────►│ videos       │
 │ ↓ read / write                  │       └─────────────┘       │  GET  /api/playlist │ Core │ sync_counter │
 │ Repositories ↔ SQLite (sql.js)  │                             └─────────────────────┘      └──────────────┘
 │ ↕ saved to IndexedDB            │
@@ -70,9 +70,45 @@ Components, deployment and data model (ER) diagrams: [docs/architecture.md](docs
 ## Project layout
 
 ```
-netlify.toml                 Netlify build for the web app
+netlify.toml                 Netlify build for the web app (web-react)
 render.yaml                  Render Blueprint for the API container
 .github/workflows/ci.yml     builds and tests the web app and the API on every push
+web-react/                   the web app: React 19, Redux Toolkit, daisyUI, Vite, TypeScript
+  index.html                 page shell; loads public/theme-boot.js before the first paint
+  public/
+    _headers                 security headers (CSP) for Netlify
+    theme-boot.js            sets the saved or system theme so a reload never flashes
+  scripts/write-redirects.mjs  writes the Netlify /api proxy rule from API_ORIGIN
+  src/
+    main.tsx                 opens the database, creates the store, loads the library, starts auto-sync
+    App.tsx                  the store provider and the app shell
+    app/store.ts             Redux store (one slice per domain), typed hooks and thunks
+    domains/
+      playlists/             playlists.slice, .selectors, .thunks; backups.thunks
+        components/          page/ (header, name, description), sidebar/, reports/ (Compare, backups), youtube/
+      videos/                videos.slice (filter, search, sort, player, shuffle), .selectors, .thunks
+        components/          add/, list/, row/ (number, artists, notes, actions), toolbar/, player/
+      sync/                  sync.slice, .selectors, .thunks; chain.thunks, pairing.thunks;
+                             auto-sync.ts (listener middleware that syncs after edits)
+        components/          chain/, code/, connection/, settings/, start/, status/
+      ui/                    ui.slice (theme, sidebar, settings dialog, notices)
+        components/          layout/ (shell, sidebar), dialog/, feedback/ (notices), appearance/
+      */*.test.ts(x)         Vitest + Testing Library, against a real SQLite database (sql.js)
+    shared/components/       Icon
+    styles/
+      tailwind.css           Tailwind v4 + daisyUI 5 + the light and dark themes
+      _tokens.scss           Sass tokens (mapped to daisyUI CSS variables) for *.module.scss
+packages/
+  core/                      shared logic in TypeScript, no UI (@ytpm/core)
+    src/db/                  SQLite wrapper (sql.js + Drizzle), tables.ts, generated migrations,
+                             IndexedDB persistence
+    src/playlists/           playlists and backups repositories; report.ts, report-compare.ts
+                             (reports and Compare); youtube-sync.ts (comparing with YouTube)
+    src/videos/              videos.repository.ts; youtube.ts (links), artist.ts (guessing an artist),
+                             artist-credits.ts (several artists); metadata and playlist clients
+    src/sync/                sync.repository.ts (cursor, settings, dirty rows), sync.client.ts (HTTP);
+                             chain, recovery and pairing codes, QR scanning, reminders
+  eslint-config/             shared ESLint rules (@ytpm/eslint-config)
 api/                         .NET 10 solution (YtPlaylist.slnx)
   Dockerfile                 API image for Render
   compose.yaml               local PostgreSQL for development
@@ -88,60 +124,25 @@ api/                         .NET 10 solution (YtPlaylist.slnx)
                                 HTTP clients for YouTube oEmbed, Data API and playlist feed
     YtPlaylist.Api/             ASP.NET Core minimal API: endpoints, bearer-token auth, CORS
   tests/YtPlaylist.Tests/       xUnit: validation, sync store (SQLite + PostgreSQL), YouTube clients, endpoints
-packages/core/                shared logic in TypeScript, no UI (also for the React app, #23)
-  src/videos/                 youtube.ts (parsing YouTube links), artist.ts (guessing artists)
-  src/playlists/              report.ts, report-compare.ts (reports), youtube-sync.ts (YouTube comparison)
-  src/db/                     SQLite wrapper (sql.js + Drizzle), tables.ts, generated migrations, IndexedDB persistence
-  src/*/…repository.ts        playlists and videos data access (Drizzle ORM queries)
-web-react/                   the deployed web app (React, daisyUI, Redux Toolkit)
-  scripts/write-redirects.mjs  writes the Netlify /api proxy rule from API_ORIGIN
-  public/_headers            security headers (CSP) for Netlify
-web/                         the previous Svelte app, not deployed; removed in #92
-  src/
-    app/bootstrap.js         opens the database and loads every domain
-    core/
-      events.js              "data changed" signal (decouples domains from sync)
-      config.js              API base address
-    domains/
-      playlists/
-        components/                  presentation (Svelte + daisyUI)
-        playlists.service.svelte.js  application: reactive state + use cases
-      videos/
-        components/
-        videos.service.svelte.js
-        metadata.client.js           external HTTP (oEmbed through /api)
-        playlist.client.js           external HTTP (YouTube playlists through /api)
-      sync/
-        components/
-        sync.service.svelte.js       two-way sync use case + auto-sync
-        sync.repository.js           cursor, settings, dirty rows
-        sync.client.js               HTTP client for the sync API
-        chain-code.js                domain rules: 24-word chain codes (BIP-39)
-      ui/                            app shell: drawer, dialog, theme, notices
-    shared/components/       Dialog, Icon
-    styles/
-      tailwind.css           Tailwind v4 + daisyUI 5 + the two app themes
-      _tokens.scss           Sass tokens (mapped to daisyUI CSS variables)
-      _mixins.scss           breakpoints, line clamp, display type…
-      main.scss              global Sass layer (base + components)
 ```
 
 ### Layers
 
-Each domain is split the same way, and calls only go downwards:
+Each domain in `web-react/src/domains` is split the same way, and calls only go downwards:
 
-1. **Presentation**: Svelte components styled with daisyUI classes. Custom pieces (the progress strip, the video rows) use `<style lang="scss">` with the shared tokens and mixins.
-2. **Application**: one service per domain (`*.service.svelte.js`). It holds the domain's reactive state with Svelte 5 runes (`$state`, `$derived`) and exposes the use cases (`videos.addFromText`, `playlists.remove`, `sync.syncNow`…). Components read the state directly and call these methods.
-3. **Data**: repositories query the local database with Drizzle ORM, so values always travel as parameters and never as SQL text; clients talk HTTP.
-4. **Core**: the SQLite wrapper, the table definitions and the persistence.
+1. **Presentation:** React components styled with daisyUI classes, one component per file. Anything daisyUI doesn't cover goes in a `*.module.scss` next to the component; there are no inline styles.
+2. **State:** one Redux Toolkit slice per domain holds what the views need (the loaded playlists and videos, the filter, search and sort, the player, sync status). Selectors derive the rest, such as the visible rows or what plays next, so components only read and dispatch.
+3. **Use cases:** thunks (`*.thunks.ts`) run the domain's actions: `addEntries`, `moveToPosition`, `saveArtists`, `syncNow`… They write through `@ytpm/core` and then dispatch what changed.
+4. **Data:** repositories in `packages/core` query the local database with Drizzle ORM, so values always travel as parameters and never as SQL text; clients talk HTTP.
+5. **Core:** the SQLite wrapper, the table definitions, the migrations and the IndexedDB persistence.
 
-Services signal local writes through `core/events.js`; the sync service listens and schedules a background sync, so the playlists and videos domains don't depend on sync.
+Domains don't call sync: `auto-sync.ts` is a listener middleware that sees the slices' "changed" actions and schedules a background sync, so playlists and videos don't depend on it.
 
 The API follows the same idea with one project per layer: **Api** (HTTP) → **Application** (use cases and interfaces) → **Domain** (entities and rules), with **Infrastructure** implementing the Application interfaces with EF Core and `HttpClient`.
 
 ### Styles
 
-Tailwind v4 and daisyUI are loaded from plain CSS (`styles/tailwind.css`), because Tailwind v4 reads its own directives and isn't designed to run through Sass. Everything hand-written is Sass: the global layer in `styles/*.scss` and the component `<style lang="scss">` blocks, which can `@use 'tokens' as *;` and `@use 'mixins' as *;` from anywhere. The app ships two daisyUI themes, `queue` (light) and `queue-night` (dark); the switch at the bottom of the sidebar follows the system or pins one.
+Tailwind v4 and daisyUI are loaded from plain CSS (`styles/tailwind.css`), because Tailwind v4 reads its own directives and isn't designed to run through Sass. Components use daisyUI classes first; what they need beyond that lives in a `*.module.scss` next to the component, which can `@use` the shared `styles/_tokens.scss`. The app has two daisyUI themes, `light` and `dark`; the switch at the bottom of the sidebar follows the system or pins one, and `theme-boot.js` applies it before the first paint.
 
 ### How sync works
 
@@ -198,7 +199,7 @@ In the app, open the sync settings at the bottom of the sidebar and choose **Cre
 
 ### The React app (web-react)
 
-The deployed app is the React rewrite (#23) in `web-react/`, with daisyUI, Redux Toolkit and TypeScript. The Svelte app in `web/` is no longer deployed and stays here until #92 removes it, so the layers described above for `web/` map to the same domains in `web-react/src/domains`.
+The web app lives in `web-react/`, with React, daisyUI, Redux Toolkit and TypeScript (see [Project layout](#project-layout)).
 
 ```bash
 cp web-react/.env.example web-react/.env   # optional: API_URL for the dev proxy (defaults to http://localhost:8787)
