@@ -3,6 +3,7 @@ import type { Video } from '@ytpm/core/videos/videos.repository';
 import { added as playlistAdded, selected as playlistSelected } from '../playlists/playlists.slice';
 
 export type VideoFilter = 'all' | 'missing';
+export type VideoSort = 'default' | 'artist' | 'title' | 'missing';
 
 export interface Shuffle {
     playlistId: string;
@@ -16,6 +17,7 @@ export const videosAdapter = createEntityAdapter<Video>({
 const initialState = videosAdapter.getInitialState({
     filter: 'all' as VideoFilter,
     query: '',
+    sort: 'default' as VideoSort,
     playingId: null as string | null,
     shuffle: null as Shuffle | null,
 });
@@ -51,6 +53,9 @@ export const videosSlice = createSlice({
         querySet: (state, { payload }: PayloadAction<string>) => {
             state.query = payload;
         },
+        sortSet: (state, { payload }: PayloadAction<VideoSort>) => {
+            state.sort = payload;
+        },
         played: (state, { payload }: PayloadAction<string>) => {
             if (state.entities[payload] && !state.entities[payload].missing) state.playingId = payload;
         },
@@ -64,9 +69,11 @@ export const videosSlice = createSlice({
     extraReducers: (builder) => {
         builder
             .addCase(playlistSelected, (state, { payload }) => {
+                state.sort = 'default';
                 if (state.shuffle?.playlistId !== payload) state.shuffle = null;
             })
             .addCase(playlistAdded, (state) => {
+                state.sort = 'default';
                 state.shuffle = null;
             });
     },
@@ -81,6 +88,7 @@ export const {
     playlistDropped,
     filterSet,
     querySet,
+    sortSet,
     played,
     playerClosed,
     shuffleSet,

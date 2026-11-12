@@ -9,13 +9,14 @@ interface VideoActionsProps {
     video: Video;
     index: number;
     total: number;
+    canMove: boolean;
     onEditNotes: () => void;
     onEditLink: () => void;
 }
 
 const BUTTON = 'btn btn-ghost btn-square btn-sm';
 
-export const VideoActions = ({ video, index, total, onEditNotes, onEditLink }: VideoActionsProps) => {
+export const VideoActions = ({ video, index, total, canMove, onEditNotes, onEditLink }: VideoActionsProps) => {
     const dispatch = useAppDispatch();
 
     return (
@@ -25,7 +26,7 @@ export const VideoActions = ({ video, index, total, onEditNotes, onEditLink }: V
                 className={BUTTON}
                 title="Move up"
                 aria-label="Move up"
-                disabled={index === 0}
+                disabled={!canMove || index === 0}
                 onClick={() => dispatch(reorder(video.id, index - 1))}
             >
                 <Icon name="up" size={17} />
@@ -35,7 +36,7 @@ export const VideoActions = ({ video, index, total, onEditNotes, onEditLink }: V
                 className={BUTTON}
                 title="Move down"
                 aria-label="Move down"
-                disabled={index === total - 1}
+                disabled={!canMove || index === total - 1}
                 onClick={() => dispatch(reorder(video.id, index + 1))}
             >
                 <Icon name="down" size={17} />
