@@ -1,8 +1,9 @@
+import type { ArtistCredit } from '@ytpm/core/videos/artist-credits';
 import type { Video } from '@ytpm/core/videos/videos.repository';
-import { useState } from 'react';
+import { Fragment } from 'react';
 import { useAppDispatch } from '../../../../app/store';
 import { Icon } from '../../../../shared/components/Icon';
-import { saveArtist } from '../../videos.thunks';
+import { querySet } from '../../videos.slice';
 import styles from './ArtistLine.module.scss';
 
 // "Anri - Topic" adds nothing next to the artist "Anri".
@@ -12,53 +13,15 @@ const channelName = (author: string) =>
         .trim()
         .toLowerCase();
 
-export const ArtistLine = ({ video, title }: { video: Video; title: string }) => {
-    const [editing, setEditing] = useState(false);
-    const [draft, setDraft] = useState('');
+const joiner = (credits: readonly ArtistCredit[], i: number) => {
+    if (i === 0) return '';
+    return credits[i]!.role === 'featured' && credits[i - 1]!.role === 'main' ? ' feat. ' : ' & ';
+};
+
+export const ArtistLine = ({ video, title, onEdit }: { video: Video; title: string; onEdit: () => void }) => {
     const dispatch = useAppDispatch();
 
-    const open = () => {
-        setDraft(video.artist);
-        setEditing(true);
-    };
-
-    const close = () => {
-        if (!editing) return;
-        setEditing(false);
-        if (draft.trim() !== video.artist) dispatch(saveArtist(video.id, draft));
-    };
-
-    if (editing) {
-        return (
-            <p className={`text-base-content/65 text-sm ${styles.byline}`}>
-                <label className="sr-only" htmlFor={`artist-${video.id}`}>
-                    Artist of {title}
-                </label>
-                <input
-                    id={`artist-${video.id}`}
-                    className="input input-xs w-full max-w-xs text-sm"
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onBlur={close}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Escape') setEditing(false);
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            close();
-                        }
-                    }}
-                    list="known-artists"
-                    maxLength={200}
-                    placeholder="Artist"
-                    autoComplete="off"
-                    spellCheck={false}
-                    autoFocus
-                />
-            </p>
-        );
-    }
-
-    if (!video.artist) {
+    if (!video.artists.length) {
         return (
             <p className={`text-base-content/65 text-sm ${styles.byline}`}>
                 {video.author && (
@@ -69,28 +32,49 @@ export const ArtistLine = ({ video, title }: { video: Video; title: string }) =>
                         </span>
                     </>
                 )}
-                <button type="button" className={styles.add} onClick={open}>
+                <button type="button" className={styles.add} onClick={onEdit}>
                     Add artist
                 </button>
             </p>
         );
     }
 
-    const showChannel = Boolean(video.author) && channelName(video.author) !== video.artist.toLowerCase();
+    const channel = channelName(video.author);
+    const showChannel = Boolean(channel) && !video.artists.some(({ name }) => name.toLowerCase() === channel);
     return (
         <p className={`text-base-content/65 text-sm ${styles.byline}`}>
-            <button type="button" className={styles.artist} title="Edit the artist" onClick={open}>
-                {video.artist}
-            </button>
-            {video.artistSource === 'guess' && (
+            {video.artists.map((credit, i) => (
+                <Fragment key={credit.name}>
+                    {joiner(video.artists, i)}
+                    <button
+                        type="button"
+                        className={styles.artist}
+                        title={`Show videos with ${credit.name}`}
+                        onClick={() => dispatch(querySet(credit.name))}
+                    >
+                        {credit.name}
+                    </button>
+                </Fragment>
+            ))}
+            {video.artistSource === 'guess' ? (
                 <button
                     type="button"
                     className={styles.guessed}
                     title="Guessed from the YouTube title or channel, so it may be wrong. Click to correct it."
                     aria-label="Artist guessed from YouTube, may be wrong. Correct it"
-                    onClick={open}
+                    onClick={onEdit}
                 >
                     <Icon name="info" size={13} />
+                </button>
+            ) : (
+                <button
+                    type="button"
+                    className={styles.edit}
+                    title="Edit the artists"
+                    aria-label={`Edit the artists of ${title}`}
+                    onClick={onEdit}
+                >
+                    <Icon name="edit" size={13} />
                 </button>
             )}
             {showChannel && (

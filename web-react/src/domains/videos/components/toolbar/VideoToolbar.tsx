@@ -2,6 +2,7 @@ import { useAppDispatch, useAppSelector } from '../../../../app/store';
 import { Icon } from '../../../../shared/components/Icon';
 import { selectFilter, selectMissingCount, selectQuery } from '../../videos.selectors';
 import { filterSet, querySet, type VideoFilter } from '../../videos.slice';
+import { SortSelect } from './SortSelect';
 
 export const VideoToolbar = ({ playlistId }: { playlistId: string }) => {
     const filter = useAppSelector(selectFilter);
@@ -32,6 +33,7 @@ export const VideoToolbar = ({ playlistId }: { playlistId: string }) => {
                     ))}
                 </div>
             )}
+            <SortSelect />
             <label className="input input-sm w-full sm:ml-auto sm:w-72">
                 <Icon name="search" size={16} />
                 <span className="sr-only">Search this playlist</span>

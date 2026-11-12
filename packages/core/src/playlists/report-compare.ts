@@ -1,3 +1,4 @@
+import { toCredits, type ArtistCredit } from '../videos/artist-credits';
 import { parseYouTubeId } from '../videos/youtube';
 import { JSON_REPORT_FORMAT, JSON_REPORT_VERSION } from './report';
 
@@ -5,8 +6,8 @@ import { JSON_REPORT_FORMAT, JSON_REPORT_VERSION } from './report';
  * Report formats (see report.js). Reports without a `Format:` line are legacy
  * ones: the whole text after `number:` is the title, even when it contains
  * ` | `. With it, the artist follows the last ` | `. JSON reports also keep each
- * video's link, channel and notes. Old ones also have a `watched` field, which
- * is ignored.
+ * video's link, channel and notes, and each of its artists when it has several.
+ * Old ones also have a `watched` field, which is ignored.
  */
 export const FORMATS = {
     legacy: 'legacy',
@@ -22,6 +23,7 @@ export interface ReportEntry {
     artist: string;
     youtubeId: string | null;
     /** Only in JSON reports. */
+    artists?: ArtistCredit[];
     author?: string;
     notes?: string;
     unavailable?: boolean;
@@ -70,7 +72,9 @@ const jsonEntry = (video: unknown, index: number): ReportEntry | null => {
     const id = text(video.youtubeId);
     const youtubeId = id ? parseYouTubeId(id) : null;
     if ((id && !youtubeId) || (!id && !text(video.title))) return null;
+    const artists = toCredits(video.artists);
     return {
+        ...(artists.length && { artists }),
         number: index + 1,
         title: text(video.title),
         artist: text(video.artist),

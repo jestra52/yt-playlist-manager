@@ -66,9 +66,30 @@ public static partial class ChangeSetValidator
         MaxLength("video author", v.Author, SyncLimits.MaxNameLength);
         MaxLength("video artist", v.Artist, SyncLimits.MaxNameLength);
         RequireSource("video", v.Id, "artistSource", v.ArtistSource);
+        ValidateArtists(v);
         MaxLength("video thumbnailUrl", v.ThumbnailUrl, SyncLimits.MaxUrlLength);
         MaxLength("video notes", v.Notes, SyncLimits.MaxTextLength);
         RequireTimestamps("video", v.Id, v.CreatedAt, v.UpdatedAt);
+    }
+
+    private static void ValidateArtists(VideoChange v)
+    {
+        if (v.Artists is not { } artists)
+        {
+            return;
+        }
+        if (artists.Count > SyncLimits.MaxArtistsPerVideo)
+        {
+            throw new DomainValidationException($"video {v.Id} has more than {SyncLimits.MaxArtistsPerVideo} artists");
+        }
+        foreach (var artist in artists)
+        {
+            if (artist is null || string.IsNullOrWhiteSpace(artist.Name) || artist.Role is not ("main" or "featured"))
+            {
+                throw new DomainValidationException($"video {v.Id} has an invalid artist");
+            }
+            MaxLength("video artist name", artist.Name, SyncLimits.MaxNameLength);
+        }
     }
 
     internal static void RequireId(string field, string? id)

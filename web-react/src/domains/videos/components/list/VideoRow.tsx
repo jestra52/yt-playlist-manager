@@ -2,6 +2,7 @@ import { watchUrl } from '@ytpm/core/videos/youtube';
 import { memo, useEffect, useRef, useState } from 'react';
 import { useAppSelector } from '../../../../app/store';
 import { selectVideoById } from '../../videos.selectors';
+import { ArtistEditor } from '../row/ArtistEditor';
 import { ArtistLine } from '../row/ArtistLine';
 import { MissingThumb } from '../row/MissingThumb';
 import { PositionForm } from '../row/PositionForm';
@@ -17,8 +18,10 @@ const MOVED_HIGHLIGHT_MS = 1600;
 export const VideoRow = memo(({ id, index, total }: { id: string; index: number; total: number }) => {
     const video = useAppSelector((state) => selectVideoById(state, id));
     const playing = useAppSelector((state) => state.videos.playingId === id);
+    const sorted = useAppSelector((state) => state.videos.sort !== 'default');
     const [editingNotes, setEditingNotes] = useState(false);
     const [editingLink, setEditingLink] = useState(false);
+    const [editingArtists, setEditingArtists] = useState(false);
     const [movingTo, setMovingTo] = useState(false);
     const [moved, setMoved] = useState(false);
     const rowRef = useRef<HTMLLIElement>(null);
@@ -49,7 +52,8 @@ export const VideoRow = memo(({ id, index, total }: { id: string; index: number;
                 ref={numberRef}
                 number={index + 1}
                 title={title}
-                open={movingTo}
+                open={movingTo && !sorted}
+                disabled={sorted}
                 onClick={() => setMovingTo(!movingTo)}
             />
             {video.missing ? (
@@ -73,19 +77,20 @@ export const VideoRow = memo(({ id, index, total }: { id: string; index: number;
                         {title}
                     </a>
                 )}
-                <ArtistLine video={video} title={title} />
+                {!editingArtists && <ArtistLine video={video} title={title} onEdit={() => setEditingArtists(true)} />}
                 <VideoNotes video={video} editing={editingNotes} onEditingChange={setEditingNotes} />
             </div>
             <VideoActions
                 video={video}
                 index={index}
                 total={total}
+                canMove={!sorted}
                 onEditNotes={() => setEditingNotes(true)}
                 onEditLink={() => setEditingLink(true)}
             />
-            {(movingTo || (editingLink && !video.missing)) && (
+            {((movingTo && !sorted) || (editingLink && !video.missing) || editingArtists) && (
                 <div className="col-span-full row-start-3">
-                    {movingTo && (
+                    {movingTo && !sorted && (
                         <PositionForm
                             video={video}
                             title={title}
@@ -97,6 +102,9 @@ export const VideoRow = memo(({ id, index, total }: { id: string; index: number;
                             }}
                             onClose={closePositionForm}
                         />
+                    )}
+                    {editingArtists && (
+                        <ArtistEditor video={video} title={title} onClose={() => setEditingArtists(false)} />
                     )}
                     {editingLink && !video.missing && (
                         <VideoLinkForm video={video} title={title} onClose={() => setEditingLink(false)} />

@@ -11,6 +11,7 @@ public static class SyncLimits
     public const int MaxTextLength = 5000;
     public const int MaxUrlLength = 2048;
     public const int MaxSourceLength = 32;
+    public const int MaxArtistsPerVideo = 10;
     public const int MaxDeviceNameLength = 100;
     public const int MaxReportLength = 4_000_000;
     public const int MaxReasonLength = 32;
