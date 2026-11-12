@@ -1,6 +1,6 @@
 # EditorConfig: https://editorconfig.org
-# Shared formatting for the Svelte web app (modern ECMAScript modules,
-# Svelte 5 components, Sass) and the .NET sync API in the same repository.
+# Shared formatting for the React web app (TypeScript, TSX, Sass) and the .NET sync
+# API in the same repository.
 #
 # The file-type and .NET rules below come from Muhammad Rehan Saeed's EditorConfig
 # (https://github.com/RehanSaeed/EditorConfig, version 4.1.1, MIT License, see the end
@@ -49,7 +49,7 @@ max_line_length = off
 
 # Web Files (repository): the web app keeps 4-space indentation, so Rehan Saeed's
 # `indent_size = 2` for web files is not applied. HTML and TOML use 2 spaces.
-[*.{js,mjs,cjs,jsx,ts,mts,cts,tsx,svelte}]
+[*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}]
 quote_type = single
 max_line_length = 120
 
