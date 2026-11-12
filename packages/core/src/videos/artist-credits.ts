@@ -1,4 +1,13 @@
-import { artistKey, cleanArtist, knownArtists } from './artist';
+import {
+    artistKey,
+    canReplaceArtist,
+    cleanArtist,
+    guessArtist,
+    knownArtists,
+    topicArtist,
+    type ArtistFields,
+    type ArtistSource,
+} from './artist';
 
 /**
  * A video's artists, in order: one or more main artists, then any featured ones.
@@ -91,4 +100,66 @@ export const knownCreditNames = (
     videos: readonly { artist?: string; artists?: readonly ArtistCredit[] }[],
 ): string[] => {
     return knownArtists(videos.flatMap((video) => creditsOf(video).map(({ name }) => ({ artist: name }))));
+};
+
+// "A (feat. C)" or "A [ft. C]": the brackets go, the credit stays.
+const BRACKETED_FEAT = /\s*[([【]\s*((?:feat\.?|ft\.?|featuring)\s+[^()[\]【】]+)[)\]】]/giu;
+const FEAT_SPLIT = /\s+(?:feat\.?|ft\.?|featuring)\s+/iu;
+// "A & B", "A × B", "A x B", "A, B", "A、B", "A and B", "A with B", "A vs. B".
+const SEPARATORS = /\s*[&＆×,、]\s*|\s+(?:x|and|with|vs\.?)\s+/iu;
+
+const names = (part: string) => part.split(SEPARATORS).map((name) => name.trim());
+
+/** Reads "A & B feat. C" (and the other ways titles write it) as separate artists. */
+export const splitArtists = (text: string | null | undefined): ArtistCredit[] => {
+    const clean = cleanArtist(text).replace(BRACKETED_FEAT, ' $1');
+    const [main = '', ...featured] = clean.split(FEAT_SPLIT);
+    return cleanCredits([
+        ...names(main).map((name) => ({ name, role: 'main' as const })),
+        ...featured.flatMap(names).map((name) => ({ name, role: 'featured' as const })),
+    ]);
+};
+
+// The featured artists a title names after the song: "Song (feat. C)" or "Song ft. C".
+const FEATURED_IN_TITLE = /(?:^|[\s([【])(?:feat\.?|ft\.?|featuring)\s+([^()[\]【】]+)/iu;
+const SONG_SEPARATOR = /\s+[-–—/／|]\s+/u;
+
+/**
+ * Best guess at a video's artists (see `guessArtist`): the artist part split
+ * into main and featured artists, plus anyone the title credits with "feat.".
+ * A "Artist - Topic" channel is one artist.
+ */
+export const guessCredits = ({ title = '', author = '' }: { title?: string; author?: string } = {}): ArtistCredit[] => {
+    const guess = guessArtist({ title, author });
+    if (!guess) return [];
+    const topic = topicArtist(author);
+    const credits = topic ? [{ name: topic, role: 'main' as const }] : splitArtists(guess);
+    const featured = (title.match(FEATURED_IN_TITLE)?.[1] ?? '').split(SONG_SEPARATOR)[0]!;
+    return cleanCredits([...credits, ...names(featured).map((name) => ({ name, role: 'featured' as const }))]);
+};
+
+type GuessPatch = { artist?: string; artists?: ArtistCredit[]; artistSource?: ArtistSource };
+
+/**
+ * The patch that applies a guess to a video, or an empty patch when there is
+ * nothing to guess or the video's artist came from a stronger source.
+ */
+export const guessedArtistPatch = (
+    video: ArtistFields | null | undefined,
+    { title = video?.title, author = video?.author }: { title?: string; author?: string } = {},
+): GuessPatch => {
+    if (!canReplaceArtist(video, 'guess')) return {};
+    const credits = guessCredits({ title, author });
+    if (!credits.length || joinArtists(credits) === video?.artist) return {};
+    return { ...creditsPatch(credits), artistSource: 'guess' };
+};
+
+/** Like `guessedArtistPatch`, for a row that now holds another video: an old guess doesn't carry over. */
+export const newVideoArtistPatch = (
+    video: ArtistFields | null | undefined,
+    { title, author }: { title?: string; author?: string },
+): GuessPatch => {
+    if (!canReplaceArtist(video, 'guess')) return {};
+    const patch = creditsPatch(guessCredits({ title, author }));
+    return { ...patch, artistSource: patch.artist ? 'guess' : '' };
 };

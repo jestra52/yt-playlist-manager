@@ -2,8 +2,15 @@ import { getDatabase } from '@ytpm/core/db/index';
 import type { Playlist } from '@ytpm/core/playlists/playlists.repository';
 import type { MissingEntry } from '@ytpm/core/playlists/report-compare';
 import type { YouTubeDiff } from '@ytpm/core/playlists/youtube-sync';
-import { cleanArtist, guessedArtistPatch, matchKnownArtist, newVideoArtistPatch } from '@ytpm/core/videos/artist';
-import { creditsPatch, knownCreditNames, type ArtistCredit } from '@ytpm/core/videos/artist-credits';
+import { matchKnownArtist } from '@ytpm/core/videos/artist';
+import {
+    creditsPatch,
+    guessedArtistPatch,
+    knownCreditNames,
+    newVideoArtistPatch,
+    splitArtists,
+    type ArtistCredit,
+} from '@ytpm/core/videos/artist-credits';
 import { fetchVideoMetadata } from '@ytpm/core/videos/metadata.client';
 import { fetchYouTubePlaylist, PARTIAL_IMPORT_NOTE } from '@ytpm/core/videos/playlist.client';
 import {
@@ -340,7 +347,7 @@ export const addFromReport =
             // A link stands in for an unknown title; YouTube's title replaces it below.
             const title = entry.youtubeId && /^https?:\/\//i.test(entry.title) ? '' : entry.title;
             const artist = entry.artist
-                ? { artist: cleanArtist(entry.artist), artistSource: 'user' }
+                ? { ...creditsPatch(splitArtists(entry.artist)), artistSource: 'user' }
                 : guessedArtistPatch({ title, author: '', artist: '', artistSource: '' });
             const { author, notes, unavailable, afterId } = entry;
             return { youtubeId: entry.youtubeId ?? '', title, author, notes, unavailable, afterId, ...artist };

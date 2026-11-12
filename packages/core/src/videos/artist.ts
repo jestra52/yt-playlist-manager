@@ -94,6 +94,12 @@ const plausible = (artist: string): boolean => {
     return artist.length > 0 && artist.length <= MAX_ARTIST && /[\p{L}\p{N}]/u.test(artist);
 };
 
+/** The artist of an auto-generated "Artist - Topic" channel, or ''. */
+export const topicArtist = (author: string): string => {
+    const topic = author.trim().match(TOPIC);
+    return topic && plausible(topic[1]!.trim()) ? cleanArtist(topic[1]) : '';
+};
+
 /**
  * Best guess at a video's artist from what YouTube tells us, or '' when there
  * is no safe guess:
@@ -102,8 +108,8 @@ const plausible = (artist: string): boolean => {
  *      ignoring extras such as "(Official Music Video)" or "[MV]"
  */
 export const guessArtist = ({ title = '', author = '' }: { title?: string; author?: string } = {}): string => {
-    const topic = author.trim().match(TOPIC);
-    if (topic && plausible(topic[1]!.trim())) return cleanArtist(topic[1]);
+    const topic = topicArtist(author);
+    if (topic) return topic;
 
     const clean = stripExtras(title.replace(/\s+/g, ' ').trim());
     const parts = clean.split(SEPARATOR);
@@ -114,29 +120,4 @@ export const guessArtist = ({ title = '', author = '' }: { title?: string; autho
     const quoted = clean.match(QUOTED);
     if (quoted && plausible(quoted[1]!.trim())) return cleanArtist(quoted[1]);
     return '';
-};
-
-/**
- * The `{ artist, artistSource }` patch that applies a guess to a video, or an
- * empty patch when there is nothing to guess or the video's artist came from a
- * stronger source.
- */
-export const guessedArtistPatch = (
-    video: ArtistFields | null | undefined,
-    { title = video?.title, author = video?.author }: { title?: string; author?: string } = {},
-): { artist?: string; artistSource?: ArtistSource } => {
-    if (!canReplaceArtist(video, 'guess')) return {};
-    const artist = guessArtist({ title, author });
-    if (!artist || artist === video?.artist) return {};
-    return { artist, artistSource: 'guess' };
-};
-
-/** Like `guessedArtistPatch`, for a row that now holds another video: an old guess doesn't carry over. */
-export const newVideoArtistPatch = (
-    video: ArtistFields | null | undefined,
-    { title, author }: { title?: string; author?: string },
-): { artist?: string; artistSource?: ArtistSource } => {
-    if (!canReplaceArtist(video, 'guess')) return {};
-    const artist = guessArtist({ title, author });
-    return { artist, artistSource: artist ? 'guess' : '' };
 };
