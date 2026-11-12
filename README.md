@@ -301,12 +301,12 @@ Pushes to `master` deploy each service only when its own files change:
 
 | Push changes | Netlify (web app) | Render (API) |
 | --- | --- | --- |
-| `web-react/`, `packages/`, `package.json`, `package-lock.json` or `netlify.toml` | builds and deploys | skipped |
+| `web-react/`, `packages/`, `package.json`, `package-lock.json`, `netlify.toml` or `api/VERSION` | builds and deploys | skipped |
 | `api/` (except `api/tests/` and `*.md`) or `render.yaml` | skipped | builds and deploys |
 | both | both | both |
 | only docs, `.github/` or API tests | skipped | skipped |
 
-* **Netlify** reads the `ignore` command in `netlify.toml`: it compares the commit with the last deployed one and cancels the build when nothing under `web-react/`, `packages/`, the root `package.json` and `package-lock.json`, or `netlify.toml` changed. The first deploy, **Clear cache and deploy**, and **Trigger deploy** always build.
+* **Netlify** reads the `ignore` command in `netlify.toml`: it compares the commit with the last deployed one and cancels the build when nothing under `web-react/`, `packages/`, the root `package.json` and `package-lock.json`, `netlify.toml` or `api/VERSION` changed. `api/VERSION` holds the app's version for both sides, so a release that bumps it redeploys both. The first deploy, **Clear cache and deploy**, and **Trigger deploy** always build.
 * **Render** reads the `buildFilter` in `render.yaml` when the service is managed by the Blueprint (**Blueprints → Sync**). A service created by hand needs the same filters in **Settings → Build & Deploy → Build Filters**: included paths `api/**` and `render.yaml`, ignored paths `api/**/*.md` and `api/tests/**`. Auto-deploy also needs the service linked to the GitHub repository (**Settings → Build & Deploy → Repository**), so Render hears about pushes. **Manual Deploy** and deploy hooks ignore the filters.
 
 ## Importing YouTube playlists

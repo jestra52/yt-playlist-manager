@@ -24,6 +24,7 @@ export const Sidebar = () => (
             <a className={`text-xs ${styles.sourceLink}`} href={SOURCE_URL} target="_blank" rel="noopener noreferrer">
                 Source code · AGPL-3.0
             </a>
+            <span className="text-xs opacity-60">Version {__APP_VERSION__}</span>
         </div>
     </nav>
 );

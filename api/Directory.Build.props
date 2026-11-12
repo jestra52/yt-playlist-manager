@@ -12,6 +12,9 @@
          in this app, so the missing-docs warning stays off. -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- The app's version (SemVer), bumped in each release PR; the web app reads the same file. -->
+    <Version>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)VERSION').Trim())</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
   <ItemGroup>
     <!-- One type per file, named after it: only SA1402 and SA1649 are on (stylecop.globalconfig). -->
