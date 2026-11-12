@@ -327,6 +327,7 @@ The whole app has one [SemVer](https://semver.org) version, in `api/VERSION`. Th
 
 * **Only add.** New request and response fields are optional, and the server keeps a stored value when an older app leaves a field out (as with `artist`, `artists` and `unavailable`). Never rename or remove a field or a route, and never change what an existing field means.
 * **Breaking changes get a new route.** When one can't be avoided, it goes under `/api/v2/…` while `/api/…` keeps working for older apps.
+* **Old tabs reload.** The app sends its version in an `X-App-Version` header. When a change does need a newer app, raise `MinimumAppVersion` in `api/src/YtPlaylist.Api/AppVersionGate.cs` (or set `MIN_APP_VERSION` on Render): the API then answers sync, chain and report requests from older apps with `426 Upgrade Required`, and those tabs stop syncing and ask to reload instead. `/api/health` returns both `version` and `minAppVersion`.
 * **Data formats are versioned on their own:** the local database by its migrations (`PRAGMA user_version`), the server database by EF Core migrations, and reports by their `Format:` line or JSON `version`.
 
 ## Importing YouTube playlists

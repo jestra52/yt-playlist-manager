@@ -73,6 +73,16 @@ export class SyncError extends Error {
     }
 }
 
+let appVersion = '';
+
+/** The app's version, sent with every request so the API can ask an outdated tab to reload (426). */
+export const setAppVersion = (version: string): void => {
+    appVersion = version;
+};
+
+/** The API refuses requests from an app older than it supports. */
+export const isOutdatedApp = (err: unknown): boolean => (err as SyncError | null)?.status === 426;
+
 const endpoint = (apiUrl: string, path: string): string => {
     return `${(apiUrl || '/api').replace(/\/+$/, '')}${path}`;
 };
@@ -84,7 +94,9 @@ const request = async <T>(url: string, init: RequestInit, timeoutMs = 20000): Pr
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     let res: Response;
     try {
-        res = await fetch(url, { ...init, signal: ctrl.signal });
+        const headers = new Headers(init.headers);
+        if (appVersion) headers.set('X-App-Version', appVersion);
+        res = await fetch(url, { ...init, headers, signal: ctrl.signal });
     } catch {
         const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
         throw new SyncError(offline ? "You're offline" : "Can't reach the sync server", { offline });
@@ -144,7 +156,9 @@ export const postSync = (
     return request(endpoint(apiUrl, '/sync'), json('POST', payload, credential));
 };
 
-export const getHealth = ({ apiUrl }: SyncConnection): Promise<{ syncConfigured: boolean }> => {
+export const getHealth = ({
+    apiUrl,
+}: SyncConnection): Promise<{ syncConfigured: boolean; version?: string; minAppVersion?: string }> => {
     return request(endpoint(apiUrl, '/health'), { method: 'GET' }, 8000);
 };
 

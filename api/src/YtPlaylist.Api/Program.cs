@@ -34,7 +34,7 @@ builder.Services.AddCors(cors => cors.AddDefaultPolicy(policy =>
     {
         policy.WithOrigins(allowedOrigin.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
     }
-    policy.WithHeaders("Authorization", "Content-Type")
+    policy.WithHeaders("Authorization", "Content-Type", AppVersionGate.Header)
         .WithMethods("GET", "POST", "DELETE", "OPTIONS")
         .SetPreflightMaxAge(TimeSpan.FromDays(1));
 }));
@@ -113,6 +113,7 @@ var app = builder.Build();
 app.UseForwardedHeaders();
 app.UseCors();
 app.UseRateLimiter();
+app.UseAppVersionGate();
 
 await app.Services.MigrateDatabaseAsync();
 

@@ -8,6 +8,7 @@ import { reloadLibrary } from '../playlists/playlists.thunks';
 import { notify } from '../ui/ui.slice';
 import { selectConfigured, selectSyncSettings } from './sync.selectors';
 import {
+    appOutdated,
     busySet,
     chainLeft,
     chainLoaded,
@@ -91,6 +92,23 @@ export const forgotten =
         return true;
     };
 
+/** When the API refused this app as too old, stops syncing until a reload. True when that happened. */
+export const outdated =
+    (err: unknown): AppThunk<boolean> =>
+    (dispatch, getState) => {
+        if (!client.isOutdatedApp(err)) return false;
+        if (!getState().sync.outdated) {
+            dispatch(appOutdated((err as Error).message));
+            dispatch(
+                notify('A new version of the app is out. Reload the page to keep syncing.', {
+                    tone: 'error',
+                    timeout: 15000,
+                }),
+            );
+        }
+        return true;
+    };
+
 export const withBusy =
     <T>(work: () => Promise<T>): AppThunk<Promise<T | false>> =>
     async (dispatch) => {
@@ -98,7 +116,9 @@ export const withBusy =
         try {
             return await work();
         } catch (err) {
-            if (!dispatch(forgotten(err))) dispatch(notify((err as Error).message, { tone: 'error', timeout: 6000 }));
+            if (!dispatch(forgotten(err)) && !dispatch(outdated(err))) {
+                dispatch(notify((err as Error).message, { tone: 'error', timeout: 6000 }));
+            }
             return false;
         } finally {
             dispatch(busySet(false));
@@ -140,6 +160,7 @@ export const loadChain = (): AppThunk<Promise<client.Chain | null>> => async (di
 const run =
     (quiet: boolean): AppThunk<Promise<boolean>> =>
     async (dispatch, getState) => {
+        if (getState().sync.outdated) return false;
         if (!selectConfigured(getState())) {
             if (!quiet) dispatch(notify('Create or join a sync chain in sync settings first', { tone: 'error' }));
             return false;
@@ -183,6 +204,7 @@ const run =
                 dispatch(syncStopped());
                 return false;
             }
+            if (dispatch(outdated(err))) return false;
             const { message, offline, retryAfterMs: waitMs } = err as client.SyncError;
             dispatch(syncFailed({ error: message, offline: Boolean(offline), waitMs }));
             if (!quiet) dispatch(notify(message, { tone: 'error' }));

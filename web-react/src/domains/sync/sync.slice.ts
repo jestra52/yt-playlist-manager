@@ -23,6 +23,8 @@ export interface JoinRequest {
 export interface SyncState {
     settings: SyncSettings;
     status: 'idle' | 'syncing' | 'error';
+    /** The API refused this app as too old: sync waits for a reload. */
+    outdated: boolean;
     error: string | null;
     offline: boolean;
     /** How long the server asked to wait, after a 429. */
@@ -44,6 +46,7 @@ export interface SyncState {
 const initialState: SyncState = {
     settings: { apiUrl: '/api', credential: '', chainId: '', deviceId: '', legacyToken: '', autoSync: true },
     status: 'idle',
+    outdated: false,
     error: null,
     offline: false,
     waitMs: 0,
@@ -142,6 +145,12 @@ export const syncSlice = createSlice({
             state.offline = payload.offline;
             state.waitMs = payload.waitMs ?? 0;
         },
+        appOutdated: (state, { payload }: PayloadAction<string>) => {
+            state.outdated = true;
+            state.status = 'error';
+            state.error = payload;
+            state.waitMs = 0;
+        },
         syncStopped: (state) => {
             state.status = 'idle';
         },
@@ -151,6 +160,7 @@ export const syncSlice = createSlice({
 });
 
 export const {
+    appOutdated,
     loaded,
     settingsSaved,
     pendingCounted,
