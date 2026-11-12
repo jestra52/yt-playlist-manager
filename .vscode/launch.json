@@ -5,17 +5,17 @@
       "name": "Web app (Edge)",
       "type": "msedge",
       "request": "launch",
-      "url": "http://localhost:5173",
-      "webRoot": "${workspaceFolder}/web",
-      "preLaunchTask": "web: dev server"
+      "url": "http://localhost:5174",
+      "webRoot": "${workspaceFolder}/web-react",
+      "preLaunchTask": "web-react: dev server"
     },
     {
       "name": "Web app (Chrome)",
       "type": "chrome",
       "request": "launch",
-      "url": "http://localhost:5173",
-      "webRoot": "${workspaceFolder}/web",
-      "preLaunchTask": "web: dev server"
+      "url": "http://localhost:5174",
+      "webRoot": "${workspaceFolder}/web-react",
+      "preLaunchTask": "web-react: dev server"
     },
     {
       "name": "Core: all tests",

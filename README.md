@@ -9,7 +9,7 @@ Keep your own playlists of videos (music, talks, recipes, anything you want to k
 - [Project layout](#project-layout)
   - [Layers](#layers) · [Styles](#styles) · [How sync works](#how-sync-works)
 - [Run it locally](#run-it-locally)
-  - [The React app (web-react)](#the-react-app-web-react) · [Local settings](#local-settings)
+  - [The web app (web-react)](#the-web-app-web-react) · [Local settings](#local-settings)
 - [Deploy](#deploy)
   - [1. Neon](#1-create-the-database-on-neon) · [2. Render](#2-deploy-the-api-on-render) · [3. Netlify](#3-deploy-the-web-app-on-netlify) · [4. Connect your devices](#4-connect-your-devices) · [Automatic deploys](#automatic-deploys-only-what-changed)
 - [Importing YouTube playlists](#importing-youtube-playlists)
@@ -183,31 +183,23 @@ cd api && docker compose up -d
 # 2. local settings: copy the examples (the copies are git-ignored)
 cp src/YtPlaylist.Api/appsettings.Local.example.json src/YtPlaylist.Api/appsettings.Local.json
                                            # DATABASE_URL, SYNC_PEPPER (any random 32+ characters), YOUTUBE_API_KEY
-cp ../web/.env.example ../web/.env         # web/.env: API_URL for the dev proxy
+cp ../web-react/.env.example ../web-react/.env   # optional: API_URL for the dev proxy
 
 # 3. API on http://localhost:8787. Reads appsettings.Local.json and applies the EF Core migrations on start
 dotnet run --project src/YtPlaylist.Api
 
-# 4. web app: npm workspaces (web/ and packages/core) install from the repository root;
+# 4. web app: npm workspaces (web-react/ and packages/) install from the repository root;
 #    Vite proxies /api to API_URL (http://localhost:8787 by default)
-cd .. && npm install && npm run dev -w web    # http://localhost:5173
+cd .. && npm install && npm run dev -w web-react    # http://localhost:5174
 ```
 
 In the app, open the sync settings at the bottom of the sidebar and choose **Create a sync chain**. To try a second device, open the app in another browser (or a private window) and **Join with a code**. The app works without steps 1 to 3; it just stays on one device.
 
 **Using a hosted database locally:** if `DATABASE_URL` in `appsettings.Local.json` points at a hosted database instead of the local one, the API applies its pending migrations there when it starts. To try a branch that changes the database without touching production, point the API at a copy instead: on Neon, create a branch of the database and set `DATABASE_URL` to its connection string for that run (an environment variable wins over the settings file). Delete the branch when you're done. A Neon branch inherits its parent's roles **and passwords**, so its connection string carries the production password: keep it out of anything shared or committed, or create a separate role on the branch for testing.
 
-### The React app (web-react)
+### The web app (web-react)
 
-The web app lives in `web-react/`, with React, daisyUI, Redux Toolkit and TypeScript (see [Project layout](#project-layout)).
-
-```bash
-cp web-react/.env.example web-react/.env   # optional: API_URL for the dev proxy (defaults to http://localhost:8787)
-npm install && npm run dev -w web-react    # http://localhost:5174
-npm test -w web-react                      # Vitest + React Testing Library
-```
-
-It uses `packages/core` and the `react` part of the shared lint rules, and CI checks it in its own job. `npm run build -w web-react && npm run preview -w web-react` serves the production build with the real security headers.
+The web app lives in `web-react/`, with React, daisyUI, Redux Toolkit and TypeScript (see [Project layout](#project-layout)). It uses `packages/core` and the `react` part of the shared lint rules, and CI checks it in its own job. `npm run build -w web-react && npm run preview -w web-react` serves the production build with the real security headers.
 
 ### Local settings
 
@@ -216,7 +208,7 @@ Settings and secrets for local development live in two git-ignored files, each w
 | File | Copy from | Read by | Settings |
 | --- | --- | --- | --- |
 | `api/src/YtPlaylist.Api/appsettings.Local.json` | `appsettings.Local.example.json` (same folder) | `dotnet run`, only in the Development environment | `DATABASE_URL`, `SYNC_PEPPER`, `SYNC_TOKEN` (only to claim old data), `YOUTUBE_API_KEY`, `ALLOWED_ORIGIN` |
-| `web/.env` | `web/.env.example` | `npm run dev` and `npm run preview` | `API_URL` (where the dev server forwards `/api`) |
+| `web-react/.env` | `web-react/.env.example` | `npm run dev` and `npm run preview` | `API_URL` (where the dev server forwards `/api`) |
 
 Variables set in the shell win over both files, and deployed hosts (Render, Netlify) use their own environment settings with the same names, never these files. `appsettings.Local.json` is a standard .NET JSON settings file (comments allowed) loaded just below the environment variables. `.gitignore` covers it and `.env` files, and the API project never copies it to the build output, so it can't reach the published app or the Docker image (`api/.dockerignore` leaves it out too).
 
@@ -229,7 +221,8 @@ cd api && dotnet test                     # validation, sync store on SQLite, Yo
 TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ytplaylist dotnet test   # also on PostgreSQL
 npm test -w packages/core                 # shared logic (TypeScript): link parsing, artists, reports, YouTube sync comparison
 npm run typecheck -w packages/core        # TypeScript types of the shared logic
-cd web && npm test                        # services, SQLite repositories, sync rules
+npm test -w web-react                     # slices, thunks and components (Vitest + Testing Library), on SQLite
+npm run typecheck -w web-react            # TypeScript types of the web app
 ```
 
 Database changes: edit the entity configurations in `YtPlaylist.Infrastructure/Persistence/Configurations`, then add a migration from `api/`:
@@ -251,7 +244,7 @@ npm run db:generate -w packages/core   # writes packages/core/src/db/migrations/
 
 The app applies new migrations when it opens the database, and CI fails if `tables.ts` changes without a migration.
 
-Linting and formatting (in `web/` and in `packages/core`):
+Linting and formatting (in `web-react/` and in `packages/core`):
 
 ```bash
 npm run lint          # ESLint: errors for likely bugs, warnings for clean-up
@@ -260,9 +253,9 @@ npm run format        # Prettier, using .editorconfig (4-space indent, 120 colum
 npm run format:check
 ```
 
-Rules live in `packages/eslint-config` (`@ytpm/eslint-config`): `base` for JavaScript, plus `typescript`, `svelte` and `react` (JSX and hooks) parts that each package picks in its own `eslint.config.js`. In VS Code (or VSCodium), install the recommended extensions from `.vscode/extensions.json` to see ESLint errors and warnings underlined as you type.
+Rules live in `packages/eslint-config` (`@ytpm/eslint-config`): `base` for JavaScript, plus `typescript` and `react` (JSX and hooks) parts that each package picks in its own `eslint.config.js`. In VS Code (or VSCodium), install the recommended extensions from `.vscode/extensions.json` to see ESLint errors and warnings underlined as you type.
 
-Debugging (VS Code or VSCodium, **Run and Debug**): **Web app (Edge)** or **Web app (Chrome)** starts the dev server and opens the app with breakpoints in `web/` and `packages/core` (TypeScript, through source maps); **Core: all tests** and **Core: current test file** run the shared package's Vitest tests under the debugger. The configurations are in `.vscode/launch.json` and `.vscode/tasks.json`.
+Debugging (VS Code or VSCodium, **Run and Debug**): **Web app (Edge)** or **Web app (Chrome)** starts the dev server and opens the app with breakpoints in `web-react/` and `packages/core` (TypeScript, through source maps); **Core: all tests** and **Core: current test file** run the shared package's Vitest tests under the debugger. The configurations are in `.vscode/launch.json` and `.vscode/tasks.json`.
 
 ## Deploy
 
@@ -308,12 +301,12 @@ Pushes to `master` deploy each service only when its own files change:
 
 | Push changes | Netlify (web app) | Render (API) |
 | --- | --- | --- |
-| `web/` or `netlify.toml` | builds and deploys | skipped |
+| `web-react/`, `packages/`, `package.json`, `package-lock.json` or `netlify.toml` | builds and deploys | skipped |
 | `api/` (except `api/tests/` and `*.md`) or `render.yaml` | skipped | builds and deploys |
 | both | both | both |
 | only docs, `.github/` or API tests | skipped | skipped |
 
-* **Netlify** reads the `ignore` command in `netlify.toml`: it compares the commit with the last deployed one and cancels the build when nothing under `web/` or `netlify.toml` changed. The first deploy, **Clear cache and deploy**, and **Trigger deploy** always build.
+* **Netlify** reads the `ignore` command in `netlify.toml`: it compares the commit with the last deployed one and cancels the build when nothing under `web-react/`, `packages/`, the root `package.json` and `package-lock.json`, or `netlify.toml` changed. The first deploy, **Clear cache and deploy**, and **Trigger deploy** always build.
 * **Render** reads the `buildFilter` in `render.yaml` when the service is managed by the Blueprint (**Blueprints → Sync**). A service created by hand needs the same filters in **Settings → Build & Deploy → Build Filters**: included paths `api/**` and `render.yaml`, ignored paths `api/**/*.md` and `api/tests/**`. Auto-deploy also needs the service linked to the GitHub repository (**Settings → Build & Deploy → Repository**), so Render hears about pushes. **Manual Deploy** and deploy hooks ignore the filters.
 
 ## Importing YouTube playlists
@@ -406,7 +399,7 @@ Copyright (C) 2026 Juan Carlos Estrada Alvarez.
 
 Yuzu Tapes Playlist Manager is free software, licensed under the **GNU Affero General Public License v3.0 only** (`AGPL-3.0-only`); see [LICENSE](LICENSE). You may use, study, change and share it, including commercially. If you distribute it, or let people use a modified version over a network (for example as a website or a hosted API), you must offer them the complete source code of your version under the same license.
 
-The app links to its source code from the sidebar. If you host a modified version, point that link (`SOURCE_URL` in `web/src/core/config.js`) at your own source code.
+The app links to its source code from the sidebar. If you host a modified version, point that link (`SOURCE_URL` in `web-react/src/domains/ui/components/layout/Sidebar.tsx`) at your own source code.
 
 Code published before November 2, 2026, when the app was called YouTube Playlist Manager, was released under the MIT License, and copies of it obtained under MIT keep those terms. Third-party libraries keep their own licenses.
 

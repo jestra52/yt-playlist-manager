@@ -2,10 +2,10 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "web: dev server",
+      "label": "web-react: dev server",
       "type": "npm",
       "script": "dev",
-      "path": "web",
+      "path": "web-react",
       "isBackground": true,
       "problemMatcher": {
         "owner": "vite",
