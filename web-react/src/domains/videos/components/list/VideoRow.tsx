@@ -17,6 +17,7 @@ const MOVED_HIGHLIGHT_MS = 1600;
 export const VideoRow = memo(({ id, index, total }: { id: string; index: number; total: number }) => {
     const video = useAppSelector((state) => selectVideoById(state, id));
     const playing = useAppSelector((state) => state.videos.playingId === id);
+    const sorted = useAppSelector((state) => state.videos.sort !== 'default');
     const [editingNotes, setEditingNotes] = useState(false);
     const [editingLink, setEditingLink] = useState(false);
     const [movingTo, setMovingTo] = useState(false);
@@ -49,7 +50,8 @@ export const VideoRow = memo(({ id, index, total }: { id: string; index: number;
                 ref={numberRef}
                 number={index + 1}
                 title={title}
-                open={movingTo}
+                open={movingTo && !sorted}
+                disabled={sorted}
                 onClick={() => setMovingTo(!movingTo)}
             />
             {video.missing ? (
@@ -80,12 +82,13 @@ export const VideoRow = memo(({ id, index, total }: { id: string; index: number;
                 video={video}
                 index={index}
                 total={total}
+                canMove={!sorted}
                 onEditNotes={() => setEditingNotes(true)}
                 onEditLink={() => setEditingLink(true)}
             />
-            {(movingTo || (editingLink && !video.missing)) && (
+            {((movingTo && !sorted) || (editingLink && !video.missing)) && (
                 <div className="col-span-full row-start-3">
-                    {movingTo && (
+                    {movingTo && !sorted && (
                         <PositionForm
                             video={video}
                             title={title}
