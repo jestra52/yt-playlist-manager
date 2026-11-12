@@ -7,6 +7,7 @@ $text: var(--color-base-content);
 
 .artist,
 .guessed,
+.edit,
 .add {
     padding: 0;
     color: inherit;
@@ -19,14 +20,15 @@ $text: var(--color-base-content);
     color: color-mix(in srgb, $text 85%, transparent);
     font-weight: 600;
     text-align: left;
-    cursor: text;
+    cursor: pointer;
 
     &:hover {
         text-decoration: underline dotted;
     }
 }
 
-.guessed {
+.guessed,
+.edit {
     display: inline-grid;
     place-items: center;
     margin-left: 0.25em;
@@ -37,6 +39,20 @@ $text: var(--color-base-content);
     &:hover,
     &:focus-visible {
         color: $text;
+    }
+}
+
+.edit {
+    opacity: 0;
+    transition: opacity 150ms ease;
+
+    :global(.list-row):hover &,
+    &:focus-visible {
+        opacity: 1;
+    }
+
+    @media (max-width: 767px) {
+        opacity: 1;
     }
 }
 

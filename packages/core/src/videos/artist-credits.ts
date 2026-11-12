@@ -1,4 +1,4 @@
-import { artistKey, cleanArtist } from './artist';
+import { artistKey, cleanArtist, knownArtists } from './artist';
 
 /**
  * A video's artists, in order: one or more main artists, then any featured ones.
@@ -84,4 +84,11 @@ export const creditsOf = (video: { artist?: string; artists?: readonly ArtistCre
 export const creditsPatch = (credits: readonly ArtistCredit[]): { artist: string; artists: ArtistCredit[] } => {
     const clean = cleanCredits(credits);
     return { artist: joinArtists(clean), artists: clean.length > 1 ? clean : [] };
+};
+
+/** Every artist of these videos on their own, most used first (see `knownArtists`). */
+export const knownCreditNames = (
+    videos: readonly { artist?: string; artists?: readonly ArtistCredit[] }[],
+): string[] => {
+    return knownArtists(videos.flatMap((video) => creditsOf(video).map(({ name }) => ({ artist: name }))));
 };

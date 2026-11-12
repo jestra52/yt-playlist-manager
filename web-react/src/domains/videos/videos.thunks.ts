@@ -2,13 +2,8 @@ import { getDatabase } from '@ytpm/core/db/index';
 import type { Playlist } from '@ytpm/core/playlists/playlists.repository';
 import type { MissingEntry } from '@ytpm/core/playlists/report-compare';
 import type { YouTubeDiff } from '@ytpm/core/playlists/youtube-sync';
-import {
-    cleanArtist,
-    guessedArtistPatch,
-    knownArtists,
-    matchKnownArtist,
-    newVideoArtistPatch,
-} from '@ytpm/core/videos/artist';
+import { cleanArtist, guessedArtistPatch, matchKnownArtist, newVideoArtistPatch } from '@ytpm/core/videos/artist';
+import { creditsPatch, knownCreditNames, type ArtistCredit } from '@ytpm/core/videos/artist-credits';
 import { fetchVideoMetadata } from '@ytpm/core/videos/metadata.client';
 import { fetchYouTubePlaylist, PARTIAL_IMPORT_NOTE } from '@ytpm/core/videos/playlist.client';
 import {
@@ -139,15 +134,16 @@ export const saveNotes =
     };
 
 /**
- * A hand edit wins over any guess or lookup, even when it clears the artist.
+ * A hand edit wins over any guess or lookup, even when it clears the artists.
  * An artist other videos already have keeps their spelling; the edited video
  * itself doesn't count, so fixing its own spelling works.
  */
-export const saveArtist =
-    (id: string, artist: string): AppThunk =>
+export const saveArtists =
+    (id: string, credits: readonly ArtistCredit[]): AppThunk =>
     (dispatch, getState) => {
-        const known = knownArtists(selectAllVideos(getState()).filter((v) => v.id !== id));
-        const video = updateVideo(getDatabase(), id, { artist: matchKnownArtist(artist, known), artistSource: 'user' });
+        const known = knownCreditNames(selectAllVideos(getState()).filter((v) => v.id !== id));
+        const matched = credits.map((c) => ({ ...c, name: matchKnownArtist(c.name, known) }));
+        const video = updateVideo(getDatabase(), id, { ...creditsPatch(matched), artistSource: 'user' });
         if (video) dispatch(changed(video));
     };
 
