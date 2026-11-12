@@ -1,5 +1,4 @@
 node_modules/
-web/dist/
 web-react/dist/
 .netlify/
 *.db
@@ -11,7 +10,7 @@ obj/
 TestResults/
 # Local settings and secrets. Copy the example next to each:
 # api/src/YtPlaylist.Api/appsettings.Local.json (from appsettings.Local.example.json)
-# and web/.env (from web/.env.example).
+# and web-react/.env (from web-react/.env.example).
 appsettings.Local.json
 .env
 .env.*
