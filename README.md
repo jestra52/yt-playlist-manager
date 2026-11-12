@@ -143,7 +143,7 @@ The API follows the same idea with one project per layer: **Api** (HTTP) → **A
 
 ### Styles
 
-Tailwind v4 and daisyUI are loaded from plain CSS (`styles/tailwind.css`), because Tailwind v4 reads its own directives and isn't designed to run through Sass. Components use daisyUI classes first; what they need beyond that lives in a `*.module.scss` next to the component, which can `@use` the shared `styles/_tokens.scss`. The app has two themes, `light` and `dark`, with the colours of daisyUI's **winter** and **sunset**; the switch at the bottom of the sidebar follows the system or pins one, and `theme-boot.js` applies it before the first paint.
+Tailwind v4 and daisyUI are loaded from plain CSS (`styles/tailwind.css`), because Tailwind v4 reads its own directives and isn't designed to run through Sass. Components use daisyUI classes first; what they need beyond that lives in a `*.module.scss` next to the component, which can `@use` the shared `styles/_tokens.scss`. The app has two themes, `light` and `dark`, with the colours of daisyUI's **winter** and the theme generator's **shadowvoid**; the switch at the bottom of the sidebar follows the system or pins one, and `theme-boot.js` applies it before the first paint.
 
 ### How sync works
 
