@@ -4,74 +4,77 @@
     themes: false;
 }
 
-/* Light theme: cool paper, navy ink, a red "tally light" for actions. */
+/* Light theme: a light version of "sunnycave" (the dark theme): the same hues and shape, on light
+   slate, with darker primary and status colours so text on them stays readable. The themes keep the
+   names light and dark, which the saved choice, theme-boot.js and index.html use. */
 @plugin 'daisyui/theme' {
     name: 'light';
     default: true;
     prefersdark: false;
     color-scheme: light;
-    --color-base-100: #f7f9fb;
-    --color-base-200: #e9edf2;
-    --color-base-300: #cdd5e0;
-    --color-base-content: #16213a;
-    --color-primary: #e5322d;
-    --color-primary-content: #ffffff;
-    --color-secondary: #3d6fd6;
-    --color-secondary-content: #ffffff;
-    --color-accent: #2f7d6d;
-    --color-accent-content: #ffffff;
-    --color-neutral: #16213a;
-    --color-neutral-content: #e7ecf5;
-    --color-info: #3d6fd6;
-    --color-info-content: #ffffff;
-    --color-success: #2f7d6d;
-    --color-success-content: #ffffff;
-    --color-warning: #d9982c;
-    --color-warning-content: #1f1300;
-    --color-error: #d0312c;
-    --color-error-content: #ffffff;
-    --radius-selector: 0.375rem;
-    --radius-field: 0.375rem;
-    --radius-box: 0.625rem;
+    --color-base-100: oklch(99% 0.003 256.848);
+    --color-base-200: oklch(96% 0.009 264.665);
+    --color-base-300: oklch(91% 0.014 259.733);
+    --color-base-content: oklch(27% 0.033 256.848);
+    --color-primary: oklch(58% 0.15 232.661);
+    --color-primary-content: oklch(98% 0.012 232.661);
+    --color-secondary: oklch(52% 0.2 276.935);
+    --color-secondary-content: oklch(97% 0.015 276.935);
+    --color-accent: oklch(56% 0.18 254.624);
+    --color-accent-content: oklch(97% 0.014 254.624);
+    --color-neutral: oklch(27% 0.033 256.848);
+    --color-neutral-content: oklch(98% 0.002 247.839);
+    --color-info: oklch(60% 0.12 215.221);
+    --color-info-content: oklch(98% 0.019 200.873);
+    --color-success: oklch(58% 0.17 130.85);
+    --color-success-content: oklch(98% 0.031 120.757);
+    --color-warning: oklch(70% 0.17 70.08);
+    --color-warning-content: oklch(26% 0.06 70.08);
+    --color-error: oklch(57% 0.23 16.439);
+    --color-error-content: oklch(97% 0.015 12.422);
+    --radius-selector: 2rem;
+    --radius-field: 0.25rem;
+    --radius-box: 0.5rem;
     --size-selector: 0.25rem;
     --size-field: 0.25rem;
-    --border: 1px;
+    --border: 2px;
     --depth: 0;
     --noise: 0;
 }
 
-/* Dark theme, used automatically when the system prefers dark. */
+/* Dark theme: "sunnycave" from daisyUI's theme generator, slate blue with a sky-blue primary. Used
+   automatically when the system prefers dark. */
 @plugin 'daisyui/theme' {
     name: 'dark';
     default: false;
     prefersdark: true;
     color-scheme: dark;
-    --color-base-100: #172036;
-    --color-base-200: #0f1626;
-    --color-base-300: #2a3654;
-    --color-base-content: #e7ecf5;
-    --color-primary: #ff5a4f;
-    --color-primary-content: #1a0503;
-    --color-secondary: #7aa2ff;
-    --color-secondary-content: #0a1330;
-    --color-accent: #4fb59d;
-    --color-accent-content: #06201a;
-    --color-neutral: #0a101c;
-    --color-neutral-content: #e7ecf5;
-    --color-info: #7aa2ff;
-    --color-info-content: #0a1330;
-    --color-success: #4fb59d;
-    --color-success-content: #06201a;
-    --color-warning: #e8b04e;
-    --color-warning-content: #1f1300;
-    --color-error: #ff6b61;
-    --color-error-content: #1a0503;
-    --radius-selector: 0.375rem;
-    --radius-field: 0.375rem;
-    --radius-box: 0.625rem;
+    --color-base-100: oklch(27% 0.033 256.848);
+    --color-base-200: oklch(21% 0.034 264.665);
+    --color-base-300: oklch(37% 0.034 259.733);
+    --color-base-content: oklch(96% 0.003 264.542);
+    --color-primary: oklch(74% 0.16 232.661);
+    --color-primary-content: oklch(29% 0.066 243.157);
+    --color-secondary: oklch(67% 0.182 276.935);
+    --color-secondary-content: oklch(25% 0.09 281.288);
+    --color-accent: oklch(70% 0.165 254.624);
+    --color-accent-content: oklch(28% 0.091 267.935);
+    --color-neutral: oklch(21% 0.034 264.665);
+    --color-neutral-content: oklch(98% 0.002 247.839);
+    --color-info: oklch(71% 0.143 215.221);
+    --color-info-content: oklch(98% 0.019 200.873);
+    --color-success: oklch(76% 0.233 130.85);
+    --color-success-content: oklch(98% 0.031 120.757);
+    --color-warning: oklch(76% 0.188 70.08);
+    --color-warning-content: oklch(98% 0.022 95.277);
+    --color-error: oklch(64% 0.246 16.439);
+    --color-error-content: oklch(96% 0.015 12.422);
+    --radius-selector: 2rem;
+    --radius-field: 0.25rem;
+    --radius-box: 0.5rem;
     --size-selector: 0.25rem;
     --size-field: 0.25rem;
-    --border: 1px;
+    --border: 2px;
     --depth: 0;
     --noise: 0;
 }
