@@ -257,6 +257,18 @@ describe('JSON reports', () => {
         });
     });
 
+    it('keeps each artist of a video with several, and ignores a list that is not one', () => {
+        const artists = [
+            { name: 'Simon & Garfunkel', role: 'main' as const },
+            { name: 'Anri', role: 'featured' as const },
+        ];
+        const several = { ...video, artist: 'Simon & Garfunkel feat. Anri', artists };
+        const written = buildJsonReport('House', [several, { ...video, artists: [{ name: 'Modjo', role: 'main' }] }]);
+        expect(written.videos[1]).not.toHaveProperty('artists');
+        expect(parseReport(JSON.stringify(written)).entries.map((e) => e.artists)).toEqual([artists, undefined]);
+        expect(parseReport(report([{ ...video, artists: 'Modjo' }])).entries[0]).not.toHaveProperty('artists');
+    });
+
     it('ignores the watched field of old reports', () => {
         const { entries } = parseReport(report([{ ...video, watched: true }]));
         expect(entries).toEqual([{ ...video, number: 1 }]);

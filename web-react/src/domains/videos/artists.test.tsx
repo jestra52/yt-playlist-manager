@@ -173,4 +173,45 @@ describe('several artists', () => {
             ],
         });
     });
+
+    it('puts back the exact artists a JSON report kept', () => {
+        const artists = [
+            { name: 'Simon & Garfunkel', role: 'main' as const },
+            { name: 'Anri', role: 'featured' as const },
+        ];
+        store.dispatch(
+            addFromReport(playlistId, [
+                {
+                    number: 4,
+                    title: 'Kodachrome',
+                    youtubeId: '',
+                    artist: 'Simon & Garfunkel feat. Anri',
+                    artists,
+                    afterId: null,
+                },
+            ]),
+        );
+        expect(video('Kodachrome')).toMatchObject({ artist: 'Simon & Garfunkel feat. Anri', artists });
+    });
+
+    it('keeps names the library knows whole when it splits a report or guesses', () => {
+        store.dispatch(saveArtists(idOf('Plastic Love'), [{ name: 'Earth, Wind & Fire', role: 'main' }]));
+        store.dispatch(
+            addFromReport(playlistId, [
+                { number: 4, title: 'September', youtubeId: '', artist: 'Earth, Wind & Fire & Anri', afterId: null },
+            ]),
+        );
+        expect(video('September').artists).toEqual([
+            { name: 'Earth, Wind & Fire', role: 'main' },
+            { name: 'Anri', role: 'main' },
+        ]);
+
+        store.dispatch(
+            addEntries(playlistId, [{ youtubeId: 'eeeeeeeeeee', title: 'Earth, Wind & Fire - Boogie Wonderland' }]),
+        );
+        expect(video('Earth, Wind & Fire - Boogie Wonderland')).toMatchObject({
+            artist: 'Earth, Wind & Fire',
+            artistSource: 'guess',
+        });
+    });
 });

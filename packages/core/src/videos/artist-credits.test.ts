@@ -201,3 +201,36 @@ describe('guessedArtistPatch', () => {
         ).toEqual({});
     });
 });
+
+describe('splitting with the names the library knows', () => {
+    const known = ['Earth, Wind & Fire', 'Simon & Garfunkel', 'Anri'];
+
+    it('keeps a known name whole, in its spelling', () => {
+        expect(splitArtists('earth, wind & fire', known)).toEqual([main('Earth, Wind & Fire')]);
+        expect(splitArtists('Simon & Garfunkel', known)).toEqual([main('Simon & Garfunkel')]);
+    });
+
+    it('still splits the names around it', () => {
+        expect(splitArtists('Anri & Earth, Wind & Fire feat. Simon & Garfunkel, Junko Ohashi', known)).toEqual([
+            main('Anri'),
+            main('Earth, Wind & Fire'),
+            featured('Simon & Garfunkel'),
+            featured('Junko Ohashi'),
+        ]);
+    });
+
+    it('splits an unknown name as before', () => {
+        expect(splitArtists('Earth, Wind & Fire')).toEqual([main('Earth'), main('Wind'), main('Fire')]);
+    });
+
+    it('guesses with them too', () => {
+        expect(guessCredits({ title: 'Earth, Wind & Fire - September' }, known)).toEqual([main('Earth, Wind & Fire')]);
+        expect(
+            guessedArtistPatch(
+                { title: 'Earth, Wind & Fire - September', author: '', artist: '', artistSource: '' },
+                {},
+                known,
+            ),
+        ).toEqual({ artist: 'Earth, Wind & Fire', artists: [], artistSource: 'guess' });
+    });
+});

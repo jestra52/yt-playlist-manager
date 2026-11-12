@@ -15,6 +15,7 @@
  */
 
 import { cleanArtist } from '../videos/artist';
+import type { ArtistCredit } from '../videos/artist-credits';
 
 export interface ReportVideo {
     title?: string;
@@ -32,6 +33,8 @@ export interface JsonReportVideo {
     youtubeId: string;
     title: string;
     artist: string;
+    /** Each artist on their own, when there's more than one; `artist` is them joined. */
+    artists?: ArtistCredit[];
     author: string;
     notes: string;
     unavailable: boolean;
@@ -74,10 +77,11 @@ export const buildJsonReport = (
     version: JSON_REPORT_VERSION,
     createdAt: date.toISOString(),
     playlist: { name: playlistName },
-    videos: videos.map(({ youtubeId, title, artist, author, notes, unavailable }) => ({
+    videos: videos.map(({ youtubeId, title, artist, artists, author, notes, unavailable }) => ({
         youtubeId,
         title,
         artist,
+        ...(artists && artists.length > 1 && { artists }),
         author,
         notes,
         unavailable,
