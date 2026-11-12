@@ -35,6 +35,7 @@ export const autoSyncMiddleware = (): Middleware => {
             await api.delay(Math.max(wanted, notBefore - Date.now()));
             const state = api.getState() as RootState;
             if (!selectConfigured(state) || !selectSyncSettings(state).autoSync || navigator.onLine === false) return;
+            if (state.sync.outdated) return;
 
             if (await dispatch(syncNow({ quiet: true }))) {
                 failures = 0;
@@ -42,7 +43,7 @@ export const autoSyncMiddleware = (): Middleware => {
                 return;
             }
             const after = api.getState() as RootState;
-            if (!selectConfigured(after) || after.sync.offline) return;
+            if (!selectConfigured(after) || after.sync.offline || after.sync.outdated) return;
             failures += 1;
             notBefore = Date.now() + Math.max(retryWait(failures), after.sync.waitMs);
             dispatch(syncRequested(0));

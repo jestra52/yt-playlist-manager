@@ -14,7 +14,7 @@ beforeEach(() => {
         calls.push({
             path: String(url),
             method: init.method,
-            auth: (init.headers as Record<string, string> | undefined)?.Authorization,
+            auth: new Headers(init.headers).get('Authorization') ?? undefined,
         });
         const next = replies.length > 1 ? replies.shift() : replies[0];
         if (next === 'offline') throw new TypeError('Failed to fetch');

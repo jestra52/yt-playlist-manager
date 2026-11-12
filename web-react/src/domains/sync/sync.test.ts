@@ -60,6 +60,7 @@ let SQL: SqlJsStatic;
 let store: AppStore;
 let calls: Call[];
 let rejectSync: boolean;
+let outdatedApp: boolean;
 let limitedSyncs: number;
 let recoveryCodesLeft: number;
 let pairingLockedUntil: number | null;
@@ -102,6 +103,9 @@ const answer = (path: string, method: string | undefined, body: Call['body']): R
     }
     if (path.endsWith('/sync')) {
         if (rejectSync) return reply(401, { error: "this device isn't in a sync chain" });
+        if (outdatedApp) {
+            return reply(426, { error: 'this version of the app is out of date: reload the page to keep syncing' });
+        }
         if (limitedSyncs > 0) {
             limitedSyncs -= 1;
             return new Response(JSON.stringify({ error: 'too many attempts' }), {
@@ -130,7 +134,7 @@ beforeAll(async () => {
     globalThis.fetch = (async (url: string, init: RequestInit = {}) => {
         const path = String(url);
         const body = init.body ? JSON.parse(init.body as string) : null;
-        const auth = (init.headers as Record<string, string> | undefined)?.Authorization;
+        const auth = new Headers(init.headers).get('Authorization') ?? undefined;
         calls.push({ path, method: init.method, body, auth });
         return answer(path, init.method, body);
     }) as typeof fetch;
@@ -148,6 +152,7 @@ afterEach(() => {
 beforeEach(() => {
     calls = [];
     rejectSync = false;
+    outdatedApp = false;
     limitedSyncs = 0;
     recoveryCodesLeft = 10;
     pairingLockedUntil = null;
@@ -205,6 +210,21 @@ describe('sync chains', () => {
         expect(sync().status).toBe('idle');
         expect(lastNotice()?.message).toContain('no longer in the sync chain');
         expect(selectSelectedPlaylist(store.getState())?.name).toBe('Mine');
+    });
+
+    it('stops syncing and asks to reload when the API says this app is too old, keeping the chain', async () => {
+        await inChain();
+        outdatedApp = true;
+        expect(await store.dispatch(syncNow({ quiet: true }))).toBe(false);
+        expect(sync()).toMatchObject({ outdated: true, status: 'error' });
+        expect(selectConfigured(store.getState())).toBe(true);
+        expect(lastNotice()?.message).toBe('A new version of the app is out. Reload the page to keep syncing.');
+
+        const before = syncCalls().length;
+        const notices = store.getState().ui.notices.length;
+        expect(await store.dispatch(syncNow())).toBe(false);
+        expect(syncCalls()).toHaveLength(before);
+        expect(store.getState().ui.notices).toHaveLength(notices);
     });
 });
 

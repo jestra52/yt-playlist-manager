@@ -14,10 +14,11 @@ public static class HealthEndpoints
     /// <summary>GET /api/health: used by the sync settings dialog and Render's health check.</summary>
     public static IEndpointRouteBuilder MapHealthEndpoints(this IEndpointRouteBuilder app)
     {
-        var handler = (SyncService sync, ChainService chains) => Results.Json(new HealthStatus(
+        var handler = (SyncService sync, ChainService chains, IConfiguration config) => Results.Json(new HealthStatus(
             Ok: true,
             SyncConfigured: sync.IsAvailable && chains.IsAvailable,
-            Version: Version));
+            Version: Version,
+            MinAppVersion: AppVersionGate.Minimum(config)));
         app.MapGet("/api", handler);
         app.MapGet("/api/health", handler);
         return app;
