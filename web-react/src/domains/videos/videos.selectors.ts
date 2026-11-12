@@ -1,5 +1,5 @@
 import { createSelector } from '@reduxjs/toolkit';
-import { knownArtists } from '@ytpm/core/videos/artist';
+import { knownCreditNames } from '@ytpm/core/videos/artist-credits';
 import type { Video } from '@ytpm/core/videos/videos.repository';
 import type { RootState } from '../../app/store';
 import { videosAdapter, type VideoFilter, type VideoSort } from './videos.slice';
@@ -113,4 +113,4 @@ const selectPlayingPlace = createSelector([selectPlayQueue, selectPlayingId], (q
 export const selectNextVideo = (state: RootState) => selectPlayQueue(state)[selectPlayingPlace(state) + 1] ?? null;
 export const selectPreviousVideo = (state: RootState) => selectPlayQueue(state)[selectPlayingPlace(state) - 1] ?? null;
 
-export const selectKnownArtists = createSelector([selectors.selectAll], (videos) => knownArtists(videos));
+export const selectKnownArtists = createSelector([selectors.selectAll], (videos) => knownCreditNames(videos));

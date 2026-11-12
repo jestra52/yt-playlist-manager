@@ -7,7 +7,15 @@ import { App } from '../../App';
 import { createStore, type AppStore } from '../../app/store';
 import { createPlaylist, loadLibrary } from '../playlists/playlists.thunks';
 import { selectVideoById, selectVideoIdsFor } from './videos.selectors';
-import { addEntries, moveToPlaylist, removeVideo, reorder, restoreVideo, saveArtist, saveNotes } from './videos.thunks';
+import {
+    addEntries,
+    moveToPlaylist,
+    removeVideo,
+    reorder,
+    restoreVideo,
+    saveArtists,
+    saveNotes,
+} from './videos.thunks';
 
 const realFetch = globalThis.fetch;
 let SQL: SqlJsStatic;
@@ -81,7 +89,7 @@ describe('video actions', () => {
     it('saves notes, and an artist by hand in the spelling already in use', () => {
         const id = idOf('Two');
         store.dispatch(saveNotes(id, 'Great intro'));
-        store.dispatch(saveArtist(id, 'tomoko aran'));
+        store.dispatch(saveArtists(id, [{ name: 'tomoko aran', role: 'main' }]));
         expect(selectVideoById(reloaded().getState(), id)).toMatchObject({
             notes: 'Great intro',
             artist: 'Tomoko Aran',
@@ -122,7 +130,7 @@ describe('video row', () => {
         fireEvent.click(screen.getAllByRole('button', { name: 'Add artist' })[0]!);
         const artist = screen.getByLabelText('Artist of Two');
         fireEvent.change(artist, { target: { value: 'Anri' } });
-        fireEvent.keyDown(artist, { key: 'Enter' });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
         expect(screen.getByRole('button', { name: 'Anri' })).toBeInTheDocument();
     });
 });

@@ -4,6 +4,7 @@ import {
     creditsOf,
     creditsPatch,
     joinArtists,
+    knownCreditNames,
     MAX_CREDITS,
     parseCredits,
     type ArtistCredit,
@@ -84,5 +85,16 @@ describe('creditsPatch', () => {
             artists: [main('A'), featured('C')],
         });
         expect(creditsPatch([])).toEqual({ artist: '', artists: [] });
+    });
+});
+
+describe('knownCreditNames', () => {
+    it('counts each artist on their own, featured ones too', () => {
+        const videos = [
+            { artist: 'Anri & Tatsuro Yamashita', artists: [main('Anri'), main('Tatsuro Yamashita')] },
+            { artist: 'Mariya Takeuchi feat. Anri', artists: [main('Mariya Takeuchi'), featured('Anri')] },
+            { artist: 'Tatsuro Yamashita' },
+        ];
+        expect(knownCreditNames(videos)).toEqual(['Anri', 'Tatsuro Yamashita', 'Mariya Takeuchi']);
     });
 });
