@@ -1,6 +1,7 @@
 import { and, asc, eq, max, ne } from 'drizzle-orm';
 import { newId, now, type Database } from '../db/index';
 import { videos } from '../db/tables';
+import { creditsOf, parseCredits, type ArtistCredit } from './artist-credits';
 import { thumbnailFor } from './youtube';
 
 const fields = {
@@ -11,6 +12,7 @@ const fields = {
     author: videos.author,
     artist: videos.artist,
     artistSource: videos.artistSource,
+    artists: videos.artists,
     replacedYoutubeId: videos.replacedYoutubeId,
     thumbnailUrl: videos.thumbnailUrl,
     notes: videos.notes,
@@ -29,6 +31,7 @@ interface StoredVideo {
     author: string;
     artist: string;
     artistSource: string;
+    artists: ArtistCredit[];
     replacedYoutubeId: string;
     thumbnailUrl: string;
     notes: string;
@@ -51,6 +54,7 @@ export interface VideoEntry {
     author?: string;
     artist?: string;
     artistSource?: string;
+    artists?: ArtistCredit[];
     thumbnailUrl?: string;
     notes?: string;
     unavailable?: boolean;
@@ -69,6 +73,7 @@ export type VideoPatch = Partial<
         | 'author'
         | 'artist'
         | 'artistSource'
+        | 'artists'
         | 'replacedYoutubeId'
         | 'thumbnailUrl'
         | 'notes'
@@ -80,9 +85,10 @@ export type VideoPatch = Partial<
 >;
 
 /** Adds what views need on top of the stored row. */
-const toVideo = (row: StoredVideo): Video => {
+const toVideo = (row: Omit<StoredVideo, 'artists'> & { artists: string }): Video => {
     return {
         ...row,
+        artists: creditsOf({ artist: row.artist, artists: parseCredits(row.artists) }),
         // Waits for a link: a placeholder from an old report (known by its title), or a
         // video deleted or made private on YouTube (it keeps its old ID).
         missing: row.youtubeId === '' || row.unavailable,
@@ -129,6 +135,7 @@ const insertVideo = (
         author = '',
         artist = '',
         artistSource = '',
+        artists = [],
         thumbnailUrl,
         notes = '',
         unavailable = false,
@@ -146,6 +153,7 @@ const insertVideo = (
             author: author.slice(0, 200),
             artist: artist.slice(0, 200),
             artistSource: artist ? artistSource : '',
+            artists: JSON.stringify(artist ? artists : []),
             thumbnailUrl: thumbnailUrl || (youtubeId ? thumbnailFor(youtubeId) : ''),
             notes: notes.slice(0, 5000),
             unavailable: Boolean(unavailable && youtubeId),
@@ -266,6 +274,7 @@ const EDITABLE = [
     'author',
     'artist',
     'artistSource',
+    'artists',
     'replacedYoutubeId',
     'thumbnailUrl',
     'notes',
@@ -292,11 +301,14 @@ export const updateVideo = (db: Database, id: string, patch: VideoPatch): Video 
     for (const key of EDITABLE) {
         if (patch[key] !== undefined) changes[key] = FLAGS.has(key) ? Boolean(patch[key]) : patch[key];
     }
+    // A new artist text without a list is one artist (or none).
+    if (patch.artist !== undefined || patch.artists !== undefined)
+        changes.artists = JSON.stringify(patch.artists ?? []);
     if (!Object.keys(changes).length) return getVideo(db, id);
     db.write(
         db.orm
             .update(videos)
-            .set({ ...(changes as VideoPatch), updatedAt: now(), dirty: true })
+            .set({ ...(changes as Partial<typeof videos.$inferInsert>), updatedAt: now(), dirty: true })
             .where(and(eq(videos.id, id), live)),
     );
     return getVideo(db, id);

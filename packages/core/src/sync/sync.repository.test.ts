@@ -99,6 +99,42 @@ describe('sync bookkeeping', () => {
         expect(videos.getVideo(db, v.id)!).toMatchObject({ watched: true, artist: 'Anri', artistSource: 'user' });
     });
 
+    it('syncs several artists', () => {
+        const phone = freshDb();
+        const laptop = freshDb();
+        const p = playlists.createPlaylist(phone, { name: 'Shared' })!;
+        const v = videos.addVideos(phone, p.id, [{ youtubeId: 'dQw4w9WgXcQ', artist: 'Anri' }]).added[0]!;
+        const artists = [
+            { name: 'Anri', role: 'main' as const },
+            { name: 'Mariya Takeuchi', role: 'featured' as const },
+        ];
+        videos.updateVideo(phone, v.id, { artist: 'Anri feat. Mariya Takeuchi', artists, artistSource: 'user' });
+        const pushed = sync.collectChanges(phone);
+        expect(pushed.videos[0]!.artists).toEqual(artists);
+
+        sync.applyRemote(laptop, pushed);
+        expect(videos.getVideo(laptop, v.id)!).toMatchObject({ artist: 'Anri feat. Mariya Takeuchi', artists });
+    });
+
+    it('keeps the artists when the server leaves them out, and follows an older app that changes the text', () => {
+        const db = freshDb();
+        const p = playlists.createPlaylist(db, { name: 'A' })!;
+        const artists = [
+            { name: 'Anri', role: 'main' as const },
+            { name: 'Tatsuro Yamashita', role: 'main' as const },
+        ];
+        const v = videos.addVideos(db, p.id, [
+            { youtubeId: 'dQw4w9WgXcQ', artist: 'Anri & Tatsuro Yamashita', artists },
+        ]).added[0]!;
+        const { artists: _, ...fromOldServer } = sync.collectChanges(db).videos[0]!;
+
+        sync.applyRemote(db, { videos: [{ ...fromOldServer, watched: true, updatedAt: v.updatedAt + 1 }] });
+        expect(videos.getVideo(db, v.id)!.artists).toEqual(artists);
+
+        sync.applyRemote(db, { videos: [{ ...fromOldServer, artist: 'Tomoko Aran', updatedAt: v.updatedAt + 2 }] });
+        expect(videos.getVideo(db, v.id)!.artists).toEqual([{ name: 'Tomoko Aran', role: 'main' }]);
+    });
+
     it('syncs where a playlist came from and which videos are gone from YouTube', () => {
         const phone = freshDb();
         const laptop = freshDb();

@@ -50,6 +50,9 @@ export const videos = sqliteTable(
         // so a better source can replace a guess but never a hand edit.
         artist: text('artist').notNull().default(''),
         artistSource: text('artist_source').notNull().default(''),
+        // Several artists as a JSON list of { name, role } (see videos/artist-credits.ts),
+        // or [] for one. artist stays their joined display name.
+        artists: text('artists').notNull().default('[]'),
         thumbnailUrl: text('thumbnail_url').notNull().default(''),
         notes: text('notes').notNull().default(''),
         watched: integer('watched', { mode: 'boolean' }).notNull().default(false),
