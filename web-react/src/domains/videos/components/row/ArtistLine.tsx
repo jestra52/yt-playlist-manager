@@ -56,7 +56,7 @@ export const ArtistLine = ({ video, title, onEdit }: { video: Video; title: stri
                     </button>
                 </Fragment>
             ))}
-            {video.artistSource === 'guess' ? (
+            {video.artistSource === 'guess' && (
                 <button
                     type="button"
                     className={styles.guessed}
@@ -66,7 +66,16 @@ export const ArtistLine = ({ video, title, onEdit }: { video: Video; title: stri
                 >
                     <Icon name="info" size={13} />
                 </button>
-            ) : (
+            )}
+            {showChannel && (
+                <>
+                    <span className={styles.separator} aria-hidden="true">
+                        ·
+                    </span>
+                    uploaded by {video.author}
+                </>
+            )}
+            {video.artistSource !== 'guess' && (
                 <button
                     type="button"
                     className={styles.edit}
@@ -76,14 +85,6 @@ export const ArtistLine = ({ video, title, onEdit }: { video: Video; title: stri
                 >
                     <Icon name="edit" size={13} />
                 </button>
-            )}
-            {showChannel && (
-                <>
-                    <span className={styles.separator} aria-hidden="true">
-                        ·
-                    </span>
-                    uploaded by {video.author}
-                </>
             )}
         </p>
     );

@@ -24,7 +24,7 @@ Keep your own playlists of videos (music, talks, recipes, anything you want to k
 
 | Light | Dark |
 | --- | --- |
-| ![A City Pop playlist in the light theme: sidebar with two playlists, progress strip, and videos with thumbnails, each showing its artist and the channel that uploaded it, three marked as watched](docs/screenshots/playlist-light.png) | ![The same playlist in the dark theme](docs/screenshots/playlist-dark.png) |
+| ![A City Pop playlist in the light theme: sidebar with two playlists, the All and Missing tabs, the Sort control and search, and numbered videos with thumbnails, each showing its artists, such as "Ryo Tanabe & Aoi Kanda" or "Aoi Kanda feat. Sora Minami", and the channel that uploaded it](docs/screenshots/playlist-light.png) | ![The same playlist in the dark theme](docs/screenshots/playlist-dark.png) |
 
 **Compare with an old report.** Load a report you saved earlier to see which videos the playlist no longer has, then add them back in their old place:
 
@@ -38,7 +38,9 @@ Keep your own playlists of videos (music, talks, recipes, anything you want to k
 
 ![Missing filter showing a video deleted on YouTube and a placeholder from a report, each with a box to paste a YouTube link](docs/screenshots/missing-items.png)
 
-**Artists.** Under each title the app shows the artist, then the channel that uploaded the video: "Anri · uploaded by …". The artist is guessed from YouTube Music's "Artist - Topic" channels and from titles like "Artist - Song" or "Artist「Song」"; a guess has an ⓘ badge, because it may be wrong. Click the artist to correct it: the field suggests artists already in your library and keeps one spelling for each. Search matches artists too.
+**Sorting.** **Sort** shows a playlist by **Artist** (A to Z, then by title), **Title**, or with **Missing** videos first, and works together with the filter and search. It only changes the view: the playlist keeps its order, rows keep their numbers, and moving a video waits until you're back on **Default**. Switching playlists goes back to **Default**.
+
+**Artists.** Under each title the app shows the artists, then the channel that uploaded the video: "Ryo Tanabe & Aoi Kanda · uploaded by …". A video can have several main artists and featured ones ("Aoi Kanda feat. Sora Minami"). They're guessed from YouTube Music's "Artist - Topic" channels and from titles like "Artist - Song", "A & B - Song", "A × B" or "Song (feat. C)"; a guess has an ⓘ badge, because it may be wrong. Click the ⓘ or the pencil to edit them: add a main or featured artist, reorder or remove them, with suggestions from your library that keep one spelling for each. Once your library knows a name with "&" or "," in it, like a band, guesses keep it whole. Click an artist to search for them, which finds the videos where they're main or featured.
 
 **Videos deleted on YouTube** keep their place: they show a "Deleted" thumbnail, count under the **Missing** filter, and wait for another link, like Missing items.
 
@@ -376,12 +378,12 @@ Format: number: title | artist
 3: Untitled live recording |
 ```
 
-The artist follows the last ` | ` and is empty when unknown. Reports saved before artists existed have no `Format:` line and only `number: title`.
+The artist follows the last ` | ` and is empty when unknown. Several artists are joined, as in `Ryo Tanabe & Aoi Kanda feat. Sora Minami`. Reports saved before artists existed have no `Format:` line and only `number: title`.
 
 **Compare** loads a report (a file, or pasted text) and finds which of its videos the playlist no longer has, so you can add them back in their old place. It reads every format and says which one it found:
 
-* **JSON:** matches by YouTube ID; restored videos come back with their link, channel and notes. Older reports also have a `watched` field, which is ignored. A broken file, or one from a newer version of the app, is refused and changes nothing.
-* **Text with artists:** matches by title, using the artist to tell apart two videos with the same title; restored items keep the report's artist and wait for their link as Missing items.
+* **JSON:** matches by YouTube ID; restored videos come back with their link, channel, notes and each of their artists. Older reports also have a `watched` field, which is ignored. A broken file, or one from a newer version of the app, is refused and changes nothing.
+* **Text with artists:** matches by title, using the artist to tell apart two videos with the same title; restored items keep the report's artists, split again on `&`, `feat.` and the like (names your library already knows stay whole), and wait for their link as Missing items.
 * **Older text reports:** match by title (ignoring case, spacing, punctuation and full-width characters), and also when the report's title is the video's "artist - title"; restored items get a guessed artist.
 
 **Backups** are made by themselves when a playlist with videos is added, and whenever you download a report. In a sync chain they're kept on the server, where any device can find them; without a chain, or while offline, they stay on the device. **Compare** lists a playlist's backups, to compare with one or download it. Each playlist keeps its first backup and its last 10, and the backups of a deleted playlist are removed after 30 days. Sync doesn't change them, so a bad edit can't reach a backup.
