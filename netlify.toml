@@ -12,7 +12,7 @@
   # previous commit isn't in the clone (git diff fails).
   ignore = """
     [ -n "$CACHED_COMMIT_REF" ] && [ "$CACHED_COMMIT_REF" != "$COMMIT_REF" ] &&
-    git diff --quiet "$CACHED_COMMIT_REF" "$COMMIT_REF" -- web-react/ packages/ package.json package-lock.json netlify.toml
+    git diff --quiet "$CACHED_COMMIT_REF" "$COMMIT_REF" -- web-react/ packages/ package.json package-lock.json netlify.toml api/VERSION
   """
 
 [build.environment]

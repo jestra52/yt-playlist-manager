@@ -137,10 +137,21 @@ public sealed class ApiTests(WebApplicationFactory<Program> factory) : IClassFix
         var body = await configured.GetFromJsonAsync<JsonElement>("/api/health");
         Assert.True(body.GetProperty("ok").GetBoolean());
         Assert.True(body.GetProperty("syncConfigured").GetBoolean());
+        Assert.Equal(ReadVersionFile(), body.GetProperty("version").GetString());
 
         using var bare = this.Client();
         body = await bare.GetFromJsonAsync<JsonElement>("/api/health");
         Assert.False(body.GetProperty("syncConfigured").GetBoolean());
+    }
+
+    private static string ReadVersionFile()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "VERSION")))
+        {
+            dir = dir.Parent;
+        }
+        return File.ReadAllText(Path.Combine(dir!.FullName, "VERSION")).Trim();
     }
 
     [Fact]

@@ -25,12 +25,16 @@ const siteHeaders = () => {
     return headers;
 };
 
+// One version for the whole app, bumped in each release PR (see api/VERSION).
+const appVersion = readFileSync(new URL('../api/VERSION', import.meta.url), 'utf8').trim();
+
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, fileURLToPath(new URL('.', import.meta.url)), '');
     const proxy = { '/api': { target: env.API_URL || 'http://localhost:8787', changeOrigin: true } };
 
     return {
         plugins: [tailwindcss(), react()],
+        define: { __APP_VERSION__: JSON.stringify(appVersion) },
         server: { port: 5174, strictPort: true, proxy },
         preview: { proxy, headers: siteHeaders() },
         build: { target: 'es2022' },
